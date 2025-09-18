@@ -1,0 +1,55 @@
+{% extends 'base.html' %} {% load static %} {% block content %}
+<div
+  class="container d-flex justify-content-center align-items-center"
+  style="min-height: 80vh"
+>
+  <div
+    class="card shadow-lg p-4"
+    style="width: 400px; border-radius: 16px; background: #fffbe6"
+  >
+    <!-- Logo PanierFacile -->
+    <div class="text-center mb-2">
+      <i class="fas fa-shopping-cart fa-3x text-warning mb-2"></i>
+    </div>
+    <h2 class="text-center text-dark mb-4" style="font-weight: bold">
+      Connexion
+    </h2>
+
+    <!-- Affichage des erreurs -->
+    {% if form.errors %}
+    <div class="alert alert-danger">
+      <strong>Erreur :</strong> Vérifiez votre nom d'utilisateur et votre mot de
+      passe.
+    </div>
+    {% endif %}
+
+    <!-- Formulaire de connexion -->
+    <form method="post">
+      {% csrf_token %}
+      <div class="form-group text-start">{{ form.as_p }}</div>
+      <button type="submit" class="btn btn-dark w-100 mt-3">
+        <i class="fas fa-sign-in-alt"></i> Se connecter
+      </button>
+    </form>
+
+    <!-- Lien vers l'inscription et le mot de passe oublié -->
+    <p class="text-center mt-3 mb-1">
+      Pas encore membre ?
+      <a
+        href="{% url 'signup' %}"
+        class="text-decoration-none text-warning fw-bold"
+      >
+        Inscrivez-vous
+      </a>
+    </p>
+    <p class="text-center mb-0">
+      <a
+        href="{% url 'password_reset' %}"
+        class="text-decoration-none text-secondary"
+      >
+        <i>Mot de passe oublié ?</i>
+      </a>
+    </p>
+  </div>
+</div>
+{% endblock content %}

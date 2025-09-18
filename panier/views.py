@@ -1,4 +1,6 @@
+
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 from panier.forms import CourseForm
 
@@ -8,6 +10,17 @@ from django.contrib import messages
 from panier.models import Course
 
 # Create your views here.
+
+
+@login_required
+def home(request):
+    # Je récupère les paniers de l'utilisateur connecté
+    paniers = request.user.paniers.all().order_by('-date_creation')
+    # Ici, j'ajoute nombre d'articles pour chaque panier
+    for panier in paniers:
+        panier.nb_articles = panier.courses.count()
+        panier.nom = f"Panier {panier.id}"
+    return render(request, "panier/home.html", {"paniers": paniers})
 
 #courses
 
@@ -97,7 +110,9 @@ from django.contrib import messages
 from .models import Panier, Course
 from .forms import PanierForm
 
-# --- Créer un panier ---
+
+# Je crée un nouveau panier
+@login_required
 def creer_panier(request):
     if request.method == 'POST':
         form = PanierForm(request.POST)
@@ -109,10 +124,11 @@ def creer_panier(request):
         form = PanierForm()
     return render(request, 'panier/creer_panier.html', {'form': form})
 
-# --- Ajouter des courses à un panier existant ---
+
+# J'ajoute des courses à un panier existant
+@login_required
 def ajouter_course_au_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
-    
     if request.method == 'POST':
         form = PanierForm(request.POST, instance=panier)
         if form.is_valid():
@@ -121,23 +137,27 @@ def ajouter_course_au_panier(request, panier_id):
             return redirect('detail_panier', panier_id=panier.id)
     else:
         form = PanierForm(instance=panier)
-    
     return render(request, 'panier/ajouter_course_au_panier.html', {'form': form, 'panier': panier})
 
-# --- Liste de tous les paniers ---
+
+# J'affiche la liste de tous les paniers
+@login_required
 def liste_paniers(request):
     paniers = Panier.objects.all()
     return render(request, 'panier/liste_paniers.html', {'paniers': paniers})
 
-# --- Détail d'un panier ---
+
+# J'affiche le détail d'un panier
+@login_required
 def detail_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
     return render(request, 'panier/detail_panier.html', {'panier': panier})
 
-# --- Modifier un panier ---
+
+# Je modifie un panier existant
+@login_required
 def modifier_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
-    
     if request.method == 'POST':
         form = PanierForm(request.POST, instance=panier)
         if form.is_valid():
@@ -146,16 +166,15 @@ def modifier_panier(request, panier_id):
             return redirect('detail_panier', panier_id=panier.id)
     else:
         form = PanierForm(instance=panier)
-    
     return render(request, 'panier/modifier_panier.html', {'form': form, 'panier': panier})
 
-# --- Supprimer un panier ---
+
+# Je supprime un panier
+@login_required
 def supprimer_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
-    
     if request.method == 'POST':
         panier.delete()
         messages.success(request, "Panier supprimé avec succès !")
         return redirect('liste_paniers')
-    
     return render(request, 'panier/supprimer_panier.html', {'panier': panier})

@@ -1,0 +1,87 @@
+{% extends 'base.html' %} {% block content %}
+<div class="container py-5">
+  <!-- Message de bienvenue -->
+  <div
+    id="popup-message"
+    class="alert alert-success shadow-sm mb-4"
+    style="display: none"
+  >
+    <h4 class="mb-1">Bienvenue, {{ request.user.username }} !</h4>
+    <p class="mb-0">Vous êtes connecté.</p>
+  </div>
+
+  <!-- Tableau des paniers ou produits -->
+  <div class="card shadow-lg mb-4" style="background: #fffbe6">
+    <div class="card-header bg-dark text-white">
+      <h2 class="mb-0">
+        <i class="fas fa-shopping-basket me-2"></i>Vos paniers
+      </h2>
+    </div>
+    <div class="card-body">
+      {% if paniers %}
+      <table class="table table-hover align-middle text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>Nom du panier</th>
+            <th>Date de création</th>
+            <th>Nombre d'articles</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for panier in paniers %}
+          <tr>
+            <td>{{ panier.nom }}</td>
+            <td>{{ panier.date_creation|date:'d/m/Y' }}</td>
+            <td>{{ panier.nb_articles }}</td>
+            <td>
+              <a
+                href="{% url 'detail_panier' panier.id %}"
+                class="btn btn-outline-primary btn-sm"
+                ><i class="fas fa-eye"></i
+              ></a>
+              <a
+                href="{% url 'modifier_panier' panier.id %}"
+                class="btn btn-outline-warning btn-sm"
+                ><i class="fas fa-edit"></i
+              ></a>
+              <a
+                href="{% url 'supprimer_panier' panier.id %}"
+                class="btn btn-outline-danger btn-sm"
+                ><i class="fas fa-trash"></i
+              ></a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-center text-muted">Aucun panier créé pour le moment.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Actions principales -->
+  <div class="d-flex flex-column flex-md-row justify-content-center gap-3 mt-4">
+    <a href="{% url 'creer_panier' %}" class="btn btn-success btn-lg shadow">
+      <i class="fas fa-plus-circle"></i> Nouveau panier
+    </a>
+    <a href="{% url 'liste_course' %}" class="btn btn-primary btn-lg shadow">
+      <i class="fas fa-list"></i> Voir mes courses
+    </a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    let popup = document.getElementById("popup-message");
+    if (popup) {
+      popup.style.display = "block";
+      setTimeout(function () {
+        popup.style.animation = "fadeOut 1s ease-in-out";
+        setTimeout(() => (popup.style.display = "none"), 1000);
+      }, 3000);
+    }
+  });
+</script>
+{% endblock content %}
