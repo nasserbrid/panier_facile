@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Créer un panier{% endblock %}
+
+{% block content %}
+<h2>Créer un panier</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Créer</button>
+</form>
+<a href="{% url 'liste_paniers' %}" class="btn btn-link mt-2">Retour à la liste</a>
+{% endblock %}

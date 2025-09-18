@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Modifier le panier {{ panier.id }}{% endblock %}
+
+{% block content %}
+<h2>Modifier le panier</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+</form>
+<a href="{% url 'detail_panier' panier.id %}" class="btn btn-link mt-2">Annuler</a>
+{% endblock %}

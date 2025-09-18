@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Détails de {{ course.titre }}{% endblock %}
+
+{% block content %}
+<h2>{{ course.titre }}</h2>
+<h4>Ingrédients :</h4>
+<ul>
+    {% for line in course.ingredient.splitlines %}
+        <li>{{ line }}</li>
+    {% empty %}
+        <li>Aucun ingrédient</li>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'modifier_course' course.id %}" class="btn btn-primary">Modifier</a>
+<a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger">Supprimer</a>
+<a href="{% url 'liste_courses' %}" class="btn btn-link">Retour</a>
+{% endblock %}
