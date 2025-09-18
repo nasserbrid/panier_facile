@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Liste des paniers{% endblock %}
+
+{% block content %}
+<h2>Liste des paniers</h2>
+<a href="{% url 'creer_panier' %}" class="btn btn-success mb-3">Nouveau panier</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Utilisateur</th>
+            <th>Courses</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for panier in paniers %}
+        <tr>
+            <td>{{ panier.id }}</td>
+            <td>{{ panier.user.username }}</td>
+            <td>
+                {% for course in panier.courses.all %}
+                    {{ course.titre }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Aucun
+                {% endfor %}
+            </td>
+            <td>
+                <a href="{% url 'detail_panier' panier.id %}" class="btn btn-info btn-sm">Détails</a>
+                <a href="{% url 'modifier_panier' panier.id %}" class="btn btn-primary btn-sm">Modifier</a>
+                <a href="{% url 'supprimer_panier' panier.id %}" class="btn btn-danger btn-sm">Supprimer</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">Aucun panier</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
