@@ -44,11 +44,13 @@ urlpatterns = [
     path('signup/', authentication.views.signup_page, name='signup'),
     
     path('creer_course/', panier.views.creer_course, name='creer_course'),
+    path('creer_panier/', panier.views.creer_panier, name='creer_panier'),
     path('courses/', panier.views.liste_courses, name='liste_courses'),
     path('courses/<int:course_id>/', panier.views.detail_course, name='detail_course'),
     path('courses/<int:course_id>/ajouter_ingredient/', panier.views.ajouter_ingredient, name='ajouter_ingredient'),
     path('courses/<int:course_id>/modifier/', panier.views.modifier_course, name='modifier_course'),
     path('home/', panier.views.home, name='home'),
+    path('panier/', panier.views.liste_paniers, name='panier'),
     path('', RedirectView.as_view(url='/home/'), name='index'),
    
     

@@ -27,13 +27,34 @@
       <ul class="nav">
         <li class="nav-item"><a class="nav-link text-white" href="{% url 'home' %}">Accueil</a></li>
         <li class="nav-item"><a class="nav-link text-white" href="{% url 'panier' %}">Panier</a></li>
-        <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li>
+        {% comment %} <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li> {% endcomment %}
       </ul>
 
-      <!-- Recherche et utilisateur -->
+      <div>
+          {% if user.is_authenticated %}
+          <span class="navbar-text me-3">
+            <i class="fas fa-user text-primary"></i>
+            <strong>{{ request.user.username }}</strong>
+          </span>
+          <form method="post" action="{% url 'logout' %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </button>
+          </form>
+          {% comment %} {% else %}
+          <a href="{% url 'login' %}" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i> Connexion
+          </a> {% endcomment %}
+      </p>
+          {% endif %}
+          
+        </div>
+
+      <!-- Recherche (non fonctionnelle pour l'instant) -->
       <div class="d-flex align-items-center">
         <input class="form-control me-3" type="search" placeholder="Rechercher..." aria-label="Rechercher">
-        <a href="{% url 'profile' %}" class="text-danger fs-4"><i class="fas fa-user"></i></a>
+        <!-- Lien profil supprimé car pas d'URL 'profile' -->
       </div>
 
     </div>
