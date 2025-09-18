@@ -86,7 +86,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'PanierFacile',
         'USER': 'postgres',
-        'PASSWORD': 'Nasser12121987',
+        'PASSWORD': 'Nasser12121987*',
         'HOST': 'localhost',
         'PORT': '5432',
         
