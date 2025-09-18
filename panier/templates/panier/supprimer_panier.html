@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Supprimer le panier {{ panier.id }}{% endblock %}
+
+{% block content %}
+<h2>Supprimer le panier ?</h2>
+<p>Êtes-vous sûr de vouloir supprimer ce panier de <strong>{{ panier.user.username }}</strong> ?</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Supprimer</button>
+    <a href="{% url 'detail_panier' panier.id %}" class="btn btn-secondary">Annuler</a>
+</form>
+{% endblock %}
