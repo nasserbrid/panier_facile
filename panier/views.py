@@ -196,3 +196,9 @@ def supprimer_panier(request, panier_id):
         messages.success(request, "Panier supprimé avec succès !")
         return redirect('liste_paniers')
     return render(request, 'panier/supprimer_panier.html', {'panier': panier})
+
+
+
+#stripe
+import stripe
+from django.conf import settings
