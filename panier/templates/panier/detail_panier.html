@@ -1,20 +1,34 @@
-{% extends "base.html" %}
-{% block title %}Détails du panier {{ panier.id }}{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Détails du panier {{ panier.id
+}}{%endblock %} {% block content %}
 <h2>Panier {{ panier.id }} - {{ panier.user.username }}</h2>
 <p>Date de création : {{ panier.date_creation }}</p>
 
 <h4>Courses :</h4>
+
 <ul>
-    {% for course in panier.courses.all %}
-        <li>{{ course.titre }}</li>
-    {% empty %}
-        <li>Aucune course</li>
-    {% endfor %}
+  {% for course in panier.courses.all %}
+  <li>
+    <strong>{{ course.titre }}</strong>
+    {% if course.ingredient %}
+    <ul>
+      {% for ingredient in course.ingredient.splitlines %}
+      <li>{{ ingredient }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <em>Aucun ingrédient</em>
+    {% endif %}
+  </li>
+  {% empty %}
+  <li>Aucune course</li>
+  {% endfor %}
 </ul>
 
-<a href="{% url 'modifier_panier' panier.id %}" class="btn btn-primary">Modifier</a>
-<a href="{% url 'supprimer_panier' panier.id %}" class="btn btn-danger">Supprimer</a>
+<a href="{% url 'modifier_panier' panier.id %}" class="btn btn-primary"
+  >Modifier</a
+>
+<a href="{% url 'supprimer_panier' panier.id %}" class="btn btn-danger"
+  >Supprimer</a
+>
 <a href="{% url 'liste_paniers' %}" class="btn btn-link">Retour</a>
 {% endblock %}

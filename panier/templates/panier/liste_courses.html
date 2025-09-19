@@ -1,32 +1,70 @@
-{% extends "base.html" %}
-{% block title %}Liste des courses{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Liste des courses{% endblock %}
+{%block content %}
 <h2>Liste des courses</h2>
-<a href="{% url 'creer_course' %}" class="btn btn-success mb-3">Nouvelle course</a>
+<a href="{% url 'creer_course' %}" class="btn btn-success mb-3"
+  >Nouvelle course</a
+>
 
 <table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Titre</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for course in courses %}
-        <tr>
-            <td>{{ course.titre }}</td>
-            <td>
-                <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
-                <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
-                <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="2">Aucune course</td>
-        </tr>
-        {% endfor %}
-    </tbody>
+  <thead>
+    <tr>
+      <th>Titre</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for course in courses %}
+    <tr>
+      <td>{{ course.titre }}</td>
+      <td>
+        <a
+          href="{% url 'detail_course' course.id %}"
+          class="btn btn-info btn-sm"
+          >Détails</a
+        >
+        <a
+          href="{% url 'modifier_course' course.id %}"
+          class="btn btn-primary btn-sm"
+          >Modifier</a
+        >
+        <a
+          href="{% url 'supprimer_course' course.id %}"
+          class="btn btn-danger btn-sm"
+          >Supprimer</a
+        >
+        {% if paniers %}
+        <div class="btn-group">
+          <button
+            type="button"
+            class="btn btn-success btn-sm dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
+            Ajouter au panier
+          </button>
+          <ul class="dropdown-menu">
+            {% for panier in paniers %}
+            <li>
+              <a
+                class="dropdown-item"
+                href="{% url 'ajouter_une_course_au_panier' panier.id course.id %}"
+              >
+                {{ panier }}
+              </a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% else %}
+        <span class="text-muted">Aucun panier</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="2">Aucune course</td>
+    </tr>
+    {% endfor %}
+  </tbody>
 </table>
 {% endblock %}

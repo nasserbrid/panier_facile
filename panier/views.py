@@ -1,3 +1,20 @@
+# --- Landing page ---
+from django.shortcuts import render
+def landing_page(request):
+    return render(request, 'panier/landing.html')
+from .models import Panier, Course
+# Ajout direct d'une course à un panier
+from django.contrib.auth.decorators import login_required
+@login_required
+def ajouter_une_course_au_panier(request, panier_id, course_id):
+    panier = get_object_or_404(Panier, id=panier_id, user=request.user)
+    course = get_object_or_404(Course, id=course_id)
+    if course in panier.courses.all():
+        messages.info(request, "Cette course est déjà dans le panier.")
+    else:
+        panier.courses.add(course)
+        messages.success(request, "Course ajoutée au panier !")
+    return redirect('detail_panier', panier_id=panier.id)
 
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -55,7 +72,8 @@ def ajouter_ingredient(request, course_id):
 # --- Liste de toutes les courses ---
 def liste_courses(request):
     courses = Course.objects.all()
-    return render(request, 'panier/liste_courses.html', {'courses': courses})
+    paniers = request.user.paniers.all() if request.user.is_authenticated else []
+    return render(request, 'panier/liste_courses.html', {'courses': courses, 'paniers': paniers})
 
 # --- Détail d'une course (avec liste des ingrédients) ---
 def detail_course(request, course_id):
