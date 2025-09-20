@@ -26,11 +26,11 @@ jobs:
           --health-retries 5
 
     env:
-      DJANGO_SECRET_KEY: testsecretkey
+      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       DEBUG: '1'
-      DB_NAME: postgres17
+      DB_NAME: PanierFacile
       DB_USER: postgres
-      DB_PASSWORD: postgres
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_HOST: localhost
       DB_PORT: 5432
 
