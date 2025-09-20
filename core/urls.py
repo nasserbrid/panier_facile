@@ -69,7 +69,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Landing page
-    # path('', panier.views.landing_page, name='landing'),
+    path('', panier.views.landing_page, name='landing'),
 
     # Auth routes
     path('login/', LoginView.as_view(

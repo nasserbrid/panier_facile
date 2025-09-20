@@ -1,3 +1,4 @@
+from django.test import TestCase
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -59,3 +60,4 @@ class AjouterCourseAuPanierTest(TestCase):
         # Assert
         self.assertRedirects(response, reverse("detail_panier", args=[self.panier.id]))
         self.assertIn(self.course, self.panier.courses.all())
+ 

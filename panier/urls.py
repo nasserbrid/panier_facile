@@ -26,7 +26,7 @@ from . import views
 
 urlpatterns = [
     # Page d'accueil des paniers
-    path('', views.landing_page, name='landing'),
+    # path('', views.landing_page, name='landing'),
     path('', views.liste_paniers, name='liste_paniers'),
     path('home/', views.home, name='panier_home'),  
     
