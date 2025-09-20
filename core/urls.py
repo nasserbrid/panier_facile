@@ -69,7 +69,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Landing page
-    path('', panier.views.landing_page, name='landing'),
+    # path('', panier.views.landing_page, name='landing'),
 
     # Auth routes
     path('login/', LoginView.as_view(
@@ -84,6 +84,7 @@ urlpatterns = [
 
     # Toutes les routes panier (courses, paniers, stripe)
     path('panier/', include('panier.urls')),
+    # path('', include('panier.urls')),
 
     # Route home directe pour faciliter l'accès
     path('home/', panier.views.home, name='home'),

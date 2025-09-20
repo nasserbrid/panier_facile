@@ -26,8 +26,9 @@ from . import views
 
 urlpatterns = [
     # Page d'accueil des paniers
+    path('', views.landing_page, name='landing'),
     path('', views.liste_paniers, name='liste_paniers'),
-    path('home/', views.home, name='panier_home'),  # Renommé pour éviter les conflits
+    path('home/', views.home, name='panier_home'),  
     
     # Gestion des courses
     path('creer_course/', views.creer_course, name='creer_course'),
