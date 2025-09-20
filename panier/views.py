@@ -202,3 +202,34 @@ def supprimer_panier(request, panier_id):
 #stripe
 import stripe
 from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+
+
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+@csrf_exempt
+def create_checkout_session(request):
+    if request.method == "POST":
+        try:
+            checkout_session = stripe.checkout.Session.create(
+                payment_method_types=['card'],
+                mode='subscription',
+                line_items=[{
+                    'price': settings.STRIPE_PRICE_ID,  
+                    'quantity': 1,
+                }],
+                success_url="http://localhost:8000/success?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url="http://localhost:8000/cancel/",
+            )
+            return JsonResponse({'id': checkout_session.id})
+        except Exception as e:
+            return JsonResponse({'error': str(e)})
+
+
+def success(request):
+    return render(request, "panier/success.html")
+
+def cancel(request):
+    return render(request, "panier/cancel.html")

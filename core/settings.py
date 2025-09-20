@@ -29,6 +29,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 STRIPE_SECRET_KEY = os.getenv("SECRET_KEY_STRIPE")
 STRIPE_PUBLISHABLE_KEY = os.getenv("PUBLISHABLE_KEY_STRIPE")
+STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

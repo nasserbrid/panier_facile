@@ -26,35 +26,75 @@
       <!-- Liens de navigation -->
       <ul class="nav">
         <li class="nav-item"><a class="nav-link text-white" href="{% url 'home' %}">Accueil</a></li>
-        <li class="nav-item"><a class="nav-link text-white" href="{% url 'panier' %}">Panier</a></li>
+        <li class="nav-item"><a class="nav-link text-white" href="{% url 'liste_paniers' %}">Panier</a></li>
+        {% comment %} <li class="nav-item"><a class="nav-link text-white" href="{% url 'panier' %}">Panier</a></li> {% endcomment %}
         {% comment %} <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li> {% endcomment %}
       </ul>
 
       <div>
-          {% if user.is_authenticated %}
-          <span class="navbar-text me-3">
-            <i class="fas fa-user text-primary"></i>
-            <strong>{{ request.user.username }}</strong>
-          </span>
-          <form method="post" action="{% url 'logout' %}" class="d-inline">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">
-              <i class="fas fa-sign-out-alt"></i> Déconnexion
-            </button>
-          </form>
-          {% comment %} {% else %}
-          <a href="{% url 'login' %}" class="btn btn-primary">
-            <i class="fas fa-sign-in-alt"></i> Connexion
-          </a> {% endcomment %}
-      </p>
-          {% endif %}
+         {% if user.is_authenticated %}
+  <li class="nav-item d-flex align-items-center">
+    <!-- Bouton d'abonnement Stripe -->
+    <button id="checkout-navbar" class="btn btn-warning btn-sm me-2">
+      S'abonner
+    </button>
+
+    <!-- Nom de l'utilisateur -->
+    <span class="navbar-text me-3">
+      <i class="fas fa-user text-primary"></i>
+      <strong>{{ request.user.username }}</strong>
+    </span>
+
+    <!-- Bouton Déconnexion -->
+    <form method="post" action="{% url 'logout' %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">
+        <i class="fas fa-sign-out-alt"></i> Déconnexion
+      </button>
+    </form>
+  </li>
+  <!-- Script Stripe pour le bouton navbar -->
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    const stripeNavbar = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
+
+    const btnNavbar = document.getElementById("checkout-navbar");
+    if (btnNavbar) {
+      btnNavbar.addEventListener("click", () => {
+        fetch("{% url 'create_checkout_session' %}", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": "{{ csrf_token }}",
+            "Content-Type": "application/json"
+          }
+        })
+        .then((res) => res.json())
+        .then((data) => {
+          if(data.id){
+            stripeNavbar.redirectToCheckout({ sessionId: data.id });
+          } else {
+            console.error("Erreur lors de la création de la session:", data.error);
+          }
+        })
+        .catch((err) => console.error(err));
+      });
+    }
+  </script>
+{% else %}
+  <li class="nav-item">
+    <a href="{% url 'login' %}" class="btn btn-primary">
+      <i class="fas fa-sign-in-alt"></i> Connexion
+    </a>
+  </li>
+{% endif %}
+
           
         </div>
 
-      <!-- Recherche (non fonctionnelle pour l'instant) -->
+      <!-- Recherche (non fonctionnelle pour le moment) -->
       <div class="d-flex align-items-center">
         <input class="form-control me-3" type="search" placeholder="Rechercher..." aria-label="Rechercher">
-        <!-- Lien profil supprimé car pas d'URL 'profile' -->
+        
       </div>
 
     </div>

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Paiement annulé{% endblock %}
+{% block content %}
+<div class="container text-center py-5">
+  <h1 class="text-danger">❌ Paiement annulé</h1>
+  <p>Vous pouvez réessayer quand vous voulez.</p>
+  <a href="{% url 'landing_page' %}" class="btn btn-outline-warning mt-3">Retour</a>
+</div>
+{% endblock %}

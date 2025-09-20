@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Paiement réussi{% endblock %}
+{% block content %}
+<div class="container text-center py-5">
+  <h1 class="text-success">🎉 Merci !</h1>
+  <p>Votre abonnement a bien été activé.</p>
+  <a href="{% url 'home' %}" class="btn btn-warning mt-3">Aller à mon espace</a>
+</div>
+{% endblock %}

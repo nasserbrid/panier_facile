@@ -21,6 +21,45 @@ simplifiés{% endblock %} {% block content %}
   </div>
 </section>
 
+<section class="subscription text-center py-5 bg-white">
+  <div class="container">
+    <h3 class="mb-4">Profitez de 3 mois gratuits 🎁</h3>
+    <p class="lead mb-4">
+      Ensuite seulement <strong>1€ par mois</strong> pour continuer à utiliser PanierFacile.
+    </p>
+    <button id="checkout-button" class="btn btn-warning btn-lg shadow">
+      S’abonner maintenant
+    </button>
+  </div>
+</section>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  const stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
+
+  document.getElementById("checkout-button").addEventListener("click", () => {
+    fetch("{% url 'create_checkout_session' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",  
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})  
+    })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.error) {
+        alert(data.error);
+      } else {
+        stripe.redirectToCheckout({ sessionId: data.id });
+      }
+    })
+    .catch((err) => console.error(err));
+  });
+</script>
+
+
+
 <section class="features py-5 bg-light">
   <div class="container">
     <div class="row g-4">
