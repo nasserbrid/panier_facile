@@ -71,7 +71,7 @@ urlpatterns = [
     # Landing page
     path('', panier.views.landing_page, name='landing'),
 
-    # Auth routes directes (garder login/logout/signup au niveau racine)
+    # Auth routes
     path('login/', LoginView.as_view(
         template_name='authentication/login.html',
         redirect_authenticated_user=True
@@ -79,10 +79,10 @@ urlpatterns = [
     path('logout/', authentication.views.CustomLogoutView.as_view(), name='logout'),
     path('signup/', authentication.views.signup_page, name='signup'),
 
-    # Auth reset / password (inclure toutes les routes auth)
+    # Auth reset / password
     path('auth/', include('authentication.urls')),
 
-    # Toutes les routes panier (courses, paniers, stripe, etc.)
+    # Toutes les routes panier (courses, paniers, stripe)
     path('panier/', include('panier.urls')),
 
     # Route home directe pour faciliter l'accès

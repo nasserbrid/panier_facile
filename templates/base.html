@@ -1,111 +1,142 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PanierFacile</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PanierFacile</title>
 
-  <!-- Styles CSS -->
-  <link rel="stylesheet" href="{% static 'panierfacile/css/styles.css' %}" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
-</head>
-<body style="background-color: #A5662A;">
+    <!-- Styles CSS -->
+    <link rel="stylesheet" href="{% static 'panierfacile/css/styles.css' %}" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+  </head>
+  <body style="background-color: #a5662a">
+    <!--Navbar -->
+    <nav class="navbar navbar-dark bg-dark shadow px-4">
+      <div
+        class="container-fluid d-flex justify-content-between align-items-center"
+      >
+        <!-- Logo PanierFacile -->
+        <a
+          class="navbar-brand d-flex align-items-center"
+          href="{% url 'home' %}"
+        >
+          <i class="fas fa-shopping-cart fa-lg me-2"></i>
+          <span>PanierFacile</span>
+        </a>
 
-  <!--Navbar -->
-  <nav class="navbar navbar-dark bg-dark shadow px-4">
-    <div class="container-fluid d-flex justify-content-between align-items-center">
-      
-      <!-- Logo PanierFacile -->
-      <a class="navbar-brand d-flex align-items-center" href="{% url 'home' %}">
-        <i class="fas fa-shopping-cart fa-lg me-2"></i>
-        <span>PanierFacile</span>
-      </a>
+        <!-- Liens de navigation -->
+        <ul class="nav">
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{% url 'home' %}">Accueil</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{% url 'liste_paniers' %}"
+              >Panier</a
+            >
+          </li>
+          {% comment %}
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{% url 'panier' %}">Panier</a>
+          </li>
+          {% endcomment %} {% comment %}
+          <li class="nav-item">
+            <a class="nav-link text-white" href="{% url 'dashboard' %}"
+              >Dashboard</a
+            >
+          </li>
+          {% endcomment %}
+        </ul>
 
-      <!-- Liens de navigation -->
-      <ul class="nav">
-        <li class="nav-item"><a class="nav-link text-white" href="{% url 'home' %}">Accueil</a></li>
-        <li class="nav-item"><a class="nav-link text-white" href="{% url 'liste_paniers' %}">Panier</a></li>
-        {% comment %} <li class="nav-item"><a class="nav-link text-white" href="{% url 'panier' %}">Panier</a></li> {% endcomment %}
-        {% comment %} <li class="nav-item"><a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a></li> {% endcomment %}
-      </ul>
+        <div>
+          {% if user.is_authenticated %}
+          <li class="nav-item d-flex align-items-center">
+            <!-- Bouton d'abonnement Stripe -->
+            <button id="checkout-navbar" class="btn btn-warning btn-sm me-2">
+              S'abonner
+            </button>
 
-      <div>
-         {% if user.is_authenticated %}
-  <li class="nav-item d-flex align-items-center">
-    <!-- Bouton d'abonnement Stripe -->
-    <button id="checkout-navbar" class="btn btn-warning btn-sm me-2">
-      S'abonner
-    </button>
+            <!-- Nom de l'utilisateur -->
+            <span class="navbar-text me-3">
+              <i class="fas fa-user text-primary"></i>
+              <strong>{{ request.user.username }}</strong>
+            </span>
 
-    <!-- Nom de l'utilisateur -->
-    <span class="navbar-text me-3">
-      <i class="fas fa-user text-primary"></i>
-      <strong>{{ request.user.username }}</strong>
-    </span>
+            <!-- Bouton Déconnexion -->
+            <form method="post" action="{% url 'logout' %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+              </button>
+            </form>
+          </li>
+          <!-- Script Stripe pour le bouton navbar -->
+          <script src="https://js.stripe.com/v3/"></script>
+          <script>
+            const stripeNavbar = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
 
-    <!-- Bouton Déconnexion -->
-    <form method="post" action="{% url 'logout' %}" class="d-inline">
-      {% csrf_token %}
-      <button type="submit" class="btn btn-danger">
-        <i class="fas fa-sign-out-alt"></i> Déconnexion
-      </button>
-    </form>
-  </li>
-  <!-- Script Stripe pour le bouton navbar -->
-  <script src="https://js.stripe.com/v3/"></script>
-  <script>
-    const stripeNavbar = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
-
-    const btnNavbar = document.getElementById("checkout-navbar");
-    if (btnNavbar) {
-      btnNavbar.addEventListener("click", () => {
-        fetch("{% url 'create_checkout_session' %}", {
-          method: "POST",
-          headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-            "Content-Type": "application/json"
-          }
-        })
-        .then((res) => res.json())
-        .then((data) => {
-          if(data.id){
-            stripeNavbar.redirectToCheckout({ sessionId: data.id });
-          } else {
-            console.error("Erreur lors de la création de la session:", data.error);
-          }
-        })
-        .catch((err) => console.error(err));
-      });
-    }
-  </script>
-{% else %}
-  <li class="nav-item">
-    <a href="{% url 'login' %}" class="btn btn-primary">
-      <i class="fas fa-sign-in-alt"></i> Connexion
-    </a>
-  </li>
-{% endif %}
-
-          
+            const btnNavbar = document.getElementById("checkout-navbar");
+            if (btnNavbar) {
+              btnNavbar.addEventListener("click", () => {
+                fetch("{% url 'create_checkout_session' %}", {
+                  method: "POST",
+                  headers: {
+                    "X-CSRFToken": "{{ csrf_token }}",
+                    "Content-Type": "application/json",
+                  },
+                })
+                  .then((res) => res.json())
+                  .then((data) => {
+                    if (data.id) {
+                      stripeNavbar.redirectToCheckout({ sessionId: data.id });
+                    } else {
+                      console.error(
+                        "Erreur lors de la création de la session:",
+                        data.error
+                      );
+                    }
+                  })
+                  .catch((err) => console.error(err));
+              });
+            }
+          </script>
+          {% else %}
+          <li class="nav-item">
+            <a href="{% url 'login' %}" class="btn btn-primary">
+              <i class="fas fa-sign-in-alt"></i> Connexion
+            </a>
+          </li>
+          {% endif %}
         </div>
 
-      <!-- Recherche (non fonctionnelle pour le moment) -->
-      <div class="d-flex align-items-center">
-        <input class="form-control me-3" type="search" placeholder="Rechercher..." aria-label="Rechercher">
-        
+        <!-- Recherche (non fonctionnelle pour le moment) -->
+        <div class="d-flex align-items-center">
+          <input
+            class="form-control me-3"
+            type="search"
+            placeholder="Rechercher..."
+            aria-label="Rechercher"
+          />
+        </div>
       </div>
+    </nav>
 
+    <!--Contenu Principal -->
+    <div
+      class="d-flex flex-column justify-content-center align-items-center text-center"
+      style="min-height: 80vh; color: black"
+    >
+      {% block content %} {% endblock content %}
     </div>
-  </nav>
 
-  <!--Contenu Principal -->
-  <div class="d-flex flex-column justify-content-center align-items-center text-center" style="min-height: 80vh; color: black;">
-    {% block content %} {% endblock content %}
-  </div>
-
-  <!-- Scripts Bootstrap -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
+    <!-- Scripts Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
 </html>

@@ -6,11 +6,27 @@ from django.contrib.auth.views import LogoutView
 
 # Create your views here.
 
+
+"""
+Vue pour la déconnexion personnalisée d'un utilisateur.
+    
+    Hérite de Django LogoutView et redirige vers la page de connexion
+    après la déconnexion.
+"""
 class CustomLogoutView(LogoutView):
     next_page = 'login'
     
 
 def signup_page(request):
+    """
+    Vue pour la page d'inscription d'un nouvel utilisateur.
+    
+    Cette vue gère l'affichage du formulaire d'inscription et la création
+    de l'utilisateur lorsque le formulaire est soumis.
+
+    Si le formulaire est valide, l'utilisateur est créé, connecté et redirigé
+    vers la page définie par LOGIN_REDIRECT_URL dans settings.
+"""
     
     form = SignupForm()
     
