@@ -1,4 +1,5 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %} {% load static %}
+ {% block content %}
 <div class="container py-5">
   <!-- Message de bienvenue -->
   <div
@@ -72,16 +73,5 @@
   </div>
 </div>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    let popup = document.getElementById("popup-message");
-    if (popup) {
-      popup.style.display = "block";
-      setTimeout(function () {
-        popup.style.animation = "fadeOut 1s ease-in-out";
-        setTimeout(() => (popup.style.display = "none"), 1000);
-      }, 3000);
-    }
-  });
-</script>
+<script src="{% static 'js/popup.js' %}"></script>
 {% endblock content %}
