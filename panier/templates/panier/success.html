@@ -1,9 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Paiement réussi{% endblock %}
+
 {% block content %}
 <div class="container text-center py-5">
-  <h1 class="text-success">🎉 Merci !</h1>
+  <h1 class="text-success">🎉 Merci {{ customer_email }} !</h1>
   <p>Votre abonnement a bien été activé.</p>
+  <p><strong>Montant payé :</strong> {{ amount_total }} €</p>
+  {% comment %} <p><strong>ID de l'abonnement :</strong> {{ subscription_id }}</p> {% endcomment %}
   <a href="{% url 'home' %}" class="btn btn-warning mt-3">Aller à mon espace</a>
 </div>
 {% endblock %}
