@@ -2,17 +2,34 @@
 {% block title %}Détails de {{ course.titre }}{% endblock %}
 
 {% block content %}
-<h2>{{ course.titre }}</h2>
-<h4>Ingrédients :</h4>
-<ul>
-    {% for line in course.ingredient.splitlines %}
-        <li>{{ line }}</li>
-    {% empty %}
-        <li>Aucun ingrédient</li>
-    {% endfor %}
-</ul>
-
-<a href="{% url 'modifier_course' course.id %}" class="btn btn-primary">Modifier</a>
-<a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger">Supprimer</a>
-<a href="{% url 'liste_courses' %}" class="btn btn-link">Retour</a>
+<div class="container py-4">
+  <div class="card shadow-lg mb-4">
+    <div class="card-header bg-primary text-white">
+      <h2 class="mb-0">{{ course.titre }}</h2>
+    </div>
+    <div class="card-body">
+      <h5>Ingrédients :</h5>
+      {% if course.ingredient %}
+      <ul class="list-group list-group-flush mb-3">
+        {% for line in course.ingredient.splitlines %}
+          <li class="list-group-item">{{ line }}</li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p class="text-muted">Aucun ingrédient</p>
+      {% endif %}
+      <div class="d-flex gap-2">
+        <a href="{% url 'modifier_course' course.id %}" class="btn btn-warning">
+          <i class="fas fa-edit me-1"></i> Modifier
+        </a>
+        <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger">
+          <i class="fas fa-trash me-1"></i> Supprimer
+        </a>
+        <a href="{% url 'liste_courses' %}" class="btn btn-secondary">
+          <i class="fas fa-arrow-left me-1"></i> Retour
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
