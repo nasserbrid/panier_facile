@@ -36,6 +36,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['panier-facile.onrender.com', '127.0.0.1', 'localhost']
 
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"  
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Application definition
 
