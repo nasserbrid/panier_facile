@@ -1,2 +1,2 @@
-web: waitress-serve --port=$PORT panier_facile.wsgi:application
+web: waitress-serve --port=$PORT core.wsgi:application
 
