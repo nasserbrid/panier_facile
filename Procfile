@@ -1,1 +1,2 @@
-web: gunicorn core.wsgi:application --log-file -
+web: waitress-serve --port=$PORT panier_facile.wsgi:application
+
