@@ -1,5 +1,3 @@
-
-
 document.addEventListener("DOMContentLoaded", function () {
     const chatBox = document.getElementById('chatBox');
     const questionInput = document.getElementById('questionInput');
@@ -43,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
         showLoading(true);
 
         try {
-            const response = await fetch(`/chatbot/?question=${encodeURIComponent(question)}`);
+            const response = await fetch(`panier/chatbot/?question=${encodeURIComponent(question)}`);
             const data = await response.json();
 
             if (response.ok) {
