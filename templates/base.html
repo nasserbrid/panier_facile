@@ -69,6 +69,8 @@
               <strong>{{ request.user.username }}</strong>
             </span>
 
+             {% include "panier/chatbot.html" %}
+
             <!-- Bouton Déconnexion -->
             <form method="post" action="{% url 'logout' %}" class="d-inline">
               {% csrf_token %}
