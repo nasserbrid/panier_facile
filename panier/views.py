@@ -324,6 +324,8 @@ from utils.chunker import split_documents
 from utils.embedding import get_embeddings
 from utils.vectorstore import build_vectorstore
 from utils.rag import create_rag
+from utils.retriever import query_vectorstore
+
 
 
 documents = load_ui_docs()
@@ -337,5 +339,11 @@ def chatbot_ui(request):
     if not question:
         return JsonResponse({"answer": ""})
     
-    answer = qa.run(question)
+    # récupérer les documents pertinents
+    context = query_vectorstore(vectorstore, question, k=3)
+    
+    # créer la réponse via le RAG avec le contexte
+    answer = qa.run(f"Contexte:\n{context}\nQuestion: {question}")
+    
     return JsonResponse({"answer": answer})
+
