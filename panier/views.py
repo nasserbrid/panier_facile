@@ -74,7 +74,7 @@ def liste_courses(request):
     last_name = request.user.last_name
 
     # On ne montre que les courses liées aux paniers des membres de la même famille
-    courses = Course.objects.filter(panier__user__last_name__iexact=last_name).distinct()
+    courses = Course.objects.filter(paniers__user__last_name__iexact=last_name).distinct()
     paniers = Panier.objects.filter(user__last_name__iexact=last_name)
 
     return render(request, 'panier/liste_courses.html', {'courses': courses, 'paniers': paniers})
