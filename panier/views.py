@@ -317,3 +317,25 @@ def trigger_notification(request):
     management.call_command('notify_old_paniers')
     return JsonResponse({"status": "ok"})
 
+# RAG
+from django.http import JsonResponse
+from utils.loader import load_ui_docs
+from utils.chunker import split_documents
+from utils.embedding import get_embeddings
+from utils.vectorstore import build_vectorstore
+from utils.rag import create_rag
+
+
+documents = load_ui_docs()
+chunks = split_documents(documents)
+embeddings = get_embeddings()
+vectorstore = build_vectorstore(chunks, embeddings)
+qa = create_rag(vectorstore)
+
+def chatbot_ui(request):
+    question = request.GET.get("question")
+    if not question:
+        return JsonResponse({"answer": ""})
+    
+    answer = qa.run(question)
+    return JsonResponse({"answer": answer})

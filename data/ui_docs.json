@@ -1,0 +1,52 @@
+[
+  {
+    "title": "Voir la liste des paniers",
+    "steps": [
+      "Cliquer sur l'onglet 'Paniers'",
+      "La liste des paniers apparaît",
+      "Cliquer sur 'Détails' pour voir le contenu d'un panier",
+      "Cliquer sur 'Modifier' pour éditer un panier",
+      "Cliquer sur 'Supprimer' pour supprimer un panier"
+    ]
+  },
+  {
+    "title": "Voir la liste des courses",
+    "steps": [
+      "Cliquer sur l'onglet 'Courses'",
+      "La liste des courses apparaît",
+      "Cliquer sur 'Détails' pour voir les ingrédients d'une course",
+      "Cliquer sur 'Modifier' pour éditer une course",
+      "Cliquer sur 'Supprimer' pour supprimer une course",
+      "Cliquer sur 'Nouvelle course' pour créer une course"
+    ]
+  },
+  {
+    "title": "Détail d'une course",
+    "steps": [
+      "Depuis la liste des courses, cliquer sur 'Détails'",
+      "Consulter les ingrédients",
+      "Cliquer sur 'Modifier' pour changer les informations de la course",
+      "Cliquer sur 'Supprimer' pour supprimer la course",
+      "Cliquer sur 'Retour' pour revenir à la liste"
+    ]
+  },
+  {
+    "title": "Détail d'un panier",
+    "steps": [
+      "Depuis la liste des paniers, cliquer sur 'Détails'",
+      "Voir les courses associées",
+      "Cliquer sur 'Modifier' pour changer le panier",
+      "Cliquer sur 'Supprimer' pour supprimer le panier",
+      "Cliquer sur 'Retour' pour revenir à la liste"
+    ]
+  },
+  {
+    "title": "Ajouter une course à un panier",
+    "steps": [
+      "Cliquer sur l'onglet 'Courses'",
+      "Sélectionner la course désirée",
+      "Cliquer sur le bouton 'Ajouter au panier'",
+      "Choisir le panier dans la liste déroulante"
+    ]
+  }
+]
