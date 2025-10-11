@@ -84,11 +84,28 @@ def liste_courses(request):
 def detail_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
-    if course.panier.user.last_name.lower() != request.user.last_name.lower():
-        return render(request, 'panier/acces_refuse.html', status=403)
+    # Vérifier si l'utilisateur connecté a au moins un panier contenant cette course
+    user_lastname = request.user.last_name.lower()
+    authorized = any(
+        panier.user.last_name.lower() == user_lastname
+        for panier in course.paniers.all()
+    )
+
+    if not authorized:
+        return render(
+            request,
+            'panier/acces_refuse.html',
+            {"message": "Accès refusé : cette course ne vous appartient pas."},
+            status=403
+        )
 
     ingredients = course.ingredient.splitlines() if course.ingredient else []
-    return render(request, 'panier/detail_course.html', {'course': course, 'ingredients': ingredients})
+
+    return render(
+        request,
+        'panier/detail_course.html',
+        {'course': course, 'ingredients': ingredients}
+    )
 
 
 
