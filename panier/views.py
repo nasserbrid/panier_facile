@@ -71,15 +71,30 @@ def ajouter_ingredient(request, course_id):
 
 # --- Liste de toutes les courses ---
 def liste_courses(request):
-    courses = Course.objects.all()
-    paniers = request.user.paniers.all() if request.user.is_authenticated else []
+    user_last_name = request.user.last_name.strip().lower() if request.user.last_name else ""
+
+    if user_last_name:
+        # On filtre les courses dont le panier appartient à un utilisateur
+        # ayant le même nom de famille que l'utilisateur connecté
+        courses = Course.objects.filter(panier__user__last_name__iexact=user_last_name).order_by('-date_ajout')
+        paniers = request.user.paniers.filter(user__last_name__iexact=user_last_name)
+    else:
+        courses = Course.objects.none()
+        paniers = []
+
     return render(request, 'panier/liste_courses.html', {'courses': courses, 'paniers': paniers})
 
 # --- Détail d'une course (avec liste des ingrédients) ---
 def detail_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+
+    # Vérifie que la course appartient à un panier de la même famille
+    if course.panier.user.last_name.lower() != request.user.last_name.lower():
+        return render(request, 'panier/acces_refuse.html', status=403)
+
     ingredients = course.ingredient.splitlines() if course.ingredient else []
     return render(request, 'panier/detail_course.html', {'course': course, 'ingredients': ingredients})
+
 
 # --- Modifier une course ---
 def modifier_course(request, course_id):
@@ -161,7 +176,16 @@ def ajouter_course_au_panier(request, panier_id):
 # J'affiche la liste de tous les paniers
 @login_required
 def liste_paniers(request):
-    paniers = Panier.objects.all()
+    #je recupère le nom de famille de l'utilisateur connecté
+    last_name = request.user.last_name 
+    
+    #je filtre ensuite les paniers appartenant ayant le même nom de famille
+    if last_name:
+        # Filtrage insensible à la casse et tri décroissant par date
+        paniers = Panier.objects.filter(user__last_name=last_name).order_by('-date_creation')
+    else:
+        # Aucun panier si pas de nom de famille défini
+        paniers = Panier.objects.none()  
     return render(request, 'panier/liste_paniers.html', {'paniers': paniers})
 
 
@@ -169,6 +193,11 @@ def liste_paniers(request):
 @login_required
 def detail_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
+
+    # Je vérifie que le panier appartient à la même famille
+    if panier.user.last_name.lower() != request.user.last_name.lower():
+        return render(request, 'panier/acces_refuse.html', status=403)
+
     return render(request, 'panier/detail_panier.html', {'panier': panier})
 
 
