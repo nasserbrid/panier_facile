@@ -319,12 +319,12 @@ def trigger_notification(request):
 
 # RAG
 from django.http import JsonResponse
-from utils.loader import load_ui_docs
-from utils.chunker import split_documents
-from utils.embedding import get_embeddings
-from utils.vectorstore import build_vectorstore
-from utils.rag import create_rag
-from utils.retriever import query_vectorstore
+from panier.utils.loader import load_ui_docs
+from panier.utils.chunker import split_documents
+from panier.utils.embedding import get_embeddings
+from panier.utils.vectorstore import build_vectorstore
+from panier.utils.rag import create_rag
+from panier.utils.retriever import query_vectorstore
 
 
 
