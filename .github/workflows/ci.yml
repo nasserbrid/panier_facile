@@ -95,4 +95,5 @@ jobs:
           DB_PORT: 5432
           DJANGO_TESTING: True   # Si tu veux forcer SQLite pour les tests
         run: |
+          python manage.py migrate
           python manage.py test
