@@ -71,29 +71,25 @@ def ajouter_ingredient(request, course_id):
 
 # --- Liste de toutes les courses ---
 def liste_courses(request):
-    user_last_name = request.user.last_name.strip().lower() if request.user.last_name else ""
+    last_name = request.user.last_name
 
-    if user_last_name:
-        # On filtre les courses dont le panier appartient à un utilisateur
-        # ayant le même nom de famille que l'utilisateur connecté
-        courses = Course.objects.filter(panier__user__last_name__iexact=user_last_name).order_by('-date_ajout')
-        paniers = request.user.paniers.filter(user__last_name__iexact=user_last_name)
-    else:
-        courses = Course.objects.none()
-        paniers = []
+    # On ne montre que les courses liées aux paniers des membres de la même famille
+    courses = Course.objects.filter(panier__user__last_name__iexact=last_name).distinct()
+    paniers = Panier.objects.filter(user__last_name__iexact=last_name)
 
     return render(request, 'panier/liste_courses.html', {'courses': courses, 'paniers': paniers})
+
 
 # --- Détail d'une course (avec liste des ingrédients) ---
 def detail_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
 
-    # Vérifie que la course appartient à un panier de la même famille
     if course.panier.user.last_name.lower() != request.user.last_name.lower():
         return render(request, 'panier/acces_refuse.html', status=403)
 
     ingredients = course.ingredient.splitlines() if course.ingredient else []
     return render(request, 'panier/detail_course.html', {'course': course, 'ingredients': ingredients})
+
 
 
 # --- Modifier une course ---
