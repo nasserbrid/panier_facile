@@ -104,47 +104,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 #         },
 #     }
 
-# Détection si on est en test/CI
-DJANGO_TESTING = os.getenv("DJANGO_TESTING", "False") == "True"
-
-if DJANGO_TESTING:
-    # Base pour CI / tests unitaires
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv("DB_NAME", "test_db"),
-            'USER': os.getenv("DB_USER", "postgres"),
-            'PASSWORD': os.getenv("DB_PASSWORD", "postgres"),
-            'HOST': os.getenv("DB_HOST", "127.0.0.1"),
-            'PORT': os.getenv("DB_PORT", "5432"),
-        }
-    }
-else:
-    # Prod 
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if DATABASE_URL:
-        DATABASES = {
-            'default': dj_database_url.config(
-                default=DATABASE_URL,
-                conn_max_age=600,
-                ssl_require=True,
-                conn_health_checks=True,
-            )
-        }
-    else:
-        # fallback local dev Postgres
-        DATABASES = {
-            'default': {
-                'ENGINE': 'django.db.backends.postgresql',
-                'NAME': os.getenv("DB_NAME", "PanierFacile"),
-                'USER': os.getenv("DB_USER", "postgres"),
-                'PASSWORD': os.getenv("DB_PASSWORD", "postgres"),
-                'HOST': os.getenv("DB_HOST", "localhost"),
-                'PORT': os.getenv("DB_PORT", "5432"),
-            }
-        }
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+DATABASES = {
+    'default': dj_database_url.config(
+         default=DATABASE_URL,
+         conn_max_age=600,  
+         ssl_require=True,
+         conn_health_checks=True,
+    )
+}
 
 
 # DATABASES = {

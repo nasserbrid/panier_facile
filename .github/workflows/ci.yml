@@ -85,15 +85,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Collect static files
+        env:
+          SECRET_KEY: test-secret-key-for-ci-only
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/test_db
+          SECRET_KEY_STRIPE: sk_test_fake
+          PUBLISHABLE_KEY_STRIPE: pk_test_fake
+          STRIPE_PRICE_ID: price_test_fake
+          EMAIL_PORT: 587
+          EMAIL_HOST_USER: test@example.com
+          EMAIL_HOST_PASSWORD: test_password
+          DEFAULT_FROM_EMAIL: test@example.com
+          DOMAIN: localhost
+        run: |
+          python manage.py collectstatic --noinput
+
       - name: Run Django tests
         env:
           SECRET_KEY: test-secret-key-for-ci-only
-          DB_NAME: test_db
-          DB_USER: postgres
-          PASSWORD: postgres
-          DB_HOST: 127.0.0.1
-          DB_PORT: 5432
-          DJANGO_TESTING: True   # Si tu veux forcer SQLite pour les tests
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/test_db
+          SECRET_KEY_STRIPE: sk_test_fake
+          PUBLISHABLE_KEY_STRIPE: pk_test_fake
+          STRIPE_PRICE_ID: price_test_fake
+          EMAIL_PORT: 587
+          EMAIL_HOST_USER: test@example.com
+          EMAIL_HOST_PASSWORD: test_password
+          DEFAULT_FROM_EMAIL: test@example.com
+          DOMAIN: localhost
         run: |
           python manage.py migrate
           python manage.py test
