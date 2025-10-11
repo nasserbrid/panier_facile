@@ -80,6 +80,14 @@ jobs:
         with:
           python-version: 3.12
 
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -98,8 +106,26 @@ jobs:
           EMAIL_HOST_PASSWORD: test_password
           DEFAULT_FROM_EMAIL: test@example.com
           DOMAIN: localhost
+          OPENAI_API_KEY: sk-test-fake-key-for-ci-only-do-not-use-in-production
         run: |
           python manage.py collectstatic --noinput
+
+      - name: Run migrations
+        env:
+          CI: "true"
+          SECRET_KEY: test-secret-key-for-ci-only
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/test_db
+          SECRET_KEY_STRIPE: sk_test_fake
+          PUBLISHABLE_KEY_STRIPE: pk_test_fake
+          STRIPE_PRICE_ID: price_test_fake
+          EMAIL_PORT: 587
+          EMAIL_HOST_USER: test@example.com
+          EMAIL_HOST_PASSWORD: test_password
+          DEFAULT_FROM_EMAIL: test@example.com
+          DOMAIN: localhost
+          OPENAI_API_KEY: sk-test-fake-key-for-ci-only-do-not-use-in-production
+        run: |
+          python manage.py migrate
 
       - name: Run Django tests
         env:
@@ -114,6 +140,21 @@ jobs:
           EMAIL_HOST_PASSWORD: test_password
           DEFAULT_FROM_EMAIL: test@example.com
           DOMAIN: localhost
+          OPENAI_API_KEY: sk-test-fake-key-for-ci-only-do-not-use-in-production
         run: |
-          python manage.py migrate
           python manage.py test
+
+      - name: Check code style with flake8 (optional)
+        continue-on-error: true
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Upload coverage reports (optional)
+        if: always()
+        continue-on-error: true
+        run: |
+          pip install coverage
+          coverage run --source='.' manage.py test
+          coverage report

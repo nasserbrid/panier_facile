@@ -1,5 +1,6 @@
 # chunker.py
 from langchain.text_splitter import CharacterTextSplitter
+from langchain.schema import Document  # Import manquant
 
 def split_documents(documents, chunk_size=500, chunk_overlap=50):
     splitter = CharacterTextSplitter(

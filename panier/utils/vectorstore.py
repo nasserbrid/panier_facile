@@ -1,5 +1,5 @@
 # vectorstore.py
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS
 from langchain.schema import Document
 
 def build_vectorstore(documents, embeddings):

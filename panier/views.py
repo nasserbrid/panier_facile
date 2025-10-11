@@ -319,31 +319,143 @@ def trigger_notification(request):
 
 # RAG
 from django.http import JsonResponse
-from panier.utils.loader import load_ui_docs
-from panier.utils.chunker import split_documents
-from panier.utils.embedding import get_embeddings
-from panier.utils.vectorstore import build_vectorstore
-from panier.utils.rag import create_rag
-from panier.utils.retriever import query_vectorstore
+import logging
 
+logger = logging.getLogger(__name__)
 
+# Variables globales pour lazy loading du système RAG
+_qa = None
+_vectorstore = None
+_rag_initialized = False
 
-documents = load_ui_docs()
-chunks = split_documents(documents)
-embeddings = get_embeddings()
-vectorstore = build_vectorstore(chunks, embeddings)
-qa = create_rag(vectorstore)
+def initialize_rag_system():
+    """
+    Initialise le système RAG (chargement des documents, embeddings, vectorstore).
+    Cette fonction n'est appelée qu'une seule fois, lors de la première requête.
+    """
+    global _qa, _vectorstore, _rag_initialized
+    
+    if _rag_initialized:
+        return _qa, _vectorstore
+    
+    try:
+        logger.info("Initialisation du système RAG...")
+        
+        # Imports dynamiques pour éviter l'exécution lors des migrations
+        from panier.utils.loader import load_ui_docs
+        from panier.utils.chunker import split_documents
+        from panier.utils.embedding import get_embeddings
+        from panier.utils.vectorstore import build_vectorstore
+        from panier.utils.rag import create_rag
+        
+        # Chargement et traitement des documents
+        documents = load_ui_docs()
+        logger.info(f"{len(documents)} documents chargés")
+        
+        # Découpage en chunks
+        chunks = split_documents(documents)
+        logger.info(f"{len(chunks)} chunks créés")
+        
+        # Création des embeddings et du vectorstore
+        embeddings = get_embeddings()
+        _vectorstore = build_vectorstore(chunks, embeddings)
+        logger.info("Vectorstore créé")
+        
+        # Création de la chaîne RAG
+        _qa = create_rag(_vectorstore)
+        logger.info("Système RAG initialisé avec succès")
+        
+        _rag_initialized = True
+        return _qa, _vectorstore
+        
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation du système RAG: {str(e)}")
+        raise
+
+def get_qa_system():
+    """
+    Retourne le système RAG, en l'initialisant si nécessaire.
+    """
+    if not _rag_initialized:
+        return initialize_rag_system()
+    return _qa, _vectorstore
 
 def chatbot_ui(request):
-    question = request.GET.get("question")
+    """
+    Vue pour le chatbot UI utilisant le système RAG.
+    Endpoint: GET /chatbot/?question=<ma question>
+    """
+    question = request.GET.get("question", "").strip()
+    
     if not question:
-        return JsonResponse({"answer": ""})
+        return JsonResponse({
+            "answer": "",
+            "error": "Aucune question fournie"
+        }, status=400)
     
-    # récupérer les documents pertinents
-    context = query_vectorstore(vectorstore, question, k=3)
+    try:
+        # Import dynamique du retriever
+        from panier.utils.retriever import query_vectorstore
+        
+        # Je récupére ou initialise le système RAG
+        qa, vectorstore = get_qa_system()
+        
+        # Je récupére les documents pertinents (contexte)
+        context = query_vectorstore(vectorstore, question, k=3)
+        logger.info(f"Question: {question[:100]}...")
+        
+        # Je génére la réponse via le RAG
+        prompt = f"Contexte:\n{context}\n\nQuestion: {question}"
+        answer = qa.run(prompt)
+        
+        return JsonResponse({
+            "answer": answer,
+            "question": question
+        })
     
-    # créer la réponse via le RAG avec le contexte
-    answer = qa.run(f"Contexte:\n{context}\nQuestion: {question}")
-    
-    return JsonResponse({"answer": answer})
+    except Exception as e:
+        logger.error(f"Erreur lors du traitement de la question RAG: {str(e)}", exc_info=True)
+        
+        return JsonResponse({
+            "error": "Une erreur est survenue lors du traitement de votre question.",
+            "detail": str(e) if logger.level == logging.DEBUG else None
+        }, status=500)
 
+def reset_rag_system(request):
+    """
+    Vue pour réinitialiser le système RAG (utile en développement).
+    À protéger avec des permissions appropriées en production.
+    """
+    global _qa, _vectorstore, _rag_initialized
+    
+    _qa = None
+    _vectorstore = None
+    _rag_initialized = False
+    
+    logger.info("Système RAG réinitialisé")
+    
+    return JsonResponse({
+        "status": "success",
+        "message": "Système RAG réinitialisé"
+    })
+    
+from django.contrib.admin.views.decorators import staff_member_required
+
+@staff_member_required
+def reset_rag_system(request):
+    """
+    Vue pour réinitialiser le système RAG (utile en développement).
+    Nécessite d'être connecté en tant que staff member.
+    """
+    global _qa, _vectorstore, _rag_initialized
+    
+    _qa = None
+    _vectorstore = None
+    _rag_initialized = False
+    
+    logger.info(f"Système RAG réinitialisé par {request.user.username}")
+    
+    return JsonResponse({
+        "status": "success",
+        "message": "Système RAG réinitialisé avec succès"
+    })

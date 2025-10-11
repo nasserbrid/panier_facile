@@ -1,6 +1,6 @@
 # rag.py
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 
 def create_rag(vectorstore):
     retriever = vectorstore.as_retriever()
