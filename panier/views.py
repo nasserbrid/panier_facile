@@ -278,3 +278,17 @@ def success(request):
 
 def cancel(request):
     return render(request, "panier/cancel.html")
+
+
+#notifications
+from django.http import JsonResponse
+from django.core import management
+import os
+
+def trigger_notification(request):
+    token = request.headers.get("X-CRON-TOKEN")
+    if token != os.getenv("TOKEN"):
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+    management.call_command('notify_old_paniers')
+    return JsonResponse({"status": "ok"})
+
