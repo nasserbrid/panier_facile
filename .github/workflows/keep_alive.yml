@@ -1,0 +1,41 @@
+name: Keep Render Active
+
+on:
+  schedule:
+    # Toutes les 10 minutes 
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Permet de lancer manuellement
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Ping Render application
+        run: |
+          echo "Pinging Render application..."
+          
+          # Ping l'application plusieurs fois avec 10 secondes d'intervalle
+          for i in {1..5}
+          do
+            echo "Ping attempt $i/5"
+            curl -f https://panier-facile.onrender.com || echo "Ping failed, app might be sleeping"
+            
+            # Attendre 10 secondes sauf pour la dernière itération
+            if [ $i -lt 5 ]; then
+              sleep 10
+            fi
+          done
+          
+          echo "Keep-alive completed successfully!"
+      
+      - name: Check application health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://panier-facile.onrender.com)
+          echo "HTTP Status: $response"
+          
+          if [ $response -eq 200 ]; then
+            echo "✅ Application is healthy and running"
+          else
+            echo "⚠️ Application returned status $response"
+          fi
