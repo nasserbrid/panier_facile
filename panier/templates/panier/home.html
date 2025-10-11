@@ -71,6 +71,13 @@
       <i class="fas fa-list"></i> Voir mes courses
     </a>
   </div>
+
+   <!-- Chatbot intégré -->
+  {% if user.is_authenticated %}
+    <div id="chatbot-section" class="mt-5">
+        {% include "panier/chatbot.html" %}
+    </div>
+  {% endif %}
 </div>
 
 <script src="{% static 'js/popup.js' %}"></script>
