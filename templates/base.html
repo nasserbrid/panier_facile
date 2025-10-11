@@ -69,7 +69,7 @@
               <strong>{{ request.user.username }}</strong>
             </span>
 
-             {% include "panier/chatbot.html" %}
+             {% comment %} {% include "panier/chatbot.html" %} {% endcomment %}
 
             <!-- Bouton Déconnexion -->
             <form method="post" action="{% url 'logout' %}" class="d-inline">
