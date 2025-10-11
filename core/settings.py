@@ -107,15 +107,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+# je desactive SSL uniquement pour CI/tests
+CI_ENVIRONMENT = os.getenv("CI", "false").lower() == "true"
+
 DATABASES = {
     'default': dj_database_url.config(
          default=DATABASE_URL,
          conn_max_age=600,  
-         ssl_require=True,
+         ssl_require=not CI_ENVIRONMENT,  
          conn_health_checks=True,
     )
 }
-
 
 # DATABASES = {
 #     'default': {

@@ -87,9 +87,9 @@ jobs:
 
       - name: Collect static files
         env:
+          CI: "true"
           SECRET_KEY: test-secret-key-for-ci-only
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/test_db
-          PGSSLMODE: disable
           SECRET_KEY_STRIPE: sk_test_fake
           PUBLISHABLE_KEY_STRIPE: pk_test_fake
           STRIPE_PRICE_ID: price_test_fake
@@ -103,9 +103,9 @@ jobs:
 
       - name: Run Django tests
         env:
+          CI: "true"
           SECRET_KEY: test-secret-key-for-ci-only
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/test_db
-          PGSSLMODE: disable
           SECRET_KEY_STRIPE: sk_test_fake
           PUBLISHABLE_KEY_STRIPE: pk_test_fake
           STRIPE_PRICE_ID: price_test_fake
