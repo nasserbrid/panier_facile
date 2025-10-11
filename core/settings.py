@@ -119,7 +119,7 @@ else:
     DATABASES = {
      'default': {
         'ENGINE': 'django.db.backends.postgresql',
-         'NAME': os.getenv("DB_NAME", "PanierFacile"),
+         'NAME': os.getenv("DB_NAME", "test_db"),
         'USER': os.getenv("DB_USER", "postgres"),
         'PASSWORD': os.getenv("PASSWORD"),
         'HOST': os.getenv("DB_HOST", "localhost"),
