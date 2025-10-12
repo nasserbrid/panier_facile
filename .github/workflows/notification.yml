@@ -1,0 +1,93 @@
+name: Daily Notifications
+
+on:
+  schedule:
+    # Notifications matin à 8h00 (heure de Paris)
+    - cron: "0 7 * * *" # 7h UTC = 8h Paris (hiver) / 6h UTC = 8h Paris (été)
+    # Notifications soir à 18h00 (heure de Paris)
+    - cron: "0 17 * * *" # 17h UTC = 18h Paris (hiver) / 16h UTC = 18h Paris (été)
+  workflow_dispatch: # Permet de lancer manuellement pour tester
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wake up application
+        run: |
+          echo "🚀 Réveil de l'application Render..."
+
+          # Ping le health check pour réveiller l'app
+          for i in {1..5}
+          do
+            echo "Wake-up tentative $i/5"
+            response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+              https://panier-facile.onrender.com/health/)
+            
+            echo "Health check retourné: $response"
+            
+            if [ $response -eq 200 ]; then
+              echo "✅ Application réveillée avec succès"
+              break
+            else
+              echo "⏳ Application en démarrage... attente 15 secondes"
+              sleep 15
+            fi
+          done
+
+      - name: Wait for app to be fully ready
+        run: |
+          echo "⏳ Attente que l'application soit complètement prête..."
+          sleep 10
+
+      - name: Trigger notifications with retries
+        env:
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          echo "📧 Déclenchement des notifications..."
+
+          # Tentatives multiples avec délais progressifs
+          for attempt in {1..5}
+          do
+            echo ""
+            echo "═══════════════════════════════════════"
+            echo "Tentative $attempt/5"
+            echo "═══════════════════════════════════════"
+            
+            response=$(curl -s -w "\n%{http_code}" --max-time 30 \
+              -H "X-CRON-TOKEN: $CRON_TOKEN" \
+              -H "User-Agent: GitHub Actions Notification" \
+              -H "Accept: application/json" \
+              https://panier-facile.onrender.com/trigger-notification/)
+            
+            # Séparer le corps de la réponse et le code HTTP
+            http_body=$(echo "$response" | head -n -1)
+            http_code=$(echo "$response" | tail -n 1)
+            
+            echo "Code HTTP: $http_code"
+            echo "Réponse: $http_body"
+            
+            if [ "$http_code" -eq 200 ]; then
+              echo "✅ Notifications envoyées avec succès!"
+              exit 0
+            else
+              echo "❌ Échec (code $http_code)"
+              
+              if [ $attempt -lt 5 ]; then
+                # Délai progressif: 15s, 20s, 25s, 30s
+                delay=$((15 + (attempt * 5)))
+                echo "⏳ Nouvelle tentative dans ${delay}s..."
+                sleep $delay
+              fi
+            fi
+          done
+
+          echo ""
+          echo "❌ Échec après 5 tentatives"
+          exit 1
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "⚠️ Les notifications ont échoué après toutes les tentatives"
+          echo "Consultez les logs GitHub Actions pour plus de détails"

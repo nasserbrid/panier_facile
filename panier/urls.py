@@ -55,6 +55,7 @@ urlpatterns = [
     
     #notifications
     path('trigger-notification/', views.trigger_notification, name='trigger_notification'),
+    path('health', views.health_check, name='health'),
     
     #RAG - Chatbot UI
    # Chatbot RAG

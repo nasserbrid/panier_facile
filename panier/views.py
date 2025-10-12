@@ -325,14 +325,104 @@ def cancel(request):
 #notifications
 from django.http import JsonResponse
 from django.core import management
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 import os
+import time
+import logging
 
+logger = logging.getLogger(__name__)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
 def trigger_notification(request):
+    """
+    Endpoint sécurisé pour déclencher les notifications quotidiennes.
+    Appelé par cron-job.org avec un token de sécurité.
+    """
+    start_time = time.time()
+    
+    # Log de la requête entrante
+    logger.info("=" * 70)
+    logger.info(f"🔔 Requête de notification reçue à {timezone.now()}")
+    logger.info(f"   User-Agent: {request.META.get('HTTP_USER_AGENT', 'Unknown')}")
+    logger.info(f"   IP: {request.META.get('REMOTE_ADDR', 'Unknown')}")
+    logger.info(f"   Method: {request.method}")
+    
+    # Vérification du token de sécurité
     token = request.headers.get("X-CRON-TOKEN")
-    if token != os.getenv("TOKEN"):
-        return JsonResponse({"error": "Unauthorized"}, status=403)
-    management.call_command('notify_old_paniers')
-    return JsonResponse({"status": "ok"})
+    expected_token = os.getenv("TOKEN")
+    
+    if not expected_token:
+        logger.error("❌ TOKEN environnement non configuré !")
+        return JsonResponse({
+            "error": "Server configuration error"
+        }, status=500)
+    
+    if token != expected_token:
+        logger.warning(f"⚠️ Tentative d'accès non autorisé")
+        logger.warning(f"   Token reçu: {token[:10] if token else 'None'}...")
+        logger.warning(f"   IP: {request.META.get('REMOTE_ADDR', 'Unknown')}")
+        return JsonResponse({
+            "error": "Unauthorized"
+        }, status=403)
+    
+    logger.info("✅ Token validé avec succès")
+    
+    # Exécution de la commande de notification
+    try:
+        logger.info("📧 Démarrage de l'envoi des notifications...")
+        
+        # Exécuter la commande Django
+        management.call_command('notify_old_paniers')
+        
+        elapsed_time = time.time() - start_time
+        
+        logger.info("✅ Notifications envoyées avec succès")
+        logger.info(f"   Temps d'exécution: {elapsed_time:.2f}s")
+        logger.info("=" * 70)
+        
+        return JsonResponse({
+            "status": "ok",
+            "message": "Notifications sent successfully",
+            "execution_time_seconds": round(elapsed_time, 2),
+            "timestamp": timezone.now().isoformat()
+        }, status=200)
+        
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        
+        logger.error("=" * 70)
+        logger.error(f"❌ Erreur lors de l'envoi des notifications")
+        logger.error(f"   Erreur: {str(e)}")
+        logger.error(f"   Temps avant échec: {elapsed_time:.2f}s")
+        logger.error("=" * 70)
+        logger.exception("Stacktrace complète:")
+        
+        return JsonResponse({
+            "status": "error",
+            "message": "Failed to send notifications",
+            "error": str(e),
+            "execution_time_seconds": round(elapsed_time, 2),
+            "timestamp": timezone.now().isoformat()
+        }, status=500)
+
+
+# Endpoint de health check (sans authentification, pour les pings)
+@csrf_exempt
+@require_http_methods(["GET", "HEAD"])
+def health_check(request):
+    """
+    Endpoint de santé simple pour les monitoring et keep-alive.
+    Pas d'authentification requise.
+    """
+    return JsonResponse({
+        "status": "healthy",
+        "service": "panier_facile",
+        "timestamp": timezone.now().isoformat()
+    }, status=200)
 
 # RAG
 from django.http import JsonResponse
