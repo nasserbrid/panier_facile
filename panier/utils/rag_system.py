@@ -1,0 +1,2 @@
+qa = None
+vectorstore = None
