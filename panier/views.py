@@ -570,7 +570,7 @@ def health_check(request):
 
 from django.http import JsonResponse
 import logging
-from openai.error import RateLimitError, OpenAIError
+from openai import OpenAIError, RateLimitError
 from django.contrib.admin.views.decorators import staff_member_required
 from .utils import rag_system
 from .utils.retriever import query_vectorstore
