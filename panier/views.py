@@ -570,6 +570,7 @@ def health_check(request):
 
 from django.http import JsonResponse
 import logging
+from openai.error import RateLimitError, OpenAIError
 from django.contrib.admin.views.decorators import staff_member_required
 from .utils import rag_system
 from .utils.retriever import query_vectorstore
@@ -589,11 +590,19 @@ def chatbot_ui(request):
         if not qa or not vectorstore:
             return JsonResponse({"error": "Le système RAG n'est pas initialisé"}, status=500)
 
+        # Récupération du contexte depuis le vectorstore
         context = query_vectorstore(vectorstore, question, k=3)
         logger.info(f"Question: {question[:100]}...")
 
         prompt = f"Contexte:\n{context}\n\nQuestion: {question}"
-        answer = qa.run(prompt)
+
+        # Gestion des erreurs OpenAI
+        try:
+            answer = qa.run(prompt)
+        except RateLimitError:
+            answer = "Le service est temporairement saturé, veuillez réessayer plus tard."
+        except OpenAIError as e:
+            answer = f"Erreur OpenAI : {str(e)}"
 
         return JsonResponse({"answer": answer, "question": question})
 
