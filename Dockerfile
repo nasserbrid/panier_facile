@@ -6,6 +6,7 @@ FROM python:3.12-slim
 # Empêche Python d'écrire des fichiers .pyc et force le flush stdout
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV RUN_MAIN=true
 
 # Définir le dossier de travail
 WORKDIR /app
@@ -41,7 +42,6 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # -----------------------------
-# Étape 7 : Lancer l’application avec Gunicorn
+# Étape 7 : Lancer l'application avec Gunicorn
 # -----------------------------
-CMD ["bash", "-c", "python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers=1 --threads=2"]
-
+CMD ["bash", "-c", "python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers=2 --threads=4 --timeout=120 --access-logfile - --error-logfile -"]
