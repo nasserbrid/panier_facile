@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +10,9 @@ class PanierConfig(AppConfig):
     
     def ready(self):
         """Initialise le système RAG dès le démarrage."""
+        
+        if os.environ.get('RUN_MAIN') != 'true':
+            return
         try:
             from .utils.loader import load_ui_docs
             from .utils.chunker import split_documents
