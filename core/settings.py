@@ -104,23 +104,55 @@ WSGI_APPLICATION = 'core.wsgi.application'
 #         },
 #     }
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+# Configuration de la base de données
+if DATABASE_URL and DATABASE_URL.strip():
+    # Production avec PostgreSQL
+    try:
+        DATABASES = {
+            'default': dj_database_url.config(
+                 default=DATABASE_URL,
+                 conn_max_age=600,  
+                 ssl_require=False,  
+                 conn_health_checks=True,
+            )
+        }
+        # Force la désactivation de SSL
+        DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
+    except Exception as e:
+        # Fallback si erreur de parsing
+        print(f"Warning: Could not parse DATABASE_URL: {e}")
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+        }
+else:
+    # Développement ou build Docker
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # je desactive SSL uniquement pour CI/tests et pour Coolify
 # CI_ENVIRONMENT = os.getenv("CI", "false").lower() == "true"
 # COOLIFY_ENVIRONMENT = os.getenv("COOLIFY_CONTAINER_NAME") is not None
 
-DATABASES = {
-    'default': dj_database_url.config(
-         default=DATABASE_URL,
-         conn_max_age=600,   
-         conn_health_checks=True,
-    )
-}
+# DATABASES = {
+#     'default': dj_database_url.config(
+#          default=DATABASE_URL,
+#          conn_max_age=600,   
+#          conn_health_checks=True,
+#     )
+# }
 
-# Je désactiver SSL pour PostgreSQL interne Coolify
-DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
+# # Je désactiver SSL pour PostgreSQL interne Coolify
+# DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
 
 # DATABASES = {
 #     'default': {
