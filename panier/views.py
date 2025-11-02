@@ -637,6 +637,12 @@ def chatbot_ui(request):
 
         qa = rag_system.qa
         vectorstore = rag_system.vectorstore
+        
+        if not qa or not vectorstore:
+         return JsonResponse({
+             "error": "Le chatbot est temporairement indisponible car le quota OpenAI est dépassé ou le système n'a pas pu être initialisé. Veuillez réessayer plus tard."
+         }, status=503)
+
 
         # Je récupère le contexte depuis le vectorstore
         context = query_vectorstore(vectorstore, question, k=3)
@@ -654,6 +660,7 @@ def chatbot_ui(request):
         return JsonResponse({"answer": answer, "question": question})
 
     except Exception as e:
+        logger.error(f"Erreur RAG : {e}", exc_info=True)
         return JsonResponse({
             "error": "Le système RAG n'a pas pu être initialisé",
             "detail": str(e)

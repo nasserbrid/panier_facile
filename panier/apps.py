@@ -1,6 +1,8 @@
 from django.apps import AppConfig
 import logging
 import os
+from openai import RateLimitError, OpenAIError
+
 
 logger = logging.getLogger(__name__)
 
@@ -9,35 +11,41 @@ class PanierConfig(AppConfig):
     name = 'panier'
     
     def ready(self):
-        """Initialise le système RAG dès le démarrage."""
-        
-        if os.environ.get('RUN_MAIN') != 'true':
-            return
-        try:
-            from .utils.loader import load_ui_docs
-            from .utils.chunker import split_documents
-            from .utils.embedding import get_embeddings
-            from .utils.vectorstore import build_vectorstore
-            from .utils.rag import create_rag
-            from .utils import rag_system
+     """Initialise le système RAG dès le démarrage."""
 
-            documents = load_ui_docs()
-            logger.info(f"{len(documents)} documents RAG chargés au démarrage.")
+     if os.environ.get('RUN_MAIN') != 'true':
+        return
 
-            chunks = split_documents(documents)
-            logger.info(f"{len(chunks)} chunks créés.")
+     try:
+         from .utils.loader import load_ui_docs
+         from .utils.chunker import split_documents
+         from .utils.embedding import get_embeddings
+         from .utils.vectorstore import build_vectorstore
+         from .utils.rag import create_rag
+         from .utils import rag_system
 
-            embeddings = get_embeddings()
-            vectorstore = build_vectorstore(chunks, embeddings)
+         documents = load_ui_docs()
+         logger.info(f"{len(documents)} documents RAG chargés au démarrage.")
 
-            qa = create_rag(vectorstore)
+         chunks = split_documents(documents)
+         logger.info(f"{len(chunks)} chunks créés.")
 
-            # Stockage global
-            rag_system.qa = qa
-            rag_system.vectorstore = vectorstore
+         try:
+             embeddings = get_embeddings()
+             vectorstore = build_vectorstore(chunks, embeddings)
+             qa = create_rag(vectorstore)
 
-            logger.info("Système RAG initialisé avec succès au démarrage.")
+             # Stockage global
+             rag_system.qa = qa
+             rag_system.vectorstore = vectorstore
 
-        except Exception as e:
-            logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)
-    
+             logger.info("Système RAG initialisé avec succès au démarrage.")
+
+         except RateLimitError:
+            logger.error("Quota OpenAI dépassé : le RAG n’a pas pu être initialisé.")
+         except OpenAIError as e:
+            logger.error(f"Erreur OpenAI lors de l’init du RAG : {e}")
+
+     except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)
+
