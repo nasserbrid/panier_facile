@@ -143,6 +143,35 @@
     }
   });
 </script>
+<!-- Bouton flottant -->
+<button id="openChatBtn" class="chat-toggle-btn">💬</button>
+
+<!-- Fenêtre chatbot -->
+<div class="chatbot-container" id="chatbot" style="display:none;">
+    <div class="chat-header">
+        <h4>🤖 Assistant Panier Facile</h4>
+        <button id="closeChatBtn" class="close-btn">✖</button>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="message bot">
+            Bonjour ! Je suis votre assistant virtuel. Posez-moi vos questions.
+        </div>
+        <div class="suggestions">
+            <button class="suggestion-btn" onclick="askQuestion('Comment voir la liste des paniers ?')">📋 Voir mes paniers</button>
+            <button class="suggestion-btn" onclick="askQuestion('Comment voir la liste des courses ?')">🛒 Voir mes courses</button>
+            <button class="suggestion-btn" onclick="askQuestion('Comment ajouter une course ?')">➕ Ajouter une course</button>
+        </div>
+        <div class="loading" id="loading"><span>⏳ Recherche en cours...</span></div>
+    </div>
+
+    <div class="input-container">
+        <input type="text" id="questionInput" class="chat-input" placeholder="Tapez votre question..." onkeypress="handleKeyPress(event)">
+        <button class="send-btn" id="sendBtn">Envoyer</button>
+    </div>
+</div>
+
+<script src="{% static 'js/chatbot.js' %}"></script>
 
   </body>
 </html>

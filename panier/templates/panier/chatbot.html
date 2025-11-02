@@ -1,10 +1,10 @@
-{% comment %} {% extends "base.html" %} {% endcomment %}
+{% comment %} {% extends "base.html" %}
 {% load static %}
 
 {% comment %} {% block title %}Assistant Panier Facile{% endblock %} {% endcomment %}
 
 
-{% block content %}
+{% comment %} {% block content %}
 <div class="chatbot-container">
     <div class="chat-header">
         <h2>🤖 Assistant Panier Facile</h2>
@@ -54,5 +54,7 @@
     </div>
 </div>
 
-<script src="{% static 'js/chatbot.js' %}"></script>
-{% endblock %}
+<script src="{% static 'js/chatbot.js' %}"></script> {% endcomment %}
+{% comment %} {% endblock %}
+ {% endcomment %} 
+ 
