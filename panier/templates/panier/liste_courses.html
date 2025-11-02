@@ -1,4 +1,4 @@
-voici liste_courses.html:{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Liste des courses{% endblock %}
 
 {% block content %}
@@ -7,7 +7,7 @@ voici liste_courses.html:{% extends "base.html" %}
 <a href="{% url 'creer_course' %}" class="btn btn-success mb-3">Nouvelle course</a>
 
 <!-- Section 1 : Courses non associées à un panier -->
-<h3>Courses non associées à un panier</h3>
+<h3>Courses non associées au panier de ({{ request.user }})</h3>
 {% if courses_sans_panier %}
 <table class="table table-striped">
   <thead>
@@ -24,25 +24,6 @@ voici liste_courses.html:{% extends "base.html" %}
         <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
         <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
         <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
-
-        {% if paniers %}
-        <div class="btn-group">
-          <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            Ajouter au panier
-          </button>
-          <ul class="dropdown-menu">
-            {% for panier in paniers %}
-            <li>
-              <a class="dropdown-item" href="{% url 'ajouter_une_course_au_panier' panier.id course.id %}">
-                {{ panier }}
-              </a>
-            </li>
-            {% endfor %}
-          </ul>
-        </div>
-        {% else %}
-        <span class="text-muted">Aucun panier</span>
-        {% endif %}
       </td>
     </tr>
     {% endfor %}
@@ -53,7 +34,7 @@ voici liste_courses.html:{% extends "base.html" %}
 {% endif %}
 
 <!-- Section 2 : Courses dans les paniers de la famille -->
-<h3>Courses des paniers de la famille</h3>
+<h3>Courses associées à votre famille ({{ request.user.last_name }})</h3>
 {% if courses_par_famille %}
 <table class="table table-striped">
   <thead>
