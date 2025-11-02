@@ -73,11 +73,30 @@ def ajouter_ingredient(request, course_id):
 def liste_courses(request):
     last_name = request.user.last_name
 
-    # On ne montre que les courses liées aux paniers des membres de la même famille
-    courses = Course.objects.filter(paniers__user__last_name__iexact=last_name).distinct()
+    # Courses déjà dans les paniers familiaux
+    courses_par_famille = Course.objects.filter(
+        paniers__user__last_name__iexact=last_name
+    ).distinct()
+
+    # Courses non associées à un panier familial
+    courses_sans_panier = Course.objects.exclude(
+        paniers__user__last_name__iexact=last_name
+    ).distinct()
+
+    # Paniers uniquement pour cette famille
     paniers = Panier.objects.filter(user__last_name__iexact=last_name)
 
-    return render(request, 'panier/liste_courses.html', {'courses': courses, 'paniers': paniers})
+    return render(
+        request,
+        'panier/liste_courses.html',
+        {
+            'courses_par_famille': courses_par_famille,
+            'courses_sans_panier': courses_sans_panier,
+            'paniers': paniers
+        }
+    )
+
+
 
 
 # --- Détail d'une course (avec liste des ingrédients) ---
@@ -195,7 +214,7 @@ def liste_paniers(request):
     #je filtre ensuite les paniers appartenant ayant le même nom de famille
     if last_name:
         # Filtrage insensible à la casse et tri décroissant par date
-        paniers = Panier.objects.filter(user__last_name=last_name).order_by('-date_creation')
+        paniers = Panier.objects.filter(user__last_name__iexact=last_name).order_by('-date_creation')
     else:
         # Aucun panier si pas de nom de famille défini
         paniers = Panier.objects.none()  

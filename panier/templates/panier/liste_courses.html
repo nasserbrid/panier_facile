@@ -1,10 +1,14 @@
-{% extends "base.html" %} {% block title %}Liste des courses{% endblock %}
-{%block content %}
-<h2>Liste des courses</h2>
-<a href="{% url 'creer_course' %}" class="btn btn-success mb-3"
-  >Nouvelle course</a
->
+voici liste_courses.html:{% extends "base.html" %}
+{% block title %}Liste des courses{% endblock %}
 
+{% block content %}
+<h2>Liste des courses</h2>
+
+<a href="{% url 'creer_course' %}" class="btn btn-success mb-3">Nouvelle course</a>
+
+<!-- Section 1 : Courses non associées à un panier -->
+<h3>Courses non associées à un panier</h3>
+{% if courses_sans_panier %}
 <table class="table table-striped">
   <thead>
     <tr>
@@ -13,42 +17,23 @@
     </tr>
   </thead>
   <tbody>
-    {% for course in courses %}
+    {% for course in courses_sans_panier %}
     <tr>
       <td>{{ course.titre }}</td>
       <td>
-        <a
-          href="{% url 'detail_course' course.id %}"
-          class="btn btn-info btn-sm"
-          >Détails</a
-        >
-        <a
-          href="{% url 'modifier_course' course.id %}"
-          class="btn btn-primary btn-sm"
-          >Modifier</a
-        >
-        <a
-          href="{% url 'supprimer_course' course.id %}"
-          class="btn btn-danger btn-sm"
-          >Supprimer</a
-        >
+        <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
+        <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
+        <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
+
         {% if paniers %}
         <div class="btn-group">
-          <button
-            type="button"
-            class="btn btn-success btn-sm dropdown-toggle"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
+          <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             Ajouter au panier
           </button>
           <ul class="dropdown-menu">
             {% for panier in paniers %}
             <li>
-              <a
-                class="dropdown-item"
-                href="{% url 'ajouter_une_course_au_panier' panier.id course.id %}"
-              >
+              <a class="dropdown-item" href="{% url 'ajouter_une_course_au_panier' panier.id course.id %}">
                 {{ panier }}
               </a>
             </li>
@@ -60,11 +45,38 @@
         {% endif %}
       </td>
     </tr>
-    {% empty %}
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Aucune course non associée à un panier.</p>
+{% endif %}
+
+<!-- Section 2 : Courses dans les paniers de la famille -->
+<h3>Courses des paniers de la famille</h3>
+{% if courses_par_famille %}
+<table class="table table-striped">
+  <thead>
     <tr>
-      <td colspan="2">Aucune course</td>
+      <th>Titre</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for course in courses_par_famille %}
+    <tr>
+      <td>{{ course.titre }}</td>
+      <td>
+        <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
+        <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
+        <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% else %}
+<p>Aucune course dans les paniers de votre famille.</p>
+{% endif %}
+
 {% endblock %}
