@@ -107,14 +107,15 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
-# je desactive SSL uniquement pour CI/tests
+# je desactive SSL uniquement pour CI/tests et pour Coolify
 CI_ENVIRONMENT = os.getenv("CI", "false").lower() == "true"
+COOLIFY_ENVIRONMENT = os.getenv("COOLIFY_CONTAINER_NAME") is not None
 
 DATABASES = {
     'default': dj_database_url.config(
          default=DATABASE_URL,
          conn_max_age=600,  
-         ssl_require=not CI_ENVIRONMENT,  
+         ssl_require=False,  
          conn_health_checks=True,
     )
 }
