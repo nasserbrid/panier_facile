@@ -592,30 +592,58 @@ import logging
 from openai import OpenAIError, RateLimitError
 from django.contrib.admin.views.decorators import staff_member_required
 from .utils import rag_system
+from .utils.loader import load_ui_docs
+from .utils.chunker import split_documents
+from .utils.embedding import get_embeddings
+from .utils.vectorstore import build_vectorstore
+from .utils.rag import create_rag
 from .utils.retriever import query_vectorstore
 
 logger = logging.getLogger(__name__)
 
+def init_rag_if_needed():
+    """J'initialise le RAG seulement si ce n'est pas déjà fait."""
+    if rag_system.qa and rag_system.vectorstore:
+        return  
+
+    try:
+        documents = load_ui_docs()
+        logger.info(f"{len(documents)} documents RAG chargés.")
+
+        chunks = split_documents(documents)
+        logger.info(f"{len(chunks)} chunks créés.")
+
+        embeddings = get_embeddings()
+        vectorstore = build_vectorstore(chunks, embeddings)
+        qa = create_rag(vectorstore)
+
+        # Stockage global
+        rag_system.qa = qa
+        rag_system.vectorstore = vectorstore
+        logger.info("Système RAG initialisé à la demande.")
+
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)
+        raise e
+    
 def chatbot_ui(request):
     question = request.GET.get("question", "").strip()
-
     if not question:
         return JsonResponse({"answer": "", "error": "Aucune question fournie"}, status=400)
 
     try:
+        # J'initialise le RAG si besoin
+        init_rag_if_needed()  
+
         qa = rag_system.qa
         vectorstore = rag_system.vectorstore
 
-        if not qa or not vectorstore:
-            return JsonResponse({"error": "Le système RAG n'est pas initialisé"}, status=500)
-
-        # Récupération du contexte depuis le vectorstore
+        # Je récupère le contexte depuis le vectorstore
         context = query_vectorstore(vectorstore, question, k=3)
         logger.info(f"Question: {question[:100]}...")
 
         prompt = f"Contexte:\n{context}\n\nQuestion: {question}"
 
-        # Gestion des erreurs OpenAI
         try:
             answer = qa.run(prompt)
         except RateLimitError:
@@ -626,8 +654,43 @@ def chatbot_ui(request):
         return JsonResponse({"answer": answer, "question": question})
 
     except Exception as e:
-        logger.error(f"Erreur RAG : {e}", exc_info=True)
-        return JsonResponse({"error": "Une erreur est survenue.", "detail": str(e)}, status=500)
+        return JsonResponse({
+            "error": "Le système RAG n'a pas pu être initialisé",
+            "detail": str(e)
+        }, status=500)
+
+# def chatbot_ui(request):
+#     question = request.GET.get("question", "").strip()
+
+#     if not question:
+#         return JsonResponse({"answer": "", "error": "Aucune question fournie"}, status=400)
+
+#     try:
+#         qa = rag_system.qa
+#         vectorstore = rag_system.vectorstore
+
+#         if not qa or not vectorstore:
+#             return JsonResponse({"error": "Le système RAG n'est pas initialisé"}, status=500)
+
+#         # Récupération du contexte depuis le vectorstore
+#         context = query_vectorstore(vectorstore, question, k=3)
+#         logger.info(f"Question: {question[:100]}...")
+
+#         prompt = f"Contexte:\n{context}\n\nQuestion: {question}"
+
+#         # Gestion des erreurs OpenAI
+#         try:
+#             answer = qa.run(prompt)
+#         except RateLimitError:
+#             answer = "Le service est temporairement saturé, veuillez réessayer plus tard."
+#         except OpenAIError as e:
+#             answer = f"Erreur OpenAI : {str(e)}"
+
+#         return JsonResponse({"answer": answer, "question": question})
+
+#     except Exception as e:
+#         logger.error(f"Erreur RAG : {e}", exc_info=True)
+#         return JsonResponse({"error": "Une erreur est survenue.", "detail": str(e)}, status=500)
 
 
 @staff_member_required
