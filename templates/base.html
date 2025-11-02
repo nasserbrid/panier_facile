@@ -170,6 +170,10 @@
         <button class="send-btn" id="sendBtn">Envoyer</button>
     </div>
 </div>
+<script>
+  // Je définis l'URL de la vue Django pour le chatbot
+  const chatbotUrl = "{% url 'chatbot_ui' %}";
+</script>
 
 <script src="{% static 'js/chatbot.js' %}"></script>
 

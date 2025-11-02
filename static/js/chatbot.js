@@ -60,7 +60,8 @@ document.addEventListener("DOMContentLoaded", function () {
         showLoading(true);
 
         try {
-            const response = await fetch("{% url 'chatbot_ui' %}?question=" + encodeURIComponent(question));
+            const response = await fetch(chatbotUrl + "?question=" + encodeURIComponent(question));
+
             const data = await response.json();
 
             if (response.ok) {
