@@ -34,6 +34,8 @@ COPY . .
 # -----------------------------
 # Étape 5 : Collecter les fichiers statiques
 # -----------------------------
+# Utiliser SQLite temporairement pour collectstatic (pas besoin de vraie DB)
+ENV DATABASE_URL=sqlite:///tmp/db.sqlite3
 RUN python manage.py collectstatic --noinput
 
 # -----------------------------
