@@ -36,6 +36,9 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['panier-facile.fr','www.panier-facile.fr','panier-facile.onrender.com', '127.0.0.1', 'localhost']
 
+CSRF_TRUSTED_ORIGINS = ["https://panier-facile.fr","https://www.panier-facile.fr"]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"  
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
