@@ -1,123 +1,3 @@
-{% comment %} {% extends "base.html" %} {% block title %}Panier Facile - Courses et paniers
-simplifiés{% endblock %} {% block content %}
-<section
-  class="landing-hero d-flex align-items-center justify-content-center text-white"
-  style="
-    min-height: 70vh;
-    background: linear-gradient(100deg, #a5662a 0%, #f7c873 100%);
-  "
->
-  <div class="container text-center">
-    <h1 class="display-2 fw-bold mb-3">Votre assistant courses malin</h1>
-    <p class="lead mb-4 fs-4">
-      Gérez vos paniers, gagnez du temps, ne ratez plus rien&nbsp;!
-    </p>
-    <a href="{% url 'signup' %}" class="btn btn-warning btn-lg px-5 me-2 shadow"
-      >Créer un compte</a
-    >
-    <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg px-5"
-      >Se connecter</a
-    >
-  </div>
-</section>
-
-<section class="subscription text-center py-5 bg-white">
-  <div class="container">
-    <h3 class="mb-4">Profitez de 3 mois gratuits 🎁</h3>
-    <p class="lead mb-4">
-      Ensuite seulement <strong>1€ par mois</strong> pour continuer à utiliser PanierFacile.
-    </p>
-    <button id="checkout-button" class="btn btn-warning btn-lg shadow">
-      S’abonner maintenant
-    </button>
-  </div>
-</section>
-
-<script src="https://js.stripe.com/v3/"></script>
-<script>
-  const stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
-
-  document.getElementById("checkout-button").addEventListener("click", () => {
-    fetch("{% url 'create_checkout_session' %}", {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": "{{ csrf_token }}",  
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({})  
-    })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.error) {
-        alert(data.error);
-      } else {
-        stripe.redirectToCheckout({ sessionId: data.id });
-      }
-    })
-    .catch((err) => console.error(err));
-  });
-</script>
-
-
-
-<section class="features py-5 bg-light">
-  <div class="container">
-    <div class="row g-4">
-      <div class="col-md-4 text-center">
-        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
-        <h4>Gagnez du temps</h4>
-        <p>
-          Créez vos listes en 1 clic, réutilisez-les chaque semaine, et faites
-          vos courses sans stress.
-        </p>
-      </div>
-      <div class="col-md-4 text-center">
-        <i class="fas fa-users fa-3x text-warning mb-3"></i>
-        <h4>Partagez vos paniers</h4>
-        <p>
-          Invitez vos proches, partagez et modifiez vos paniers à plusieurs, en
-          temps réel.
-        </p>
-      </div>
-      <div class="col-md-4 text-center">
-        <i class="fas fa-bell fa-3x text-warning mb-3"></i>
-        <h4>Ne ratez plus rien</h4>
-        <p>
-          Recevez des rappels pour ne jamais oublier vos courses importantes ou
-          vos produits favoris.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="testimonials py-5">
-  <div class="container">
-    <h3 class="text-center mb-4">Ils adorent PanierFacile&nbsp;!</h3>
-    <div class="row justify-content-center">
-      <div class="col-md-4">
-        <blockquote class="blockquote bg-white p-4 rounded shadow-sm">
-          <p>
-            «&nbsp;J’ai enfin arrêté d’oublier la moitié de mes courses. Simple
-            et efficace&nbsp;!&nbsp;»
-          </p>
-          <footer class="blockquote-footer">Sophie, maman active</footer>
-        </blockquote>
-      </div>
-      <div class="col-md-4">
-        <blockquote class="blockquote bg-white p-4 rounded shadow-sm">
-          <p>
-            «&nbsp;On partage la liste à la maison, tout le monde participe. Un
-            vrai gain de temps&nbsp;!&nbsp;»
-          </p>
-          <footer class="blockquote-footer">Julien, étudiant</footer>
-        </blockquote>
-      </div>
-    </div>
-  </div>
-</section>
-
-{% endblock %} {% endcomment %}
 {% extends "base.html" %}
 {% block title %}PanierFacile - Ne ratez plus jamais vos courses{% endblock %}
 
@@ -560,3 +440,123 @@ simplifiés{% endblock %} {% block content %}
 </section>
 
 {% endblock %}
+{% comment %} {% extends "base.html" %} {% block title %}Panier Facile - Courses et paniers
+simplifiés{% endblock %} {% block content %}
+<section
+  class="landing-hero d-flex align-items-center justify-content-center text-white"
+  style="
+    min-height: 70vh;
+    background: linear-gradient(100deg, #a5662a 0%, #f7c873 100%);
+  "
+>
+  <div class="container text-center">
+    <h1 class="display-2 fw-bold mb-3">Votre assistant courses malin</h1>
+    <p class="lead mb-4 fs-4">
+      Gérez vos paniers, gagnez du temps, ne ratez plus rien&nbsp;!
+    </p>
+    <a href="{% url 'signup' %}" class="btn btn-warning btn-lg px-5 me-2 shadow"
+      >Créer un compte</a
+    >
+    <a href="{% url 'login' %}" class="btn btn-outline-light btn-lg px-5"
+      >Se connecter</a
+    >
+  </div>
+</section>
+
+<section class="subscription text-center py-5 bg-white">
+  <div class="container">
+    <h3 class="mb-4">Profitez de 3 mois gratuits 🎁</h3>
+    <p class="lead mb-4">
+      Ensuite seulement <strong>1€ par mois</strong> pour continuer à utiliser PanierFacile.
+    </p>
+    <button id="checkout-button" class="btn btn-warning btn-lg shadow">
+      S’abonner maintenant
+    </button>
+  </div>
+</section>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+  const stripe = Stripe("{{ STRIPE_PUBLISHABLE_KEY }}");
+
+  document.getElementById("checkout-button").addEventListener("click", () => {
+    fetch("{% url 'create_checkout_session' %}", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",  
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})  
+    })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.error) {
+        alert(data.error);
+      } else {
+        stripe.redirectToCheckout({ sessionId: data.id });
+      }
+    })
+    .catch((err) => console.error(err));
+  });
+</script>
+
+
+
+<section class="features py-5 bg-light">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-md-4 text-center">
+        <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+        <h4>Gagnez du temps</h4>
+        <p>
+          Créez vos listes en 1 clic, réutilisez-les chaque semaine, et faites
+          vos courses sans stress.
+        </p>
+      </div>
+      <div class="col-md-4 text-center">
+        <i class="fas fa-users fa-3x text-warning mb-3"></i>
+        <h4>Partagez vos paniers</h4>
+        <p>
+          Invitez vos proches, partagez et modifiez vos paniers à plusieurs, en
+          temps réel.
+        </p>
+      </div>
+      <div class="col-md-4 text-center">
+        <i class="fas fa-bell fa-3x text-warning mb-3"></i>
+        <h4>Ne ratez plus rien</h4>
+        <p>
+          Recevez des rappels pour ne jamais oublier vos courses importantes ou
+          vos produits favoris.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="testimonials py-5">
+  <div class="container">
+    <h3 class="text-center mb-4">Ils adorent PanierFacile&nbsp;!</h3>
+    <div class="row justify-content-center">
+      <div class="col-md-4">
+        <blockquote class="blockquote bg-white p-4 rounded shadow-sm">
+          <p>
+            «&nbsp;J’ai enfin arrêté d’oublier la moitié de mes courses. Simple
+            et efficace&nbsp;!&nbsp;»
+          </p>
+          <footer class="blockquote-footer">Sophie, maman active</footer>
+        </blockquote>
+      </div>
+      <div class="col-md-4">
+        <blockquote class="blockquote bg-white p-4 rounded shadow-sm">
+          <p>
+            «&nbsp;On partage la liste à la maison, tout le monde participe. Un
+            vrai gain de temps&nbsp;!&nbsp;»
+          </p>
+          <footer class="blockquote-footer">Julien, étudiant</footer>
+        </blockquote>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %} {% endcomment %}
