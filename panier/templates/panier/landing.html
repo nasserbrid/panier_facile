@@ -1,87 +1,82 @@
 {% extends "base.html" %}
-{% block title %}PanierFacile - Ne ratez plus jamais vos courses{% endblock %}
+{% block title %}PanierFacile - L'app qui transforme vos courses{% endblock %}
 
 {% block content %}
 
-<!-- Hero Section -->
-<section class="landing-hero d-flex align-items-center justify-content-center text-white">
+<!-- Hero Section Ultra Moderne -->
+<section class="hero-modern">
+  <div class="hero-gradient"></div>
+  <div class="hero-shapes">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+  
   <div class="container">
-    <div class="row align-items-center">
-      <div class="col-lg-7 text-center text-lg-start mb-4 mb-lg-0">
-        <div class="hero-badge mb-3">
-          <span class="badge bg-white text-dark px-3 py-2 rounded-pill">
-            🎉 Offre de lancement
-          </span>
-        </div>
-        <h1 class="display-2 fw-bold mb-3">
-          Arrêtez de perdre du temps avec vos courses
-        </h1>
-        <p class="lead mb-4 fs-4">
-          Plus d'oublis, plus de stress, plus de retours au magasin.<br>
-          Gérez vos listes en <strong>2 minutes</strong> et gagnez des heures chaque mois.
-        </p>
-        
-        <div class="d-flex gap-3 mb-4 flex-column flex-sm-row justify-content-center justify-content-lg-start">
-          <a href="{% url 'signup' %}" class="btn btn-warning btn-lg px-5 shadow">
-            <i class="fas fa-rocket me-2"></i>
-            Commencer gratuitement
-          </a>
-          <a href="#features" class="btn btn-outline-light btn-lg px-5">
-            <i class="fas fa-play-circle me-2"></i>
-            Voir comment ça marche
-          </a>
-        </div>
-        
-        <div class="hero-stats d-flex gap-4 flex-wrap justify-content-center justify-content-lg-start">
-          <div class="stat-item">
-            <div class="stat-number">3 mois</div>
-            <div class="stat-label">Gratuits</div>
+    <div class="row align-items-center min-vh-100 py-5">
+      <div class="col-lg-6 mb-5 mb-lg-0">
+        <div class="hero-content">
+          <div class="hero-badge">
+            <span class="pulse-dot"></span>
+            <span>3 mois gratuits · Aucune CB requise</span>
           </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-number">1€</div>
-            <div class="stat-label">Par mois ensuite</div>
+          
+          <h1 class="hero-title">
+            Vos courses,<br>
+            <span class="gradient-text">sans la galère</span>
+          </h1>
+          
+          <p class="hero-subtitle">
+            Créez vos listes en 30 secondes. Partagez avec votre famille en temps réel. 
+            Ne ratez plus jamais un produit essentiel.
+          </p>
+          
+          <div class="hero-cta">
+            <a href="{% url 'signup' %}" class="btn-primary-modern">
+              Essayer gratuitement
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </a>
+            <a href="{% url 'login' %}" class="btn-secondary-modern">
+              J'ai déjà un compte
+            </a>
           </div>
-          <div class="stat-divider"></div>
-          <div class="stat-item">
-            <div class="stat-number">2 min</div>
-            <div class="stat-label">Pour créer une liste</div>
+          
+          <div class="hero-social-proof">
+            <div class="avatars-group">
+              <div class="avatar">S</div>
+              <div class="avatar">M</div>
+              <div class="avatar">J</div>
+              <div class="avatar">A</div>
+              <div class="avatar-count">+500</div>
+            </div>
+            <div class="social-text">
+              <div class="rating">
+                ★★★★★ <span>4.9/5</span>
+              </div>
+              <p>Utilisé par 500+ familles</p>
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="col-lg-5">
-        <div class="phone-mockup mx-auto">
-          <div class="phone-frame">
-            <div class="phone-notch"></div>
-            <div class="phone-screen">
-              <div class="app-interface">
-                <div class="app-header-mock">
-                  <h5 class="mb-0">Ma liste de courses</h5>
-                  <small class="text-muted">Aujourd'hui</small>
-                </div>
-                <div class="app-items-mock mt-3">
-                  <div class="app-item-mock checked">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <span>Pain complet</span>
-                  </div>
-                  <div class="app-item-mock checked">
-                    <i class="fas fa-check-circle text-success"></i>
-                    <span>Lait demi-écrémé</span>
-                  </div>
-                  <div class="app-item-mock">
-                    <i class="far fa-circle text-muted"></i>
-                    <span>Œufs bio x6</span>
-                  </div>
-                  <div class="app-item-mock">
-                    <i class="far fa-circle text-muted"></i>
-                    <span>Tomates</span>
-                  </div>
-                  <div class="app-item-mock">
-                    <i class="far fa-circle text-muted"></i>
-                    <span>Fromage râpé</span>
-                  </div>
-                </div>
+      <div class="col-lg-6">
+        <div class="hero-visual">
+          <div class="phone-showcase">
+            <img src="data:image/svg+xml,%3Csvg width='300' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='300' height='600' rx='30' fill='%23fff'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='system-ui' font-size='16' fill='%23a5662a'%3EInterface PanierFacile%3C/text%3E%3C/svg%3E" alt="App Preview" class="phone-screen-img">
+            <div class="floating-card card-1">
+              <div class="card-icon">✓</div>
+              <div>
+                <div class="card-title">Pain ajouté</div>
+                <div class="card-subtitle">Par Marie · Il y a 2 min</div>
+              </div>
+            </div>
+            <div class="floating-card card-2">
+              <div class="card-icon">🔔</div>
+              <div>
+                <div class="card-title">Rappel courses</div>
+                <div class="card-subtitle">Demain à 18h</div>
               </div>
             </div>
           </div>
@@ -91,85 +86,88 @@
   </div>
 </section>
 
-<!-- Trust Bar -->
-<section class="trust-bar py-3 bg-white border-bottom">
+<!-- Stats Bar -->
+<section class="stats-bar">
   <div class="container">
-    <div class="row align-items-center justify-content-center text-center">
-      <div class="col-auto">
-        <i class="fas fa-shield-alt text-success me-2"></i>
-        <small class="text-muted"><strong>100% sécurisé</strong></small>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">30min</div>
+        <div class="stat-label">gagnées/semaine</div>
       </div>
-      <div class="col-auto">
-        <span class="text-muted mx-2">•</span>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-number">500+</div>
+        <div class="stat-label">utilisateurs actifs</div>
       </div>
-      <div class="col-auto">
-        <i class="fas fa-credit-card text-success me-2"></i>
-        <small class="text-muted"><strong>Sans CB</strong> pour l'essai</small>
-      </div>
-      <div class="col-auto">
-        <span class="text-muted mx-2">•</span>
-      </div>
-      <div class="col-auto">
-        <i class="fas fa-times-circle text-success me-2"></i>
-        <small class="text-muted"><strong>Sans engagement</strong></small>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-number">0€</div>
+        <div class="stat-label">pendant 3 mois</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Subscription Section - CTA Principal -->
-<section class="subscription text-center py-5 bg-light">
+<!-- Pricing Section Moderne -->
+<section class="pricing-modern">
   <div class="container">
-    <div class="pricing-box mx-auto">
-      <div class="urgent-badge">
-        <i class="fas fa-fire me-2"></i>
-        Offre limitée
+    <div class="pricing-container">
+      <div class="pricing-header">
+        <span class="pricing-tag">🎁 Offre de lancement</span>
+        <h2>Commencez gratuitement</h2>
+        <p>Profitez de 3 mois gratuits, puis seulement 1€/mois</p>
       </div>
       
-      <h2 class="mb-3">Profitez de 3 mois entièrement gratuits 🎁</h2>
-      <p class="lead mb-4">
-        Testez toutes les fonctionnalités sans risque. Aucune carte bancaire requise.
-      </p>
-      
-      <div class="price-comparison mb-4">
-        <div class="price-old">
-          <span class="crossed">5€</span>
+      <div class="pricing-card-modern">
+        <div class="pricing-main">
+          <div class="price-display">
+            <span class="price-currency">0€</span>
+            <div class="price-details">
+              <span class="price-period">pendant 3 mois</span>
+              <span class="price-then">puis 1€/mois</span>
+            </div>
+          </div>
+          
+          <button id="checkout-button" class="btn-cta-big">
+            <span>Commencer maintenant</span>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          
+          <div class="pricing-guarantee">
+            ✓ Sans engagement · Résiliable en 1 clic
+          </div>
         </div>
-        <div class="price-new">
-          <span class="amount">0€</span>
-          <span class="period">pendant 3 mois</span>
-        </div>
-      </div>
-      
-      <div class="price-after mb-4">
-        Puis seulement <strong class="text-warning fs-4">1€/mois</strong>
-        <br>
-        <small class="text-muted">Résiliable à tout moment en un clic</small>
-      </div>
-      
-      <button id="checkout-button" class="btn btn-warning btn-lg shadow px-5 py-3">
-        <i class="fas fa-crown me-2"></i>
-        S'abonner maintenant
-        <i class="fas fa-arrow-right ms-2"></i>
-      </button>
-      
-      <div class="features-checklist mt-4">
-        <div class="row g-2">
-          <div class="col-6">
-            <i class="fas fa-check text-success me-2"></i>
-            <small>Listes illimitées</small>
+        
+        <div class="pricing-features">
+          <div class="feature-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
+            </svg>
+            <span>Listes illimitées</span>
           </div>
-          <div class="col-6">
-            <i class="fas fa-check text-success me-2"></i>
-            <small>Partage familial</small>
+          <div class="feature-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
+            </svg>
+            <span>Partage famille illimité</span>
           </div>
-          <div class="col-6">
-            <i class="fas fa-check text-success me-2"></i>
-            <small>Rappels automatiques</small>
+          <div class="feature-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
+            </svg>
+            <span>Synchronisation temps réel</span>
           </div>
-          <div class="col-6">
-            <i class="fas fa-check text-success me-2"></i>
-            <small>Sync temps réel</small>
+          <div class="feature-item">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
+            </svg>
+            <span>Rappels intelligents</span>
           </div>
         </div>
       </div>
@@ -202,240 +200,130 @@
   });
 </script>
 
-<!-- How it Works -->
-<section class="how-it-works py-5 bg-white" id="features">
+<!-- Features Moderne avec Bento Grid -->
+<section class="features-bento">
   <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="display-5 fw-bold mb-3">Simple comme bonjour</h2>
-      <p class="lead text-muted">En 3 étapes, vous êtes prêt à gagner du temps</p>
+    <div class="section-header-modern">
+      <h2>Tout ce dont vous avez besoin</h2>
+      <p>Simple, rapide, efficace</p>
     </div>
     
-    <div class="row g-4 align-items-center">
-      <div class="col-md-4 text-center">
-        <div class="step-card">
-          <div class="step-number">1</div>
-          <div class="step-icon-wrapper">
-            <i class="fas fa-user-plus"></i>
+    <div class="bento-grid">
+      <div class="bento-card bento-large">
+        <div class="bento-content">
+          <div class="bento-icon">⚡</div>
+          <h3>Créez en 2 minutes</h3>
+          <p>Une interface ultra-rapide pour créer vos listes sans friction. Réutilisez vos anciennes listes en 1 clic.</p>
+        </div>
+        <div class="bento-visual">
+          <div class="quick-add-demo">
+            <div class="demo-input">+ Ajouter un produit</div>
+            <div class="demo-items">
+              <div class="demo-item">Pain</div>
+              <div class="demo-item">Lait</div>
+              <div class="demo-item">Œufs</div>
+            </div>
           </div>
-          <h4 class="mt-3 mb-2">Créez votre compte</h4>
-          <p class="text-muted">En 30 secondes, sans carte bancaire</p>
         </div>
       </div>
       
-      <div class="col-md-4 text-center">
-        <div class="step-card featured-step">
-          <div class="step-number">2</div>
-          <div class="step-icon-wrapper">
-            <i class="fas fa-list-check"></i>
+      <div class="bento-card">
+        <div class="bento-icon">👥</div>
+        <h3>Partagez en famille</h3>
+        <p>Votre conjoint ajoute du lait ? Vous le voyez instantanément. Plus de doublons.</p>
+      </div>
+      
+      <div class="bento-card">
+        <div class="bento-icon">🔔</div>
+        <h3>Rappels auto</h3>
+        <p>Ne ratez plus jamais vos courses. Recevez un rappel avant d'aller au magasin.</p>
+      </div>
+      
+      <div class="bento-card bento-medium">
+        <div class="bento-icon">📱</div>
+        <h3>Accessible partout</h3>
+        <p>Sur votre téléphone, tablette ou ordinateur. Toujours synchronisé.</p>
+      </div>
+      
+      <div class="bento-card bento-medium">
+        <div class="bento-icon">🎯</div>
+        <h3>Zéro apprentissage</h3>
+        <p>Interface intuitive. Vous êtes opérationnel en 30 secondes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials Moderne -->
+<section class="testimonials-modern">
+  <div class="container">
+    <div class="section-header-modern">
+      <h2>Ils ne peuvent plus s'en passer</h2>
+      <p>Rejoignez des centaines d'utilisateurs satisfaits</p>
+    </div>
+    
+    <div class="testimonials-grid">
+      <div class="testimonial-card-modern">
+        <div class="testimonial-header">
+          <div class="testimonial-avatar">S</div>
+          <div>
+            <div class="testimonial-name">Sophie Martin</div>
+            <div class="testimonial-role">Maman de 2 enfants</div>
           </div>
-          <h4 class="mt-3 mb-2">Créez votre liste</h4>
-          <p class="text-muted">Ajoutez vos produits en quelques clics</p>
+          <div class="testimonial-rating">★★★★★</div>
         </div>
+        <p class="testimonial-text">
+          "Je gagne au moins 30 minutes par semaine. Plus besoin de retourner au magasin parce que j'ai oublié quelque chose. C'est devenu indispensable."
+        </p>
       </div>
       
-      <div class="col-md-4 text-center">
-        <div class="step-card">
-          <div class="step-number">3</div>
-          <div class="step-icon-wrapper">
-            <i class="fas fa-shopping-cart"></i>
+      <div class="testimonial-card-modern">
+        <div class="testimonial-header">
+          <div class="testimonial-avatar">J</div>
+          <div>
+            <div class="testimonial-name">Julien Dubois</div>
+            <div class="testimonial-role">Étudiant</div>
           </div>
-          <h4 class="mt-3 mb-2">Faites vos courses</h4>
-          <p class="text-muted">Plus rapide, sans oubli, sans stress</p>
+          <div class="testimonial-rating">★★★★★</div>
         </div>
+        <p class="testimonial-text">
+          "Le partage avec ma copine est génial. On ajoute chacun ce dont on a besoin, plus de doublons ni d'oublis. Simple et efficace."
+        </p>
+      </div>
+      
+      <div class="testimonial-card-modern">
+        <div class="testimonial-header">
+          <div class="testimonial-avatar">M</div>
+          <div>
+            <div class="testimonial-name">Marie Lefèvre</div>
+            <div class="testimonial-role">Professeure</div>
+          </div>
+          <div class="testimonial-rating">★★★★★</div>
+        </div>
+        <p class="testimonial-text">
+          "Enfin une app qui fait ce qu'elle promet sans complications. Interface claire, rapide, exactement ce qu'il me fallait."
+        </p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Features Section -->
-<section class="features py-5 bg-light">
+<!-- CTA Final -->
+<section class="final-cta-modern">
   <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="display-5 fw-bold mb-3">Tout ce dont vous avez besoin</h2>
-      <p class="lead text-muted">Des fonctionnalités pensées pour votre quotidien</p>
-    </div>
-    
-    <div class="row g-4">
-      <div class="col-md-4 text-center">
-        <div class="feature-card h-100">
-          <i class="fas fa-bolt fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Ultra rapide</h4>
-          <p class="text-muted">
-            Créez une liste complète en moins de 2 minutes. 
-            Réutilisez vos listes favorites d'une semaine à l'autre.
-          </p>
-        </div>
-      </div>
-      
-      <div class="col-md-4 text-center">
-        <div class="feature-card featured-card h-100">
-          <div class="popular-badge">⭐ Le plus populaire</div>
-          <i class="fas fa-users fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Partage familial</h4>
-          <p class="text-muted">
-            Votre conjoint ajoute du lait ? Vous le voyez instantanément. 
-            Fini les doublons et les oublis.
-          </p>
-        </div>
-      </div>
-      
-      <div class="col-md-4 text-center">
-        <div class="feature-card h-100">
-          <i class="fas fa-bell fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Rappels intelligents</h4>
-          <p class="text-muted">
-            Recevez une notification avant d'aller au magasin. 
-            Ne ratez plus jamais vos courses essentielles.
-          </p>
-        </div>
+    <div class="cta-content">
+      <h2>Prêt à simplifier vos courses ?</h2>
+      <p>Rejoignez des centaines de familles qui gagnent du temps chaque semaine</p>
+      <a href="{% url 'signup' %}" class="btn-cta-final">
+        <span>Commencer gratuitement</span>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </a>
+      <div class="cta-meta">
+        Sans CB · 3 mois gratuits · Sans engagement
       </div>
     </div>
-    
-    <div class="row g-4 mt-2">
-      <div class="col-md-4 text-center">
-        <div class="feature-card h-100">
-          <i class="fas fa-sync fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Synchronisation</h4>
-          <p class="text-muted">
-            Accédez à vos listes depuis n'importe quel appareil. 
-            Toujours à jour, partout.
-          </p>
-        </div>
-      </div>
-      
-      <div class="col-md-4 text-center">
-        <div class="feature-card h-100">
-          <i class="fas fa-history fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Historique</h4>
-          <p class="text-muted">
-            Retrouvez vos anciennes listes et réutilisez-les instantanément.
-            Plus besoin de tout recréer.
-          </p>
-        </div>
-      </div>
-      
-      <div class="col-md-4 text-center">
-        <div class="feature-card h-100">
-          <i class="fas fa-mobile-alt fa-3x text-warning mb-3"></i>
-          <h4 class="mb-3">Multi-plateformes</h4>
-          <p class="text-muted">
-            Utilisez PanierFacile sur ordinateur, tablette ou smartphone. 
-            Interface simple et intuitive.
-          </p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Testimonials Section -->
-<section class="testimonials py-5 bg-white">
-  <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="display-5 fw-bold mb-3">Ils ont transformé leurs courses</h2>
-      <p class="lead text-muted">Rejoignez des centaines d'utilisateurs satisfaits</p>
-    </div>
-    
-    <div class="row justify-content-center g-4">
-      <div class="col-md-4">
-        <blockquote class="blockquote bg-white p-4 rounded shadow-sm h-100">
-          <div class="stars mb-3">★★★★★</div>
-          <p class="mb-3">
-            «&nbsp;Je gagne facilement 30 minutes par semaine grâce à PanierFacile. 
-            Plus besoin de retourner au magasin car j'ai oublié quelque chose&nbsp;!&nbsp;»
-          </p>
-          <footer class="blockquote-footer mt-3">
-            <strong>Sophie</strong>, maman de 2 enfants
-          </footer>
-        </blockquote>
-      </div>
-      
-      <div class="col-md-4">
-        <blockquote class="blockquote bg-white p-4 rounded shadow-sm h-100">
-          <div class="stars mb-3">★★★★★</div>
-          <p class="mb-3">
-            «&nbsp;Le partage en temps réel avec ma copine est génial. 
-            On ne se marche plus sur les pieds, chacun ajoute ce dont on a besoin.&nbsp;»
-          </p>
-          <footer class="blockquote-footer mt-3">
-            <strong>Julien</strong>, étudiant
-          </footer>
-        </blockquote>
-      </div>
-      
-      <div class="col-md-4">
-        <blockquote class="blockquote bg-white p-4 rounded shadow-sm h-100">
-          <div class="stars mb-3">★★★★★</div>
-          <p class="mb-3">
-            «&nbsp;Enfin une app simple qui fait ce qu'elle promet. 
-            Pas de fonctionnalités inutiles, juste l'essentiel. J'adore&nbsp;!&nbsp;»
-          </p>
-          <footer class="blockquote-footer mt-3">
-            <strong>Marie</strong>, professeure
-          </footer>
-        </blockquote>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Social Proof -->
-<section class="social-proof py-4 bg-light">
-  <div class="container">
-    <div class="row text-center g-4">
-      <div class="col-md-3">
-        <div class="stat-box">
-          <i class="fas fa-users fa-2x text-warning mb-2"></i>
-          <h3 class="mb-0">500+</h3>
-          <p class="text-muted mb-0">Utilisateurs actifs</p>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-box">
-          <i class="fas fa-list fa-2x text-warning mb-2"></i>
-          <h3 class="mb-0">5000+</h3>
-          <p class="text-muted mb-0">Listes créées</p>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-box">
-          <i class="fas fa-clock fa-2x text-warning mb-2"></i>
-          <h3 class="mb-0">30min</h3>
-          <p class="text-muted mb-0">Gagnées par semaine</p>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-box">
-          <i class="fas fa-star fa-2x text-warning mb-2"></i>
-          <h3 class="mb-0">4.8/5</h3>
-          <p class="text-muted mb-0">Satisfaction client</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Final CTA -->
-<section class="final-cta py-5 text-white text-center">
-  <div class="container">
-    <h2 class="display-4 fw-bold mb-3">Prêt à simplifier vos courses&nbsp;?</h2>
-    <p class="lead mb-4">
-      Rejoignez-nous gratuitement et découvrez comment PanierFacile<br>
-      peut vous faire gagner du temps chaque semaine.
-    </p>
-    <a href="{% url 'signup' %}" class="btn btn-warning btn-lg px-5 py-3 shadow-lg">
-      <i class="fas fa-rocket me-2"></i>
-      Commencer gratuitement - 3 mois offerts
-    </a>
-    <p class="mt-4 mb-0 opacity-75">
-      <small>
-        <i class="fas fa-check me-2"></i>Sans carte bancaire
-        <span class="mx-3">•</span>
-        <i class="fas fa-check me-2"></i>Accès immédiat
-        <span class="mx-3">•</span>
-        <i class="fas fa-check me-2"></i>Sans engagement
-      </small>
-    </p>
   </div>
 </section>
 
