@@ -1,174 +1,160 @@
 {% extends "base.html" %}
-{% block title %}PanierFacile - L'app qui transforme vos courses{% endblock %}
+{% block title %}PanierFacile - Vos courses, simplifiées{% endblock %}
 
 {% block content %}
 
-<!-- Hero Section Ultra Moderne -->
-<section class="hero-modern">
-  <div class="hero-gradient"></div>
-  <div class="hero-shapes">
-    <div class="shape shape-1"></div>
-    <div class="shape shape-2"></div>
-    <div class="shape shape-3"></div>
-  </div>
-  
+<!-- Hero Section -->
+<section class="hero-tarss">
   <div class="container">
-    <div class="row align-items-center min-vh-100 py-5">
-      <div class="col-lg-6 mb-5 mb-lg-0">
-        <div class="hero-content">
-          <div class="hero-badge">
-            <span class="pulse-dot"></span>
-            <span>3 mois gratuits · Aucune CB requise</span>
-          </div>
-          
-          <h1 class="hero-title">
-            Vos courses,<br>
-            <span class="gradient-text">sans la galère</span>
-          </h1>
-          
-          <p class="hero-subtitle">
-            Créez vos listes en 30 secondes. Partagez avec votre famille en temps réel. 
-            Ne ratez plus jamais un produit essentiel.
-          </p>
-          
-          <div class="hero-cta">
-            <a href="{% url 'signup' %}" class="btn-primary-modern">
-              Essayer gratuitement
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </a>
-            <a href="{% url 'login' %}" class="btn-secondary-modern">
-              J'ai déjà un compte
-            </a>
-          </div>
-          
-          <div class="hero-social-proof">
-            <div class="avatars-group">
-              <div class="avatar">S</div>
-              <div class="avatar">M</div>
-              <div class="avatar">J</div>
-              <div class="avatar">A</div>
-              <div class="avatar-count">+500</div>
-            </div>
-            <div class="social-text">
-              <div class="rating">
-                ★★★★★ <span>4.9/5</span>
-              </div>
-              <p>Utilisé par 500+ familles</p>
-            </div>
-          </div>
-        </div>
+    <div class="hero-content">
+      <div class="hero-tag">
+        <span class="status-dot"></span>
+        <span>3 mois gratuits</span>
       </div>
       
-      <div class="col-lg-6">
-        <div class="hero-visual">
-          <div class="phone-showcase">
-            <img src="data:image/svg+xml,%3Csvg width='300' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='300' height='600' rx='30' fill='%23fff'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' font-family='system-ui' font-size='16' fill='%23a5662a'%3EInterface PanierFacile%3C/text%3E%3C/svg%3E" alt="App Preview" class="phone-screen-img">
-            <div class="floating-card card-1">
-              <div class="card-icon">✓</div>
-              <div>
-                <div class="card-title">Pain ajouté</div>
-                <div class="card-subtitle">Par Marie · Il y a 2 min</div>
-              </div>
-            </div>
-            <div class="floating-card card-2">
-              <div class="card-icon">🔔</div>
-              <div>
-                <div class="card-title">Rappel courses</div>
-                <div class="card-subtitle">Demain à 18h</div>
-              </div>
-            </div>
-          </div>
+      <h1 class="hero-heading">
+        Gérez vos courses<br>
+        <span class="gradient-text">en 2 minutes</span>
+      </h1>
+      
+      <p class="hero-description">
+        Créez vos listes, partagez avec votre famille, ne ratez plus rien.<br>
+        Simple, rapide, efficace.
+      </p>
+      
+      <div class="hero-actions">
+        <a href="{% url 'signup' %}" class="btn-hero-primary">
+          Commencer gratuitement
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8h10m0 0l-3-3m3 3l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </a>
+        <a href="{% url 'login' %}" class="btn-hero-secondary">
+          Se connecter
+        </a>
+      </div>
+      
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">500+</span>
+          <span class="stat-label">Utilisateurs</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+          <span class="stat-value">4.9/5</span>
+          <span class="stat-label">Satisfaction</span>
+        </div>
+        <div class="stat-sep"></div>
+        <div class="stat">
+          <span class="stat-value">30min</span>
+          <span class="stat-label">Gagnées/semaine</span>
         </div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- Stats Bar -->
-<section class="stats-bar">
-  <div class="container">
-    <div class="stats-grid">
-      <div class="stat-item">
-        <div class="stat-number">30min</div>
-        <div class="stat-label">gagnées/semaine</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <div class="stat-number">500+</div>
-        <div class="stat-label">utilisateurs actifs</div>
-      </div>
-      <div class="stat-divider"></div>
-      <div class="stat-item">
-        <div class="stat-number">0€</div>
-        <div class="stat-label">pendant 3 mois</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Pricing Section Moderne -->
-<section class="pricing-modern">
-  <div class="container">
-    <div class="pricing-container">
-      <div class="pricing-header">
-        <span class="pricing-tag">🎁 Offre de lancement</span>
-        <h2>Commencez gratuitement</h2>
-        <p>Profitez de 3 mois gratuits, puis seulement 1€/mois</p>
-      </div>
-      
-      <div class="pricing-card-modern">
-        <div class="pricing-main">
-          <div class="price-display">
-            <span class="price-currency">0€</span>
-            <div class="price-details">
-              <span class="price-period">pendant 3 mois</span>
-              <span class="price-then">puis 1€/mois</span>
-            </div>
+    
+    <div class="hero-visual">
+      <div class="visual-container">
+        <div class="visual-card card-main">
+          <div class="card-header">
+            <h4>Ma liste de courses</h4>
+            <span class="card-date">Aujourd'hui</span>
           </div>
-          
-          <button id="checkout-button" class="btn-cta-big">
-            <span>Commencer maintenant</span>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </button>
-          
-          <div class="pricing-guarantee">
-            ✓ Sans engagement · Résiliable en 1 clic
+          <div class="card-list">
+            <div class="list-item done">
+              <div class="item-check"></div>
+              <span>Pain complet</span>
+            </div>
+            <div class="list-item done">
+              <div class="item-check"></div>
+              <span>Lait bio</span>
+            </div>
+            <div class="list-item">
+              <div class="item-check"></div>
+              <span>Œufs x6</span>
+            </div>
+            <div class="list-item">
+              <div class="item-check"></div>
+              <span>Tomates</span>
+            </div>
           </div>
         </div>
         
-        <div class="pricing-features">
-          <div class="feature-item">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
-            </svg>
-            <span>Listes illimitées</span>
+        <div class="visual-card card-floating card-1">
+          <div class="notification-icon">✓</div>
+          <div>
+            <div class="notif-title">Marie a ajouté du lait</div>
+            <div class="notif-time">Il y a 2 min</div>
           </div>
-          <div class="feature-item">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
-            </svg>
-            <span>Partage famille illimité</span>
+        </div>
+        
+        <div class="visual-card card-floating card-2">
+          <div class="notification-icon alert">🔔</div>
+          <div>
+            <div class="notif-title">Rappel courses</div>
+            <div class="notif-time">Demain 18h</div>
           </div>
-          <div class="feature-item">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
-            </svg>
-            <span>Synchronisation temps réel</span>
-          </div>
-          <div class="feature-item">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M7 10l2 2 4-4" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="10" cy="10" r="8" stroke="#10b981" stroke-width="2"/>
-            </svg>
-            <span>Rappels intelligents</span>
-          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing Section -->
+<section class="pricing-section">
+  <div class="container-narrow">
+    <div class="pricing-card">
+      <div class="pricing-badge">Offre de lancement 🎉</div>
+      
+      <h2 class="pricing-title">Essayez gratuitement</h2>
+      <p class="pricing-subtitle">3 mois offerts, puis 1€/mois seulement</p>
+      
+      <div class="pricing-display">
+        <div class="price-main">
+          <span class="price-amount">0€</span>
+          <span class="price-period">/3 mois</span>
+        </div>
+        <div class="price-after">puis 1€/mois</div>
+      </div>
+      
+      <button id="checkout-button" class="btn-pricing">
+        Commencer maintenant
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10m0 0l-3-3m3 3l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+      
+      <div class="pricing-guarantee">
+        Sans engagement · Résiliable en 1 clic
+      </div>
+      
+      <div class="pricing-features">
+        <div class="feature">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="8" stroke="#10b981" stroke-width="1.5"/>
+            <path d="M6 9l2 2 4-4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Listes illimitées</span>
+        </div>
+        <div class="feature">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="8" stroke="#10b981" stroke-width="1.5"/>
+            <path d="M6 9l2 2 4-4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Partage famille</span>
+        </div>
+        <div class="feature">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="8" stroke="#10b981" stroke-width="1.5"/>
+            <path d="M6 9l2 2 4-4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Synchronisation temps réel</span>
+        </div>
+        <div class="feature">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <circle cx="9" cy="9" r="8" stroke="#10b981" stroke-width="1.5"/>
+            <path d="M6 9l2 2 4-4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>Rappels automatiques</span>
         </div>
       </div>
     </div>
@@ -200,129 +186,122 @@
   });
 </script>
 
-<!-- Features Moderne avec Bento Grid -->
-<section class="features-bento">
+<!-- Features Grid -->
+<section class="features-grid">
   <div class="container">
-    <div class="section-header-modern">
+    <div class="section-title">
       <h2>Tout ce dont vous avez besoin</h2>
-      <p>Simple, rapide, efficace</p>
+      <p>Des fonctionnalités pensées pour simplifier vos courses</p>
     </div>
     
-    <div class="bento-grid">
-      <div class="bento-card bento-large">
-        <div class="bento-content">
-          <div class="bento-icon">⚡</div>
-          <h3>Créez en 2 minutes</h3>
-          <p>Une interface ultra-rapide pour créer vos listes sans friction. Réutilisez vos anciennes listes en 1 clic.</p>
-        </div>
-        <div class="bento-visual">
-          <div class="quick-add-demo">
-            <div class="demo-input">+ Ajouter un produit</div>
-            <div class="demo-items">
-              <div class="demo-item">Pain</div>
-              <div class="demo-item">Lait</div>
-              <div class="demo-item">Œufs</div>
-            </div>
-          </div>
-        </div>
+    <div class="grid">
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Ultra rapide</h3>
+        <p>Créez une liste complète en moins de 2 minutes. Interface simple et intuitive.</p>
       </div>
       
-      <div class="bento-card">
-        <div class="bento-icon">👥</div>
-        <h3>Partagez en famille</h3>
-        <p>Votre conjoint ajoute du lait ? Vous le voyez instantanément. Plus de doublons.</p>
+      <div class="feature-card featured">
+        <div class="feature-badge">Populaire</div>
+        <div class="feature-icon">👥</div>
+        <h3>Partage famille</h3>
+        <p>Partagez vos listes en temps réel. Chacun peut ajouter ce dont il a besoin.</p>
       </div>
       
-      <div class="bento-card">
-        <div class="bento-icon">🔔</div>
+      <div class="feature-card">
+        <div class="feature-icon">🔔</div>
         <h3>Rappels auto</h3>
-        <p>Ne ratez plus jamais vos courses. Recevez un rappel avant d'aller au magasin.</p>
+        <p>Ne ratez plus jamais vos courses. Notifications intelligentes au bon moment.</p>
       </div>
       
-      <div class="bento-card bento-medium">
-        <div class="bento-icon">📱</div>
-        <h3>Accessible partout</h3>
-        <p>Sur votre téléphone, tablette ou ordinateur. Toujours synchronisé.</p>
+      <div class="feature-card">
+        <div class="feature-icon">📱</div>
+        <h3>Multi-appareils</h3>
+        <p>Accessible sur téléphone, tablette et ordinateur. Toujours synchronisé.</p>
       </div>
       
-      <div class="bento-card bento-medium">
-        <div class="bento-icon">🎯</div>
-        <h3>Zéro apprentissage</h3>
-        <p>Interface intuitive. Vous êtes opérationnel en 30 secondes.</p>
+      <div class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <h3>Historique</h3>
+        <p>Retrouvez et réutilisez vos anciennes listes en un seul clic.</p>
+      </div>
+      
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Zéro friction</h3>
+        <p>Pas besoin de tutoriel. Vous êtes opérationnel en 30 secondes.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- Testimonials Moderne -->
-<section class="testimonials-modern">
+<!-- Testimonials -->
+<section class="testimonials-section">
   <div class="container">
-    <div class="section-header-modern">
-      <h2>Ils ne peuvent plus s'en passer</h2>
-      <p>Rejoignez des centaines d'utilisateurs satisfaits</p>
+    <div class="section-title">
+      <h2>Ce qu'ils en disent</h2>
+      <p>Des centaines d'utilisateurs satisfaits</p>
     </div>
     
     <div class="testimonials-grid">
-      <div class="testimonial-card-modern">
-        <div class="testimonial-header">
-          <div class="testimonial-avatar">S</div>
-          <div>
-            <div class="testimonial-name">Sophie Martin</div>
-            <div class="testimonial-role">Maman de 2 enfants</div>
-          </div>
-          <div class="testimonial-rating">★★★★★</div>
+      <div class="testimonial">
+        <div class="testimonial-content">
+          <p>"Je gagne au moins 30 minutes par semaine. Plus besoin de retourner au magasin parce que j'ai oublié quelque chose. Indispensable."</p>
         </div>
-        <p class="testimonial-text">
-          "Je gagne au moins 30 minutes par semaine. Plus besoin de retourner au magasin parce que j'ai oublié quelque chose. C'est devenu indispensable."
-        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar">S</div>
+          <div>
+            <div class="author-name">Sophie Martin</div>
+            <div class="author-role">Maman de 2 enfants</div>
+          </div>
+          <div class="testimonial-stars">★★★★★</div>
+        </div>
       </div>
       
-      <div class="testimonial-card-modern">
-        <div class="testimonial-header">
-          <div class="testimonial-avatar">J</div>
-          <div>
-            <div class="testimonial-name">Julien Dubois</div>
-            <div class="testimonial-role">Étudiant</div>
-          </div>
-          <div class="testimonial-rating">★★★★★</div>
+      <div class="testimonial">
+        <div class="testimonial-content">
+          <p>"Le partage en temps réel avec ma copine est génial. On ajoute chacun ce dont on a besoin, plus d'oublis ni de doublons."</p>
         </div>
-        <p class="testimonial-text">
-          "Le partage avec ma copine est génial. On ajoute chacun ce dont on a besoin, plus de doublons ni d'oublis. Simple et efficace."
-        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar">J</div>
+          <div>
+            <div class="author-name">Julien Dubois</div>
+            <div class="author-role">Étudiant</div>
+          </div>
+          <div class="testimonial-stars">★★★★★</div>
+        </div>
       </div>
       
-      <div class="testimonial-card-modern">
-        <div class="testimonial-header">
-          <div class="testimonial-avatar">M</div>
-          <div>
-            <div class="testimonial-name">Marie Lefèvre</div>
-            <div class="testimonial-role">Professeure</div>
-          </div>
-          <div class="testimonial-rating">★★★★★</div>
+      <div class="testimonial">
+        <div class="testimonial-content">
+          <p>"Enfin une app simple qui fait ce qu'elle promet. Pas de fonctionnalités inutiles, juste l'essentiel. J'adore."</p>
         </div>
-        <p class="testimonial-text">
-          "Enfin une app qui fait ce qu'elle promet sans complications. Interface claire, rapide, exactement ce qu'il me fallait."
-        </p>
+        <div class="testimonial-author">
+          <div class="author-avatar">M</div>
+          <div>
+            <div class="author-name">Marie Lefèvre</div>
+            <div class="author-role">Professeure</div>
+          </div>
+          <div class="testimonial-stars">★★★★★</div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- CTA Final -->
-<section class="final-cta-modern">
-  <div class="container">
+<!-- Final CTA -->
+<section class="final-cta">
+  <div class="container-narrow">
     <div class="cta-content">
       <h2>Prêt à simplifier vos courses ?</h2>
       <p>Rejoignez des centaines de familles qui gagnent du temps chaque semaine</p>
       <a href="{% url 'signup' %}" class="btn-cta-final">
-        <span>Commencer gratuitement</span>
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        Commencer gratuitement
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8h10m0 0l-3-3m3 3l-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
       </a>
-      <div class="cta-meta">
-        Sans CB · 3 mois gratuits · Sans engagement
-      </div>
+      <div class="cta-note">Sans carte bancaire · 3 mois offerts</div>
     </div>
   </div>
 </section>
