@@ -1218,6 +1218,21 @@ body {
   cursor: pointer;
 }
 
+#loading {
+    display: none; 
+}
+
+#loading.active {
+  display: flex;            
+  justify-content: center;  
+  align-items: center;
+  color: #5a3d1f;           
+  font-style: italic;
+  margin: 10px 0;
+}
+
+
+
 /* ============================
    Responsive
 ============================ */
