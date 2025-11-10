@@ -2350,7 +2350,12 @@ body {
    Final CTA - Modern
 ============================ */
 
+
 .final-cta-modern {
+  min-height: 100vh; /* pleine page */
+  display: flex;
+  align-items: center; /* centré verticalement */
+  justify-content: center; /* centré horizontalement */
   padding: 100px 0;
   background: white;
 }
@@ -2361,6 +2366,8 @@ body {
   border-radius: 32px;
   padding: 80px 48px;
   overflow: hidden;
+  max-width: 900px;
+  width: 100%;
 }
 
 .cta-background {
@@ -2462,7 +2469,52 @@ body {
   color: rgba(255, 255, 255, 0.8);
   font-weight: 500;
 }
+/* ============================
+   Responsive Final CTA
+============================ */
 
+@media (max-width: 768px) {
+  .cta-box-modern {
+    padding: 60px 24px;
+  }
+
+  .cta-content-modern h2 {
+    font-size: 36px;
+  }
+
+  .cta-content-modern p {
+    font-size: 16px;
+  }
+
+  .btn-cta-modern {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+
+  .cta-benefits {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cta-content-modern h2 {
+    font-size: 32px;
+  }
+
+  .cta-content-modern p {
+    font-size: 15px;
+  }
+
+  .btn-cta-modern {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cta-benefits {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
 /* ============================
    Responsive Design
 ============================ */
