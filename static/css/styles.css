@@ -1658,15 +1658,21 @@ body {
   padding: 80px 0;
   background: white;
   border-bottom: 1px solid var(--border);
+  overflow-x: auto; /* scroll horizontal si nécessaire */
+  scroll-behavior: smooth;
 }
 
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex; /* ligne horizontale */
   gap: 32px;
+  padding: 0 24px;
+  flex-wrap: nowrap; /* empêcher le wrapping */
+  scroll-snap-type: x mandatory; /* snap des cartes */
 }
 
 .stat-card {
+  flex: 0 0 220px; /* largeur fixe par carte */
+  scroll-snap-align: start;
   text-align: center;
   padding: 24px;
   border-radius: 16px;
@@ -1696,12 +1702,16 @@ body {
   font-weight: 500;
 }
 
+
 /* ============================
    Pricing Section - Modern
 ============================ */
 
 .pricing-modern {
-  padding: 100px 0;
+ min-height: 100vh; /* pleine page */
+ display: flex;
+  flex-direction: column;
+  justify-content: center; /* centre verticalement le contenu */
   background: linear-gradient(180deg, white 0%, var(--bg-soft) 100%);
 }
 
@@ -2278,15 +2288,16 @@ body {
 ============================ */
 
 .faq-section {
-  padding: 100px 0;
+  min-height: 100vh; /* pleine page */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--bg-soft);
 }
 
 .faq-grid {
-  display: grid;
-  gap: 16px;
   max-width: 800px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .faq-item {
