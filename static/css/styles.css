@@ -2470,6 +2470,20 @@ body {
   font-weight: 500;
 }
 /* ============================
+   Unifier la largeur des sections
+============================ */
+.hero-modern .container-modern,
+.stats-section .container-modern,
+.pricing-modern .container-modern,
+.faq-section .container-modern,
+.final-cta-modern .container-modern {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px; /* déjà dans ta classe .container-modern */
+  box-sizing: border-box;
+}
+/* ============================
    Responsive Final CTA
 ============================ */
 
