@@ -64,6 +64,7 @@ from django.urls import path, include
 from django.contrib.auth.views import LoginView
 import authentication.views 
 import panier.views
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -88,4 +89,6 @@ urlpatterns = [
 
     # Route home directe pour faciliter l'accès
     path('home/', panier.views.home, name='home'),
+    path('mentions-legales/', views.mentions_legales, name='mentions_legales'),
+    path('rgpd/', views.rgpd, name='rgpd'),
 ]
