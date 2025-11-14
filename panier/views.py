@@ -327,7 +327,7 @@ def success(request):
 
     customer_email = session.customer_email
     subscription_id = session.subscription
-    amount_total = session.amount_total / 100  # en euros
+    amount_total = session.amount_total / 100  
 
     context = {
         "customer_email": customer_email,
