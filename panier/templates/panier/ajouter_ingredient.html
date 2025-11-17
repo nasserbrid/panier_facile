@@ -4,6 +4,37 @@
 {% block content %}
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
   <div class="card shadow-lg p-4" style="width: 400px; border-radius: 16px; background: #fffbe6;">
+    <h2 class="text-center text-dark mb-2" style="font-weight: bold">Ajouter un ingrédient</h2>
+
+    {% if owner %}
+    <p class="text-center text-muted mb-3">
+      Panier du propriétaire : <strong>{{ owner.username }}</strong>
+    </p>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn btn-success w-100 mt-3">
+        <i class="fas fa-plus-circle"></i> Ajouter
+      </button>
+    </form>
+
+    <p class="text-center mt-3">
+      <a href="{% url 'detail_course' course.id %}" class="text-decoration-none text-warning fw-bold">
+        <i class="fas fa-arrow-left"></i> Retour au détail de la course
+      </a>
+    </p>
+  </div>
+</div>
+{% endblock content %}
+
+{% comment %} {% extends 'base.html' %}
+{% block title %}Ajouter un ingrédient{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="card shadow-lg p-4" style="width: 400px; border-radius: 16px; background: #fffbe6;">
     <h2 class="text-center text-dark mb-4" style="font-weight: bold">Ajouter un ingrédient</h2>
 
     <form method="post">
@@ -21,4 +52,4 @@
     </p>
   </div>
 </div>
-{% endblock content %}
+{% endblock content %} {% endcomment %}

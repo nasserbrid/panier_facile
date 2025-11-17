@@ -55,19 +55,64 @@ def creer_course(request):
 # --- Ajouter un ingrédient à une course ---
 def ajouter_ingredient(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+    user = request.user
+    user_lastname = user.last_name.lower()
+
+    # Déterminer le propriétaire principal du panier familial
+    if course.paniers.exists():
+        owner = course.paniers.first().user  # le user principal du compte
+    else:
+        owner = user  # pas de panier, le user connecté devient le propriétaire
+
+    # Vérifier si l'utilisateur peut ajouter un ingrédient
+    is_owner = owner.id == user.id
+    is_family = any(p.user.last_name.lower() == user_lastname for p in course.paniers.all())
+
+    if not (is_owner or is_family):
+        return render(
+            request,
+            'panier/acces_refuse.html',
+            {"message": "Vous n'avez pas le droit d'ajouter un ingrédient à cette course."},
+            status=403
+        )
 
     if request.method == 'POST':
         new_ingredient = request.POST.get('ingredient')
         if new_ingredient:
+            # Ajouter l'ingrédient dans la course
             if course.ingredient:
                 course.ingredient += f"\n{new_ingredient}"
             else:
                 course.ingredient = new_ingredient
             course.save()
-            messages.success(request, f"Ingrédient '{new_ingredient}' ajouté !")
+
+            messages.success(
+                request,
+                f"Ingrédient '{new_ingredient}' ajouté au panier de {owner.username} !"
+            )
             return redirect('detail_course', course_id=course.id)
 
-    return render(request, 'panier/ajouter_ingredient.html', {'course': course})
+    return render(
+        request,
+        'panier/ajouter_ingredient.html',
+        {'course': course, 'owner': owner}
+    )
+
+# def ajouter_ingredient(request, course_id):
+#     course = get_object_or_404(Course, id=course_id)
+
+#     if request.method == 'POST':
+#         new_ingredient = request.POST.get('ingredient')
+#         if new_ingredient:
+#             if course.ingredient:
+#                 course.ingredient += f"\n{new_ingredient}"
+#             else:
+#                 course.ingredient = new_ingredient
+#             course.save()
+#             messages.success(request, f"Ingrédient '{new_ingredient}' ajouté !")
+#             return redirect('detail_course', course_id=course.id)
+
+#     return render(request, 'panier/ajouter_ingredient.html', {'course': course})
 
 # --- Liste de toutes les courses ---
 def liste_courses(request):
