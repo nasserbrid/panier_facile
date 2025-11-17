@@ -102,15 +102,18 @@ def liste_courses(request):
 # --- Détail d'une course (avec liste des ingrédients) ---
 def detail_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+    user = request.user
+    user_lastname = user.last_name.lower()
 
-    # Vérifier si l'utilisateur connecté a au moins un panier contenant cette course
-    user_lastname = request.user.last_name.lower()
-    authorized = any(
-        panier.user.last_name.lower() == user_lastname
-        for panier in course.paniers.all()
-    )
+    # Liste des users qui ont ce panier
+    panier_users = [p.user for p in course.paniers.all()]
 
-    if not authorized:
+    # Vérifier si le user peut voir / modifier / supprimer
+    is_owner = any(p.user.id == user.id for p in course.paniers.all())
+    is_family = any(p.user.last_name.lower() == user_lastname for p in course.paniers.all())
+
+    # Autorisation pour voir la course
+    if not (is_owner or is_family):
         return render(
             request,
             'panier/acces_refuse.html',
@@ -118,19 +121,42 @@ def detail_course(request, course_id):
             status=403
         )
 
+    # Modifier / supprimer
+    can_edit = is_owner or is_family
+    can_delete = is_owner
+
     ingredients = course.ingredient.splitlines() if course.ingredient else []
 
     return render(
         request,
         'panier/detail_course.html',
-        {'course': course, 'ingredients': ingredients}
+        {
+            'course': course,
+            'ingredients': ingredients,
+            'can_edit': can_edit,
+            'can_delete': can_delete
+        }
     )
+
 
 
 
 # --- Modifier une course ---
 def modifier_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+    user = request.user
+    user_lastname = user.last_name.lower()
+
+    # Vérification permission
+    is_owner = any(p.user.id == user.id for p in course.paniers.all())
+    is_family = any(p.user.last_name.lower() == user_lastname for p in course.paniers.all())
+    if not (is_owner or is_family):
+        return render(
+            request,
+            'panier/acces_refuse.html',
+            {"message": "Vous n'avez pas le droit de modifier cette course."},
+            status=403
+        )
 
     if request.method == 'POST':
         form = CourseForm(request.POST, instance=course)
@@ -143,9 +169,21 @@ def modifier_course(request, course_id):
 
     return render(request, 'panier/modifier_course.html', {'form': form, 'course': course})
 
+
 # --- Supprimer une course ---
 def supprimer_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
+    user = request.user
+
+    # Seul le propriétaire peut supprimer
+    is_owner = any(p.user.id == user.id for p in course.paniers.all())
+    if not is_owner:
+        return render(
+            request,
+            'panier/acces_refuse.html',
+            {"message": "Vous n'avez pas le droit de supprimer cette course."},
+            status=403
+        )
 
     if request.method == 'POST':
         course.delete()
@@ -153,6 +191,7 @@ def supprimer_course(request, course_id):
         return redirect('liste_courses')
 
     return render(request, 'panier/supprimer_course.html', {'course': course})
+
 
 # --- Supprimer un ingrédient d'une course ---
 def supprimer_ingredient(request, course_id, ingredient_index):
@@ -182,7 +221,9 @@ def creer_panier(request):
     if request.method == 'POST':
         form = PanierForm(request.POST)
         if form.is_valid():
-            form.save()
+            panier = form.save(commit=False)
+            panier.user = request.user
+            panier.save()
             messages.success(request, "Panier créé avec succès !")
             return redirect('liste_paniers')
     else:
@@ -237,6 +278,11 @@ def detail_panier(request, panier_id):
 @login_required
 def modifier_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
+    
+    if panier.user != request.user:
+        messages.error(request, "Vous n'êtes pas autorisé à modifier ce panier.")
+        return redirect('liste_paniers')
+    
     if request.method == 'POST':
         form = PanierForm(request.POST, instance=panier)
         if form.is_valid():
@@ -252,6 +298,11 @@ def modifier_panier(request, panier_id):
 @login_required
 def supprimer_panier(request, panier_id):
     panier = get_object_or_404(Panier, id=panier_id)
+    
+    if panier.user != request.user:
+        messages.error(request, "Vous n'êtes pas autorisé à supprimer ce panier.")
+        return redirect('liste_paniers')
+    
     if request.method == 'POST':
         panier.delete()
         messages.success(request, "Panier supprimé avec succès !")

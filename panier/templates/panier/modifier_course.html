@@ -3,10 +3,29 @@
 
 {% block content %}
 <h2>Modifier la course</h2>
+
+{% if can_edit %}
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Enregistrer</button>
+</form>
+{% else %}
+<p class="text-danger">Vous n'avez pas le droit de modifier cette course.</p>
+{% endif %}
+
+<a href="{% url 'detail_course' course.id %}" class="btn btn-link mt-2">Annuler</a>
+{% endblock %}
+
+{% comment %} {% extends "base.html" %}
+{% block title %}Modifier {{ course.titre }}{% endblock %}
+
+{% block content %}
+<h2>Modifier la course</h2>
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Enregistrer</button>
 </form>
 <a href="{% url 'detail_course' course.id %}" class="btn btn-link mt-2">Annuler</a>
-{% endblock %}
+{% endblock %} {% endcomment %}

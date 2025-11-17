@@ -20,12 +20,20 @@ class CourseForm(forms.ModelForm):
 
 
 # Formulaire pour Panier
-
+#On fait en sorte que l'utilisateur connecté soit automatiquement assigné au panier créé
 class PanierForm(forms.ModelForm):
     class Meta:
         model = Panier
-        fields = ['user', 'courses']  
+        fields = ['courses']  
         widgets = {
-            'user': forms.Select(attrs={'class': 'form-control'}),
             'courses': forms.SelectMultiple(attrs={'class': 'form-control'}),
         }
+
+# class PanierForm(forms.ModelForm):
+#     class Meta:
+#         model = Panier
+#         fields = ['user', 'courses']  
+#         widgets = {
+#             'user': forms.Select(attrs={'class': 'form-control'}),
+#             'courses': forms.SelectMultiple(attrs={'class': 'form-control'}),
+#         }
