@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Conditions Générales d'Utilisation{% endblock %}
+
+{% block content %}
+<div class="container mt-5 text-start" style="max-width: 800px; color: black;">
+    <h1>Conditions Générales d'Utilisation (CGU)</h1>
+    <hr>
+
+    <h2>1. Objet</h2>
+    <p>
+        Les présentes conditions générales d'utilisation régissent l'accès et l'utilisation 
+        du site PanierFacile. En utilisant notre site, vous acceptez ces conditions.
+    </p>
+
+    <h2>2. Accès au site</h2>
+    <p>
+        L'accès au site est réservé aux utilisateurs inscrits. Nous nous efforçons de garantir 
+        un accès continu, mais PanierFacile ne peut être tenu responsable des interruptions temporaires.
+    </p>
+
+    <h2>3. Inscription et compte utilisateur</h2>
+    <ul>
+        <li>Chaque utilisateur doit créer un compte personnel avec un identifiant et un mot de passe sécurisés.</li>
+        <li>Vous êtes responsable de la confidentialité de vos informations de connexion.</li>
+        <li>Il est interdit de créer un compte pour une autre personne sans son consentement.</li>
+    </ul>
+
+    <h2>4. Utilisation des paniers et courses</h2>
+    <ul>
+        <li>Les paniers et courses sont destinés à un usage personnel et familial.</li>
+        <li>Vous pouvez partager l’accès avec les membres de votre famille, définis par le même nom de famille.</li>
+        <li>Les utilisateurs de la même famille peuvent ajouter ou modifier des ingrédients dans les paniers principaux, mais seuls les propriétaires peuvent supprimer les courses.</li>
+    </ul>
+
+    <h2>5. Propriété intellectuelle</h2>
+    <p>
+        Tous les contenus présents sur PanierFacile (textes, images, logos, code source) 
+        sont protégés par le droit d’auteur. Toute reproduction ou utilisation sans autorisation est interdite.
+    </p>
+
+    <h2>6. Responsabilité</h2>
+    <p>
+        PanierFacile ne peut être tenu responsable des erreurs ou omissions dans les informations publiées, 
+        ni des conséquences liées à l'utilisation des données des paniers et courses.
+    </p>
+
+    <h2>7. Modification des CGU</h2>
+    <p>
+        PanierFacile se réserve le droit de modifier les présentes conditions à tout moment. 
+        Les utilisateurs seront informés des changements via le site.
+    </p>
+
+    <h2>8. Loi applicable et juridiction</h2>
+    <p>
+        Les présentes CGU sont régies par le droit français. Tout litige sera soumis aux tribunaux compétents de Besançon, France.
+    </p>
+
+    <p class="mt-4 text-center">
+        <a href="{% url 'mentions_legales' %}">Mentions légales</a> | 
+        <a href="{% url 'rgpd' %}">RGPD / Politique de confidentialité</a>
+    </p>
+</div>
+{% endblock %}

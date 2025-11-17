@@ -91,4 +91,5 @@ urlpatterns = [
     path('home/', panier.views.home, name='home'),
     path('mentions-legales/', views.mentions_legales, name='mentions_legales'),
     path('rgpd/', views.rgpd, name='rgpd'),
+     path('cgu/', views.cgu, name='cgu'),
 ]

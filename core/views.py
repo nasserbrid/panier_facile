@@ -6,3 +6,6 @@ def mentions_legales(request):
 
 def rgpd(request):
     return render(request, 'legal/rgpd.html')
+
+def cgu(request):
+    return render(request, 'legal/cgu.html')
