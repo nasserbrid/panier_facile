@@ -6,8 +6,8 @@
 
 <a href="{% url 'creer_course' %}" class="btn btn-success mb-3">Nouvelle course</a>
 
-<!-- Section 1 : Courses personnelles -->
-<h3>Courses non associées au panier de ({{ request.user }})</h3>
+<!-- Courses personnelles -->
+<h3>Courses non associées au panier de {{ request.user }}</h3>
 {% if courses_sans_panier %}
 <table class="table table-striped">
   <thead>
@@ -23,8 +23,8 @@
       <td>
         <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
         <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
-        <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-warning btn-sm">Ajouter un ingrédient</a>
         <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
+        <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-success btn-sm">Ajouter un ingrédient</a>
       </td>
     </tr>
     {% endfor %}
@@ -34,7 +34,7 @@
 <p>Aucune course non associée à un panier.</p>
 {% endif %}
 
-<!-- Section 2 : Courses familiales -->
+<!-- Courses familiales -->
 <h3>Courses associées à votre famille ({{ request.user.last_name }})</h3>
 {% if courses_par_famille %}
 <table class="table table-striped">
@@ -52,12 +52,13 @@
       <td>
         <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">Détails</a>
         <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">Modifier</a>
-        <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-warning btn-sm">
-          Ajouter au panier de {{ owner.username }}
-        </a>
-        {% if owner.id == request.user.id %}
+        <!-- Supprimer uniquement pour le propriétaire principal -->
+        {% if owner == request.user %}
         <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">Supprimer</a>
         {% endif %}
+        <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-success btn-sm">
+          Ajouter au panier de {{ owner.username }}
+        </a>
       </td>
     </tr>
     {% endwith %}
@@ -67,8 +68,8 @@
 {% else %}
 <p>Aucune course dans les paniers de votre famille.</p>
 {% endif %}
-
 {% endblock %}
+
 
 {% comment %} {% extends "base.html" %}
 {% block title %}Liste des courses{% endblock %}

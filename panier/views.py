@@ -53,66 +53,37 @@ def creer_course(request):
     return render(request, 'panier/creer_course.html', {'form': form})
 
 # --- Ajouter un ingrédient à une course ---
+@login_required
 def ajouter_ingredient(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     user = request.user
-    user_lastname = user.last_name.lower()
 
-    # Déterminer le propriétaire principal du panier familial
-    if course.paniers.exists():
-        owner = course.paniers.first().user  # le user principal du compte
-    else:
-        owner = user  # pas de panier, le user connecté devient le propriétaire
+    owner = course.paniers.first().user if course.paniers.exists() else user
 
-    # Vérifier si l'utilisateur peut ajouter un ingrédient
-    is_owner = owner.id == user.id
-    is_family = any(p.user.last_name.lower() == user_lastname for p in course.paniers.all())
+    is_owner = user == owner
+    is_family = (user.last_name.lower() == owner.last_name.lower()) and not is_owner
 
     if not (is_owner or is_family):
-        return render(
-            request,
-            'panier/acces_refuse.html',
-            {"message": "Vous n'avez pas le droit d'ajouter un ingrédient à cette course."},
-            status=403
-        )
+        return render(request, 'panier/acces_refuse.html',
+                      {"message": "Vous n'avez pas le droit d'ajouter un ingrédient à cette course."},
+                      status=403)
 
     if request.method == 'POST':
         new_ingredient = request.POST.get('ingredient')
         if new_ingredient:
-            # Ajouter l'ingrédient dans la course
             if course.ingredient:
                 course.ingredient += f"\n{new_ingredient}"
             else:
                 course.ingredient = new_ingredient
             course.save()
-
-            messages.success(
-                request,
-                f"Ingrédient '{new_ingredient}' ajouté au panier de {owner.username} !"
-            )
+            messages.success(request,
+                             f"Ingrédient '{new_ingredient}' ajouté au panier de {owner.username} !")
             return redirect('detail_course', course_id=course.id)
 
-    return render(
-        request,
-        'panier/ajouter_ingredient.html',
-        {'course': course, 'owner': owner}
-    )
-
-# def ajouter_ingredient(request, course_id):
-#     course = get_object_or_404(Course, id=course_id)
-
-#     if request.method == 'POST':
-#         new_ingredient = request.POST.get('ingredient')
-#         if new_ingredient:
-#             if course.ingredient:
-#                 course.ingredient += f"\n{new_ingredient}"
-#             else:
-#                 course.ingredient = new_ingredient
-#             course.save()
-#             messages.success(request, f"Ingrédient '{new_ingredient}' ajouté !")
-#             return redirect('detail_course', course_id=course.id)
-
-#     return render(request, 'panier/ajouter_ingredient.html', {'course': course})
+    return render(request, 'panier/ajouter_ingredient.html', {
+        'course': course,
+        'owner': owner
+    })
 
 # --- Liste de toutes les courses ---
 def liste_courses(request):
@@ -131,9 +102,7 @@ def liste_courses(request):
     # Paniers uniquement pour cette famille
     paniers = Panier.objects.filter(user__last_name__iexact=last_name)
 
-    return render(
-        request,
-        'panier/liste_courses.html',
+    return render(request, 'panier/liste_courses.html',
         {
             'courses_par_famille': courses_par_famille,
             'courses_sans_panier': courses_sans_panier,
@@ -145,43 +114,32 @@ def liste_courses(request):
 
 
 # --- Détail d'une course (avec liste des ingrédients) ---
+@login_required
 def detail_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     user = request.user
-    user_lastname = user.last_name.lower()
 
-    # Liste des users qui ont ce panier
-    panier_users = [p.user for p in course.paniers.all()]
+    # Déterminer le propriétaire principal
+    owner = course.paniers.first().user if course.paniers.exists() else user
 
-    # Vérifier si le user peut voir / modifier / supprimer
-    is_owner = any(p.user.id == user.id for p in course.paniers.all())
-    is_family = any(p.user.last_name.lower() == user_lastname for p in course.paniers.all())
+    is_owner = user == owner
+    is_family = (user.last_name.lower() == owner.last_name.lower()) and not is_owner
 
-    # Autorisation pour voir la course
+    # Vérifier accès
     if not (is_owner or is_family):
-        return render(
-            request,
-            'panier/acces_refuse.html',
-            {"message": "Accès refusé : cette course ne vous appartient pas."},
-            status=403
-        )
-
-    # Modifier / supprimer
-    can_edit = is_owner or is_family
-    can_delete = is_owner
+        return render(request, 'panier/acces_refuse.html',
+                      {"message": "Accès refusé : cette course ne vous appartient pas."},
+                      status=403)
 
     ingredients = course.ingredient.splitlines() if course.ingredient else []
 
-    return render(
-        request,
-        'panier/detail_course.html',
-        {
-            'course': course,
-            'ingredients': ingredients,
-            'can_edit': can_edit,
-            'can_delete': can_delete
-        }
-    )
+    return render(request, 'panier/detail_course.html', {
+        'course': course,
+        'ingredients': ingredients,
+        'owner': owner,
+        'can_edit': True,         
+        'can_delete': is_owner    
+    })
 
 
 
