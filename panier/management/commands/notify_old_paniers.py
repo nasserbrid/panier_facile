@@ -16,7 +16,11 @@ class Command(BaseCommand):
         date_cible = deux_semaines.date()
         utilisateurs = User.objects.all()
         for user in utilisateurs:
-            paniers = Panier.objects.filter(user=user, date_creation__date=date_cible)
+            # paniers = Panier.objects.filter(user=user, date_creation__date=date_cible)
+            
+            #prise en compte des paniers plus anciens au cas où l'email n'a pas été envoyé le jour même (≤ il y a 14 jours, donc paniers âgés de 14 jours ou plus)
+            paniers = Panier.objects.filter(user=user,date_creation__date__lte=date_cible)
+            
             if paniers.exists():
                 for panier in paniers:
                     courses = panier.courses.all()
