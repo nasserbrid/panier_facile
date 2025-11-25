@@ -50,7 +50,7 @@ urlpatterns = [
     path('paniers/<int:panier_id>/ajouter-courses/', views.ajouter_course_au_panier, name='ajouter_course_au_panier'),
     
     # Ajout direct d'une course à un panier
-    path('<int:panier_id>/ajouter_course/<int:course_id>/', views.ajouter_une_course_au_panier, name='ajouter_une_course_au_panier'),
+    path('<int:panier_id>/ajouter_course/<int:course_id>/', views.ajouter_course_au_panier, name='ajouter_course_au_panier'),
     
     # Stripe
     path('create-checkout-session/', views.create_checkout_session, name='create_checkout_session'),

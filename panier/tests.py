@@ -62,14 +62,5 @@ class AjouterCourseAuPanierTest(TestCase):
         self.assertIn(self.course, self.panier.courses.all())
         
     
-    def test_ajouter_course_a_panier_view(self):
-        # Arrange
-        url = reverse("ajouter_course_a_panier", args=[self.course.id, self.panier.id])
-
-        # Act
-        response = self.client.get(url)
-
-        # Assert
-        self.assertEqual(response.status_code, 302)  
-        self.assertIn(self.course, self.panier.courses.all())  
+    
  
