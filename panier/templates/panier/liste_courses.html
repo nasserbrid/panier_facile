@@ -2,6 +2,155 @@
 {% block title %}Liste des courses{% endblock %}
 
 {% block content %}
+<div class="container py-4">
+  <h2 class="mb-4">Liste des courses</h2>
+
+  <a href="{% url 'creer_course' %}" class="btn btn-success mb-4">
+    <i class="fas fa-plus me-1"></i> Nouvelle course
+  </a>
+
+  <!-- Courses non associées au panier -->
+  <div class="card mb-4">
+    <div class="card-header bg-info text-white">
+      <h3 class="mb-0">Courses non associées au panier de {{ request.user }}</h3>
+    </div>
+    <div class="card-body">
+      {% if courses_sans_panier %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Titre</th>
+              <th style="width: 60%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for course in courses_sans_panier %}
+            <tr>
+              <td>{{ course.titre }}</td>
+              <td>
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-eye me-1"></i> Détails
+                  </a>
+                  <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                  </a>
+                  <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash me-1"></i> Supprimer
+                  </a>
+                  <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus-circle me-1"></i> Ajouter ingrédient
+                  </a>
+                  
+                  <!-- Bouton pour ajouter au panier avec dropdown -->
+                  {% if paniers %}
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i class="fas fa-shopping-cart me-1"></i> Ajouter au panier
+                    </button>
+                    <ul class="dropdown-menu">
+                      {% for panier in paniers %}
+                      <li>
+                        <a class="dropdown-item" href="{% url 'ajouter_course_a_panier' course.id panier.id %}">
+                          Panier de {{ panier.user.username }} (#{{ panier.id }})
+                        </a>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted">Aucune course non associée à un panier.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Courses familiales -->
+  <div class="card">
+    <div class="card-header bg-success text-white">
+      <h3 class="mb-0">Courses associées à votre famille ({{ request.user.last_name }})</h3>
+    </div>
+    <div class="card-body">
+      {% if courses_par_famille %}
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Titre</th>
+              <th>Propriétaire</th>
+              <th style="width: 60%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for course in courses_par_famille %}
+            {% with owner=course.paniers.first.user %}
+            <tr>
+              <td>{{ course.titre }}</td>
+              <td>
+                <span class="badge bg-primary">{{ owner.username }}</span>
+              </td>
+              <td>
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="{% url 'detail_course' course.id %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-eye me-1"></i> Détails
+                  </a>
+                  <a href="{% url 'modifier_course' course.id %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-edit me-1"></i> Modifier
+                  </a>
+                  <!-- Supprimer uniquement pour le propriétaire -->
+                  {% if owner == request.user %}
+                  <a href="{% url 'supprimer_course' course.id %}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash me-1"></i> Supprimer
+                  </a>
+                  {% endif %}
+                  <a href="{% url 'ajouter_ingredient' course.id %}" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus-circle me-1"></i> Ajouter ingrédient
+                  </a>
+                  
+                  <!-- Bouton pour ajouter au panier -->
+                  {% if paniers %}
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                      <i class="fas fa-shopping-cart me-1"></i> Ajouter au panier
+                    </button>
+                    <ul class="dropdown-menu">
+                      {% for panier in paniers %}
+                      <li>
+                        <a class="dropdown-item" href="{% url 'ajouter_course_a_panier' course.id panier.id %}">
+                          Panier de {{ panier.user.username }} (#{{ panier.id }})
+                        </a>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  </div>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted">Aucune course dans les paniers de votre famille.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% comment %} {% extends "base.html" %}
+{% block title %}Liste des courses{% endblock %}
+
+{% block content %}
 <h2>Liste des courses</h2>
 
 <a href="{% url 'creer_course' %}" class="btn btn-success mb-3">Nouvelle course</a>
@@ -68,7 +217,7 @@
 {% else %}
 <p>Aucune course dans les paniers de votre famille.</p>
 {% endif %}
-{% endblock %}
+{% endblock %} {% endcomment %}
 
 
 {% comment %} {% extends "base.html" %}

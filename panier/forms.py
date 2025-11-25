@@ -24,10 +24,21 @@ class CourseForm(forms.ModelForm):
 class PanierForm(forms.ModelForm):
     class Meta:
         model = Panier
-        fields = ['courses']  
+        fields = ['courses']
         widgets = {
-            'courses': forms.SelectMultiple(attrs={'class': 'form-control'}),
+            # MODIFICATION : CheckboxSelectMultiple pour sélectionner plusieurs courses
+            'courses': forms.CheckboxSelectMultiple(),
         }
+        labels = {
+            'courses': 'Sélectionnez les courses à ajouter',
+        }
+# class PanierForm(forms.ModelForm):
+#     class Meta:
+#         model = Panier
+#         fields = ['courses']  
+#         widgets = {
+#             'courses': forms.SelectMultiple(attrs={'class': 'form-control'}),
+#         }
 
 # class PanierForm(forms.ModelForm):
 #     class Meta:
