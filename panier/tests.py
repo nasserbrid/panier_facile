@@ -52,7 +52,7 @@ class AjouterCourseAuPanierTest(TestCase):
 
     def test_ajouter_course_au_panier(self):
         # Arrange
-        url = reverse("ajouter_une_course_au_panier", args=[self.panier.id, self.course.id])
+        url = reverse("ajouter_course_au_panier", args=[self.panier.id, self.course.id])
 
         # Act
         response = self.client.get(url)
