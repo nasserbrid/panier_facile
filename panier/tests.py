@@ -50,7 +50,7 @@ class AjouterCourseAuPanierTest(TestCase):
         self.panier = Panier.objects.create(user=self.user)
         self.course = Course.objects.create(titre="Test course")
 
-    def test_ajouter_une_course_au_panier(self):
+    def test_ajouter_course_au_panier(self):
         # Arrange
         url = reverse("ajouter_une_course_au_panier", args=[self.panier.id, self.course.id])
 
