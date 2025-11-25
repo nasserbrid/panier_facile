@@ -58,9 +58,16 @@ class AjouterCourseAuPanierTest(TestCase):
 
         # Act
         response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        
+        response = self.client.post(url, {
+            "courses": [self.course.id]  # champ attendu dans PanierForm
+        })
+
 
         # Assert
         self.assertRedirects(response, reverse("detail_panier", args=[self.panier.id]))
+        self.panier.refresh_from_db()
         self.assertIn(self.course, self.panier.courses.all())
         
     
