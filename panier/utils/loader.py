@@ -1,7 +1,7 @@
 # loader.py
 import json
 from pathlib import Path
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 def load_ui_docs():
     """Charge les étapes UI depuis ui_docs.json et les transforme en Documents."""
