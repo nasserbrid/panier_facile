@@ -63,16 +63,22 @@ Avant de lancer Celery, vous devez:
 
 ### 4. Créer le service Celery Worker
 
-1. Dans Coolify, créez un nouveau service de type **"Docker Image"**
+1. Dans Coolify, cliquez sur **"+ Add"** → **"Application"**
 2. Configuration:
    - **Name**: `panier-celery-worker`
-   - **Source**: Même repository Git que l'application web
+   - **Source**: Sélectionnez le même repository Git que l'application web
    - **Branch**: `main` (ou votre branche de production)
-   - **Dockerfile**: Utiliser le même Dockerfile
-   - **Command Override**:
-     ```bash
-     celery -A core worker --loglevel=info --concurrency=2
-     ```
+   - **Build Pack**: Nixpacks ou Dockerfile (même que l'app web)
+
+3. **Start Command** (dans Settings → General):
+   ```bash
+   bash start_worker.sh
+   ```
+
+   OU si vous préférez la commande directe:
+   ```bash
+   celery -A core worker --loglevel=info --concurrency=2
+   ```
 
 3. Variables d'environnement (copier toutes les variables de l'application Web + ajouter):
    ```
@@ -91,16 +97,24 @@ Avant de lancer Celery, vous devez:
 
 ### 5. Créer le service Celery Beat
 
-1. Dans Coolify, créez un nouveau service de type **"Docker Image"**
+1. Dans Coolify, cliquez sur **"+ Add"** → **"Application"**
 2. Configuration:
    - **Name**: `panier-celery-beat`
-   - **Source**: Même repository Git
+   - **Source**: Sélectionnez le même repository Git
    - **Branch**: `main`
-   - **Dockerfile**: Utiliser le même Dockerfile
-   - **Command Override**:
-     ```bash
-     celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-     ```
+   - **Build Pack**: Nixpacks ou Dockerfile (même que l'app web)
+
+3. **Start Command** (dans Settings → General):
+
+   ```bash
+   bash start_beat.sh
+   ```
+
+   OU si vous préférez la commande directe:
+
+   ```bash
+   celery -A core beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+   ```
 
 3. Variables d'environnement (mêmes que Celery Worker):
    ```
