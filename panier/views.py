@@ -35,20 +35,52 @@ def creer_course(request):
 
 @login_required
 def liste_courses(request):
+    """
+    Affiche la liste des courses avec gestion du contexte familial ou individuel.
+
+    Pour les utilisateurs avec un nom de famille (last_name) :
+    - Affiche toutes les courses présentes dans les paniers de la famille
+    - Affiche les courses non associées aux paniers familiaux
+    - Liste tous les paniers de la famille pour permettre l'ajout rapide
+
+    Pour les utilisateurs sans nom de famille (utilisateur solo) :
+    - Affiche toutes les courses présentes dans ses propres paniers
+    - Affiche les courses non associées à ses paniers personnels
+    - Liste tous ses paniers personnels pour permettre l'ajout rapide
+
+    Returns:
+        render: Template avec courses_par_famille, courses_sans_panier et paniers
+    """
     last_name = request.user.last_name
 
-    # Courses dans les paniers familiaux
-    courses_par_famille = Course.objects.filter(
-        paniers__user__last_name__iexact=last_name
-    ).distinct()
+    if last_name:
+        # Utilisateur avec famille : contexte familial
+        # Courses déjà dans les paniers de la famille (partage familial)
+        courses_par_famille = Course.objects.filter(
+            paniers__user__last_name__iexact=last_name
+        ).distinct()
 
-    # Courses non associées à un panier familial
-    courses_sans_panier = Course.objects.exclude(
-        paniers__user__last_name__iexact=last_name
-    ).distinct()
+        # Courses non associées à un panier familial
+        courses_sans_panier = Course.objects.exclude(
+            paniers__user__last_name__iexact=last_name
+        ).distinct()
 
-    # Paniers de la famille
-    paniers = Panier.objects.filter(user__last_name__iexact=last_name)
+        # Tous les paniers de la famille (pour le dropdown d'ajout rapide)
+        paniers = Panier.objects.filter(user__last_name__iexact=last_name)
+    else:
+        # Utilisateur sans famille : contexte individuel
+        # Courses déjà dans les paniers personnels de l'utilisateur
+        courses_par_famille = Course.objects.filter(
+            paniers__user=request.user
+        ).distinct()
+
+        # Courses non associées aux paniers personnels
+        courses_sans_panier = Course.objects.exclude(
+            paniers__user=request.user
+        ).distinct()
+
+        # Tous les paniers personnels (pour le dropdown d'ajout rapide)
+        paniers = Panier.objects.filter(user=request.user)
 
     return render(request, 'panier/liste_courses.html', {
         'courses_par_famille': courses_par_famille,
@@ -189,25 +221,48 @@ def supprimer_ingredient(request, course_id, ingredient_index):
 # Ajout rapide d'une course spécifique à un panier
 @login_required
 def ajouter_course_a_panier(request, course_id, panier_id):
-    """Ajoute une course spécifique à un panier depuis la liste des courses"""
+    """
+    Ajoute une course spécifique à un panier depuis la liste des courses (ajout rapide).
+
+    Cette vue permet d'ajouter une course à un panier en un clic depuis la liste des courses.
+    Les contrôles d'accès vérifient que l'utilisateur a le droit d'ajouter au panier :
+    - Pour un utilisateur avec famille : peut ajouter à tous les paniers de la famille
+    - Pour un utilisateur solo : peut ajouter uniquement à ses propres paniers
+
+    Args:
+        request: La requête HTTP
+        course_id: ID de la course à ajouter
+        panier_id: ID du panier cible
+
+    Returns:
+        redirect: Redirige vers liste_courses avec un message de succès/erreur
+    """
     course = get_object_or_404(Course, id=course_id)
     panier = get_object_or_404(Panier, id=panier_id)
-    
-    # Vérifier que le panier appartient à la famille
+
+    # Vérification des droits d'accès au panier
     user_has_family = bool(request.user.last_name)
-    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
-    is_own_basket = panier.user == request.user
-    
-    if not (is_same_family or is_own_basket):
-        messages.error(request, "Ce panier n'appartient pas à votre famille.")
+
+    if user_has_family:
+        # Utilisateur avec famille : vérifier le partage familial
+        is_same_family = panier.user.last_name.lower() == request.user.last_name.lower()
+        is_own_basket = panier.user == request.user
+        has_access = is_same_family or is_own_basket
+    else:
+        # Utilisateur sans famille : vérifier la propriété directe
+        has_access = panier.user == request.user
+
+    if not has_access:
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_courses')
-    
+
+    # Ajout de la course au panier (si pas déjà présente)
     if course in panier.courses.all():
         messages.info(request, "Cette course est déjà dans ce panier.")
     else:
         panier.courses.add(course)
         messages.success(request, f"Course ajoutée au panier de {panier.user.username} !")
-    
+
     return redirect('liste_courses')
 
 

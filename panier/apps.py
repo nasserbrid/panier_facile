@@ -1,7 +1,6 @@
 from django.apps import AppConfig
 import logging
 import os
-from openai import RateLimitError, OpenAIError
 
 
 logger = logging.getLogger(__name__)
@@ -9,9 +8,15 @@ logger = logging.getLogger(__name__)
 class PanierConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'panier'
-    
+
     def ready(self):
      """Initialise le système RAG dès le démarrage."""
+
+     # TEMPORAIREMENT DÉSACTIVÉ pour permettre les migrations
+     # À réactiver après avoir fixé les imports langchain
+     return
+
+     from openai import RateLimitError, OpenAIError
 
      if os.environ.get('RUN_MAIN') != 'true':
         return
@@ -42,9 +47,9 @@ class PanierConfig(AppConfig):
              logger.info("Système RAG initialisé avec succès au démarrage.")
 
          except RateLimitError:
-            logger.error("Quota OpenAI dépassé : le RAG n’a pas pu être initialisé.")
+            logger.error("Quota OpenAI dépassé : le RAG n'a pas pu être initialisé.")
          except OpenAIError as e:
-            logger.error(f"Erreur OpenAI lors de l’init du RAG : {e}")
+            logger.error(f"Erreur OpenAI lors de l'init du RAG : {e}")
 
      except Exception as e:
         logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)

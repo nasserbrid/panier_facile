@@ -1,92 +1,35 @@
-{% extends "base.html" %}
-{% block title %}Détails du panier {{ panier.id }}{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Ajouter des courses au panier {{ panier.id }}{% endblock %}
 
 {% block content %}
 <div class="container py-4">
-  <div class="card shadow mb-4">
+  <div class="card shadow">
     <div class="card-header bg-success text-white">
-      <h2 class="mb-0">Panier #{{ panier.id }} - {{ panier.user.username }}</h2>
+      <h2 class="mb-0">
+        <i class="fas fa-plus-circle me-2"></i>
+        Ajouter des courses au panier #{{ panier.id }}
+      </h2>
+      <p class="mb-0 mt-2">Panier de {{ panier.user.username }}</p>
     </div>
     <div class="card-body">
-      <p><strong>Date de création :</strong> {{ panier.date_creation|date:"d/m/Y à H:i" }}</p>
-      
-      <h4 class="mt-4">Courses :</h4>
-      {% if panier.courses.all %}
-      <div class="accordion" id="coursesAccordion">
-        {% for course in panier.courses.all %}
-        <div class="accordion-item">
-          <h2 class="accordion-header" id="heading{{ forloop.counter }}">
-            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse{{ forloop.counter }}">
-              {{ course.titre }}
-            </button>
-          </h2>
-          <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#coursesAccordion">
-            <div class="accordion-body">
-              <h6>Ingrédients :</h6>
-              {% if course.ingredient %}
-              <ul class="list-group list-group-flush">
-                {% for ingredient in course.ingredient.splitlines %}
-                  <li class="list-group-item">{{ ingredient }}</li>
-                {% endfor %}
-              </ul>
-              {% else %}
-                <p class="text-muted">Aucun ingrédient</p>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-        <p class="text-muted">Aucune course dans ce panier</p>
-      {% endif %}
+      <form method="post">
+        {% csrf_token %}
 
-      <div class="mt-4 d-flex gap-2 flex-wrap">
-        <a href="{% url 'ajouter_course_au_panier' panier.id %}" class="btn btn-success">
-          <i class="fas fa-plus-circle me-1"></i> Ajouter des courses
-        </a>
-        <a href="{% url 'modifier_panier' panier.id %}" class="btn btn-warning">
-          <i class="fas fa-edit me-1"></i> Modifier
-        </a>
-        <a href="{% url 'supprimer_panier' panier.id %}" class="btn btn-danger">
-          <i class="fas fa-trash me-1"></i> Supprimer
-        </a>
-        <a href="{% url 'liste_paniers' %}" class="btn btn-secondary">
-          <i class="fas fa-arrow-left me-1"></i> Retour
-        </a>
-      </div>
+        <div class="mb-4">
+          <label class="form-label fw-bold">Sélectionnez les courses à ajouter :</label>
+          {{ form.courses }}
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-check me-1"></i> Ajouter au panier
+          </button>
+          <a href="{% url 'detail_panier' panier.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Retour au panier
+          </a>
+        </div>
+      </form>
     </div>
   </div>
 </div>
 {% endblock %}
-{% comment %} {% extends 'base.html' %} 
-{% block title %}Ajouter des courses à un panier{%
-endblock %} {% block content %}
-<div
-  class="container d-flex justify-content-center align-items-center"
-  style="min-height: 80vh"
->
-  <div
-    class="card shadow-lg p-4"
-    style="width: 400px; border-radius: 16px; background: #fffbe6"
-  >
-    <h2 class="text-center text-dark mb-4" style="font-weight: bold">
-      Ajouter des courses au panier
-    </h2>
-    <form method="post">
-      {% csrf_token %} {{ form.as_p }}
-      <button type="submit" class="btn btn-success w-100 mt-3">
-        <i class="fas fa-plus-circle"></i> Ajouter
-      </button>
-    </form>
-    <p class="text-center mt-3">
-      <a
-        href="{% url 'detail_panier' panier.id %}"
-        class="text-decoration-none text-warning fw-bold"
-      >
-        <i class="fas fa-arrow-left"></i> Retour au panier
-      </a>
-    </p>
-  </div>
-</div>
-{% endblock %} {% endcomment %}

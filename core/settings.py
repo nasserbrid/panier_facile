@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import dj_database_url
-load_dotenv()  
+load_dotenv()
 import psycopg2
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'authentication',
     'panier',
+    'django_celery_beat',  # Pour le scheduler Celery Beat
 ]
 
 MIDDLEWARE = [
@@ -266,3 +267,32 @@ LOGGING = {
         },
     },
 }
+
+# ============================================================================
+# CELERY CONFIGURATION
+# ============================================================================
+
+# URL de connexion Redis pour Celery
+# Format: redis://[:password]@host:port/db
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
+# Sérialisation des messages
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Fuseau horaire pour Celery (doit correspondre à TIME_ZONE)
+CELERY_TIMEZONE = 'Europe/Paris'
+
+# Options de performance
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max par tâche
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # Avertissement à 25 minutes
+
+# Configuration du résultat des tâches
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRES = 3600  # Les résultats expirent après 1 heure
+
+# Celery Beat (scheduler)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
