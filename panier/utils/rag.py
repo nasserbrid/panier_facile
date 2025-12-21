@@ -1,5 +1,5 @@
 # rag.py
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain_openai import ChatOpenAI
 
 def create_rag(vectorstore):
