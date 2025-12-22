@@ -149,14 +149,27 @@ def modifier_course(request, course_id):
 
 @login_required
 def supprimer_course(request, course_id):
+    """
+    Supprime une course.
+
+    Autorisations :
+    - Propriétaire (utilisateur qui a créé/ajouté la course en premier) : OUI
+    - Membre de la même famille : OUI
+    - Courses orphelines (sans panier) : OUI pour tous
+    """
     course = get_object_or_404(Course, id=course_id)
     user = request.user
+    user_lastname = user.last_name.lower()
 
-    # Autoriser suppression des courses orphelines
-    is_orphan = not course.paniers.exists()
-    is_owner = any(p.user.id == user.id for p in course.paniers.all())
-    
-    if not (is_owner or is_orphan):
+    # Déterminer le propriétaire
+    owner = course.paniers.first().user if course.paniers.exists() else None
+
+    # Vérifications d'accès
+    is_owner = owner and user == owner
+    is_family = owner and user_lastname and (user_lastname == owner.last_name.lower()) and not is_owner
+    is_orphan = not course.paniers.exists()  # Course sans panier
+
+    if not (is_owner or is_family or is_orphan):
         return render(request, 'panier/acces_refuse.html',
                       {"message": "Vous n'avez pas le droit de supprimer cette course."},
                       status=403)
