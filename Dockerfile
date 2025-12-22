@@ -44,6 +44,10 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # -----------------------------
-# Étape 7 : Lancer l'application avec Gunicorn
+# Étape 7 : Script de démarrage conditionnel
 # -----------------------------
-CMD ["bash", "-c", "python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers=2 --threads=4 --timeout=120 --access-logfile - --error-logfile -"]
+# Créer un script d'entrypoint qui choisit la commande selon APP_TYPE
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+CMD ["/docker-entrypoint.sh"]
