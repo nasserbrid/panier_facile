@@ -1047,7 +1047,6 @@ from .utils.chunker import split_documents
 from .utils.embedding import get_embeddings
 from .utils.vectorstore import build_vectorstore
 from .utils.rag import create_rag
-from .utils.retriever import query_vectorstore
 
 logger = logging.getLogger(__name__)
 
@@ -1094,14 +1093,12 @@ def chatbot_ui(request):
          }, status=503)
 
 
-        # Je récupère le contexte depuis le vectorstore
-        context = query_vectorstore(vectorstore, question, k=3)
+        # Le nouveau système RAG gère la récupération du contexte automatiquement
         logger.info(f"Question: {question[:100]}...")
 
-        prompt = f"Contexte:\n{context}\n\nQuestion: {question}"
-
         try:
-            answer = qa.run(prompt)
+            # Utiliser l'API moderne (invoke au lieu de run)
+            answer = qa.invoke(question)
         except RateLimitError:
             answer = "Le service est temporairement saturé, veuillez réessayer plus tard."
         except OpenAIError as e:
