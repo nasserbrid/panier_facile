@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.gis',  # GeoDjango pour la géolocalisation
     'authentication',
     'panier',
     'django_celery_beat',  # Pour le scheduler Celery Beat
@@ -114,6 +113,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 # Configuration de la base de données
 if DATABASE_URL and DATABASE_URL.strip():
     # Production avec PostgreSQL + PostGIS
+    # Ajouter django.contrib.gis aux INSTALLED_APPS pour la production
+    if 'django.contrib.gis' not in INSTALLED_APPS:
+        INSTALLED_APPS.insert(6, 'django.contrib.gis')
+
     try:
         DATABASES = {
             'default': dj_database_url.config(
@@ -137,10 +140,10 @@ if DATABASE_URL and DATABASE_URL.strip():
             }
         }
 else:
-    # Développement ou build Docker avec SpatiaLite (SQLite avec extension géographique)
+    # Développement local avec SQLite standard (sans GeoDjango)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.contrib.gis.db.backends.spatialite',
+            'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
