@@ -18,6 +18,10 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     curl \
+    gdal-bin \
+    libgdal-dev \
+    binutils \
+    libproj-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
