@@ -17,7 +17,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
   </head>
-  <body style="background-color: #a5662a">
+  <body>
     <!--Navbar -->
     <nav class="navbar navbar-dark bg-dark shadow px-4">
       <div
@@ -63,11 +63,11 @@
               S'abonner
             </button>
 
-            <!-- Nom de l'utilisateur -->
-            <span class="navbar-text me-3">
+            <!-- Nom de l'utilisateur avec lien vers profil -->
+            <a href="{% url 'profile' %}" class="navbar-text me-3 text-decoration-none">
               <i class="fas fa-user text-primary"></i>
-              <strong>{{ request.user.username }}</strong>
-            </span>
+              <strong class="text-white">{{ request.user.username }}</strong>
+            </a>
 
              {% comment %} {% include "panier/chatbot.html" %} {% endcomment %}
 
