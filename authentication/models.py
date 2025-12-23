@@ -1,13 +1,13 @@
-import os
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ImproperlyConfigured
 
-# Import conditionnel de GeoDjango selon l'environnement
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-USE_GEODJANGO = bool(DATABASE_URL and DATABASE_URL.strip())
-
-if USE_GEODJANGO:
+# Import GeoDjango pour la production
+try:
     from django.contrib.gis.db import models as gis_models
+    HAS_GIS = True
+except (ImportError, ImproperlyConfigured):
+    HAS_GIS = False
 
 # Create your models here.
 
@@ -31,24 +31,28 @@ class User(AbstractUser):
         help_text="Adresse postale de l'utilisateur"
     )
 
-    # Utiliser PointField en production (PostGIS), TextField en développement local
-    if USE_GEODJANGO:
-        location = gis_models.PointField(
+# Ajouter le champ location selon la disponibilité de GeoDjango
+if HAS_GIS:
+    # Production avec PostGIS
+    User.add_to_class(
+        'location',
+        gis_models.PointField(
             blank=True,
             null=True,
-            srid=4326,  # WGS84 (GPS standard)
+            srid=4326,
             verbose_name="Coordonnées GPS",
             help_text="Position géographique (latitude, longitude)"
         )
-    else:
-        # En développement local, on stocke les coordonnées comme texte (format: "lat,lng")
-        location = models.CharField(
+    )
+else:
+    # Développement local sans GeoDjango
+    User.add_to_class(
+        'location',
+        models.CharField(
             max_length=100,
             blank=True,
             null=True,
             verbose_name="Coordonnées GPS",
-            help_text="Position géographique au format 'latitude,longitude'"
+            help_text="Format: 'latitude,longitude'"
         )
-
-    def __str__(self):
-        return self.username
+    )
