@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',  # GeoDjango pour la géolocalisation
     'authentication',
     'panier',
     'django_celery_beat',  # Pour le scheduler Celery Beat
@@ -112,16 +113,18 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 # Configuration de la base de données
 if DATABASE_URL and DATABASE_URL.strip():
-    # Production avec PostgreSQL
+    # Production avec PostgreSQL + PostGIS
     try:
         DATABASES = {
             'default': dj_database_url.config(
                  default=DATABASE_URL,
-                 conn_max_age=600,  
-                 ssl_require=False,  
+                 conn_max_age=600,
+                 ssl_require=False,
                  conn_health_checks=True,
             )
         }
+        # Utiliser le backend PostGIS pour GeoDjango
+        DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
         # Force la désactivation de SSL
         DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
     except Exception as e:
@@ -134,10 +137,10 @@ if DATABASE_URL and DATABASE_URL.strip():
             }
         }
 else:
-    # Développement ou build Docker
+    # Développement ou build Docker avec SpatiaLite (SQLite avec extension géographique)
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
+            'ENGINE': 'django.contrib.gis.db.backends.spatialite',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
