@@ -64,7 +64,12 @@ urlpatterns = [
     #RAG - Chatbot UI
    # Chatbot RAG
     path('chatbot/', views.chatbot_ui, name='chatbot_ui'),
-    
+
     # Gestion du système RAG (réservé au staff)
     path('chatbot/reset/', views.reset_rag_system, name='reset_rag'),
+
+    # Intégration Intermarché
+    path('<int:panier_id>/intermarche/export/', views.export_to_intermarche, name='export_to_intermarche'),
+    path('<int:panier_id>/intermarche/match/', views.intermarche_match_products, name='intermarche_match_products'),
+    path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
 ]

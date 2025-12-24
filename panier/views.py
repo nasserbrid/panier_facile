@@ -1170,3 +1170,291 @@ def reset_rag_system(request):
         "status": "success",
         "message": "Système RAG réinitialisé avec succès"
     })
+
+
+# ========== INTÉGRATION INTERMARCHÉ ==========
+
+from panier.models import IntermarcheCart
+from panier.intermarche_api import IntermarcheAPIClient, IntermarcheAPIException
+from panier.services.product_matcher import ProductMatcher
+from authentication.utils import OverpassAPI
+import uuid
+
+
+@login_required
+def export_to_intermarche(request, panier_id):
+    """
+    Étape 1: Sélection du magasin Intermarché pour exporter le panier.
+
+    Cette vue affiche les magasins Intermarché proches de l'utilisateur
+    et permet de sélectionner un magasin pour l'export du panier.
+
+    Flow:
+    1. Vérifier que l'utilisateur a une localisation GPS
+    2. Récupérer les magasins proches via l'API Intermarché
+    3. Afficher la liste des magasins avec carte
+    4. Rediriger vers intermarche_match_products avec le store_id
+    """
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    # Vérifier que l'utilisateur a une localisation GPS
+    if not request.user.location:
+        return render(request, 'panier/intermarche_no_location.html', {
+            'panier': panier
+        })
+
+    try:
+        # Récupérer les magasins proches
+        api_client = IntermarcheAPIClient()
+        stores = api_client.find_stores_near_location(
+            latitude=request.user.location.y,
+            longitude=request.user.location.x,
+            distance=10000,  # 10km
+            limit=10
+        )
+
+        if not stores:
+            messages.warning(request, "Aucun magasin Intermarché trouvé à proximité (10km).")
+            return redirect('detail_panier', panier_id=panier.id)
+
+        # Calculer les distances et préparer les données pour le template
+        for store in stores:
+            store_lat = store.get('latitude')
+            store_lon = store.get('longitude')
+            if store_lat and store_lon:
+                distance_m = OverpassAPI._calculate_distance(
+                    request.user.location.y,
+                    request.user.location.x,
+                    store_lat,
+                    store_lon
+                )
+                store['distance_km'] = round(distance_m / 1000, 1)
+            else:
+                store['distance_km'] = None
+
+        # Trier par distance
+        stores = sorted([s for s in stores if s.get('distance_km') is not None],
+                       key=lambda x: x['distance_km'])
+
+        return render(request, 'panier/intermarche_select_store.html', {
+            'panier': panier,
+            'stores': stores,
+            'user_location': {
+                'lat': request.user.location.y,
+                'lon': request.user.location.x
+            }
+        })
+
+    except IntermarcheAPIException as e:
+        logger.error(f"Erreur API Intermarché: {e.message}")
+        messages.error(request, "Impossible de récupérer la liste des magasins Intermarché.")
+        return redirect('detail_panier', panier_id=panier.id)
+
+
+@login_required
+def intermarche_match_products(request, panier_id):
+    """
+    Étape 2: Validation des correspondances produits.
+
+    Cette vue affiche les correspondances trouvées entre les ingrédients
+    du panier et les produits Intermarché, et permet de les valider/modifier.
+
+    Flow:
+    1. Récupérer le store_id depuis GET
+    2. Matcher tous les ingrédients du panier
+    3. Afficher les matches avec possibilité de modification
+    4. POST: Valider et rediriger vers intermarche_create_cart
+    """
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    store_id = request.GET.get('store_id') or request.POST.get('store_id')
+    if not store_id:
+        messages.error(request, "Aucun magasin sélectionné.")
+        return redirect('export_to_intermarche', panier_id=panier.id)
+
+    # Récupérer les ingrédients du panier
+    ingredient_paniers = panier.ingredient_paniers.all()
+
+    if not ingredient_paniers.exists():
+        messages.warning(request, "Ce panier ne contient aucun ingrédient.")
+        return redirect('detail_panier', panier_id=panier.id)
+
+    try:
+        # Matcher les produits
+        matcher = ProductMatcher(store_id)
+
+        # Force refresh si demandé
+        force_refresh = request.GET.get('refresh') == '1'
+        matches = matcher.match_panier_ingredients(
+            list(ingredient_paniers),
+            use_cache=not force_refresh
+        )
+
+        # Préparer les données pour le template
+        matches_data = []
+        for ing_panier in ingredient_paniers:
+            match = matches.get(ing_panier.id)
+            matches_data.append({
+                'ingredient_panier': ing_panier,
+                'match': match,
+                'has_match': match is not None
+            })
+
+        # Statistiques
+        total = len(matches_data)
+        matched = sum(1 for m in matches_data if m['has_match'])
+        match_rate = (matched / total * 100) if total > 0 else 0
+
+        # POST: Validation et création du panier
+        if request.method == 'POST':
+            # Filtrer uniquement les ingrédients avec un match
+            valid_matches = {k: v for k, v in matches.items() if v is not None}
+
+            if not valid_matches:
+                messages.error(request, "Aucun produit trouvé. Impossible de créer le panier Intermarché.")
+                return redirect('detail_panier', panier_id=panier.id)
+
+            # Rediriger vers la création du panier
+            return redirect(f"{reverse('intermarche_create_cart', args=[panier.id])}?store_id={store_id}")
+
+        return render(request, 'panier/intermarche_validate_matches.html', {
+            'panier': panier,
+            'store_id': store_id,
+            'matches_data': matches_data,
+            'total': total,
+            'matched': matched,
+            'match_rate': round(match_rate, 1)
+        })
+
+    except IntermarcheAPIException as e:
+        logger.error(f"Erreur API Intermarché: {e.message}")
+        messages.error(request, "Erreur lors de la recherche des produits.")
+        return redirect('detail_panier', panier_id=panier.id)
+
+
+@login_required
+def intermarche_create_cart(request, panier_id):
+    """
+    Étape 3: Création du panier Intermarché et redirection.
+
+    Cette vue crée le panier sur Intermarché Drive via l'API
+    et redirige l'utilisateur vers le site Intermarché.
+
+    Flow:
+    1. Récupérer les matches validés
+    2. Créer le panier via l'API Carts
+    3. Enregistrer IntermarcheCart en DB
+    4. Rediriger vers le site Intermarché Drive
+    """
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    store_id = request.GET.get('store_id')
+    if not store_id:
+        messages.error(request, "Aucun magasin sélectionné.")
+        return redirect('export_to_intermarche', panier_id=panier.id)
+
+    try:
+        # Récupérer les ingrédients du panier
+        ingredient_paniers = list(panier.ingredient_paniers.all())
+
+        if not ingredient_paniers:
+            messages.error(request, "Ce panier ne contient aucun ingrédient.")
+            return redirect('detail_panier', panier_id=panier.id)
+
+        # Matcher les produits
+        matcher = ProductMatcher(store_id)
+        matches = matcher.match_panier_ingredients(ingredient_paniers)
+
+        # Convertir en items pour l'API
+        items = matcher.get_cart_items_from_matches(matches, ingredient_paniers)
+
+        if not items:
+            messages.error(request, "Aucun produit trouvé. Impossible de créer le panier Intermarché.")
+            return redirect('detail_panier', panier_id=panier.id)
+
+        # Créer le panier via l'API Intermarché
+        api_client = IntermarcheAPIClient()
+        anonymous_id = str(uuid.uuid4())
+
+        logger.info(f"Création panier Intermarché pour panier {panier.id}, magasin {store_id}")
+        cart_response = api_client.create_cart(
+            store_id=store_id,
+            items=items,
+            anonymous_id=anonymous_id
+        )
+
+        # Enregistrer le panier Intermarché en DB
+        intermarche_cart = IntermarcheCart.objects.create(
+            user=request.user,
+            panier=panier,
+            store_id=store_id,
+            store_name=cart_response.get('storeName', ''),
+            anonymous_cart_id=anonymous_id,
+            total_amount=cart_response.get('totalAmount', 0),
+            items_count=len(items),
+            status='sent',
+            sync_response=cart_response
+        )
+
+        logger.info(f"Panier Intermarché créé: {intermarche_cart.id}")
+
+        # Rediriger vers Intermarché Drive
+        redirect_url = intermarche_cart.intermarche_url
+
+        messages.success(request, f"Panier créé avec succès! {len(items)} produits ajoutés.")
+
+        return render(request, 'panier/intermarche_redirect.html', {
+            'panier': panier,
+            'intermarche_cart': intermarche_cart,
+            'redirect_url': redirect_url,
+            'items_count': len(items)
+        })
+
+    except IntermarcheAPIException as e:
+        logger.error(f"Erreur API Intermarché: {e.message}")
+
+        # Enregistrer l'échec en DB
+        IntermarcheCart.objects.create(
+            user=request.user,
+            panier=panier,
+            store_id=store_id,
+            anonymous_cart_id=str(uuid.uuid4()),
+            status='failed',
+            error_message=e.message
+        )
+
+        return render(request, 'panier/intermarche_error.html', {
+            'panier': panier,
+            'error_message': e.message
+        })
+    except Exception as e:
+        logger.error(f"Erreur inattendue: {str(e)}")
+        messages.error(request, "Une erreur inattendue s'est produite.")
+        return redirect('detail_panier', panier_id=panier.id)

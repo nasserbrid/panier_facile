@@ -357,6 +357,7 @@ CSP_CONNECT_SRC = (
     "https://nominatim.openstreetmap.org",
     "https://overpass-api.de",
     "https://tile.openstreetmap.org",
+    "https://api-partners.intermarche.com",
 )
 CSP_FRAME_SRC = (
     "https://js.stripe.com",
@@ -365,3 +366,9 @@ CSP_FRAME_SRC = (
 # En mode développement, désactiver CSP pour faciliter le debug
 if DEBUG:
     CSP_REPORT_ONLY = True
+
+# ========== INTERMARCHÉ API CONFIGURATION ==========
+
+INTERMARCHE_API_KEY = os.getenv("INTERMARCHE_API_KEY", "")
+INTERMARCHE_APP_NAME = os.getenv("INTERMARCHE_APP_NAME", "Panier-Facile")
+INTERMARCHE_APP_VERSION = os.getenv("INTERMARCHE_APP_VERSION", "1.0.0")

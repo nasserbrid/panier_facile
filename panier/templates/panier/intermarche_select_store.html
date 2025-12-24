@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Choisir un magasin Intermarché - PanierFacile{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+    #map {
+        height: 400px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .store-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+    .store-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .distance-badge {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'liste_paniers' %}">Mes paniers</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'detail_panier' panier.id %}">Panier {{ panier.id }}</a></li>
+            <li class="breadcrumb-item active">Choisir un magasin Intermarché</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2 class="text-primary">
+                <i class="bi bi-shop"></i> Choisir votre magasin Intermarché
+            </h2>
+            <p class="text-muted">Sélectionnez le magasin le plus proche pour votre commande Drive</p>
+        </div>
+    </div>
+
+    <!-- Carte des magasins -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Liste des magasins -->
+    <div class="row">
+        <div class="col-md-12">
+            <h4 class="mb-3">
+                <i class="bi bi-geo-fill text-success"></i> {{ stores|length }} magasin(s) à proximité
+            </h4>
+        </div>
+
+        {% for store in stores %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card store-card h-100" onclick="selectStore('{{ store.id }}', '{{ store.name }}')">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">{{ store.name }}</h5>
+                        <span class="badge bg-primary distance-badge">
+                            {{ store.distance_km }} km
+                        </span>
+                    </div>
+
+                    <p class="card-text text-muted small mb-2">
+                        <i class="bi bi-geo-alt"></i>
+                        {{ store.address.street|default:"" }}
+                        {{ store.address.postalCode|default:"" }}
+                        {{ store.address.city|default:"" }}
+                    </p>
+
+                    {% if store.phone %}
+                    <p class="card-text small mb-1">
+                        <i class="bi bi-telephone"></i> {{ store.phone }}
+                    </p>
+                    {% endif %}
+
+                    {% if store.openingHours %}
+                    <p class="card-text small text-success mb-2">
+                        <i class="bi bi-clock"></i> Ouvert
+                    </p>
+                    {% endif %}
+
+                    <button class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-arrow-right-circle"></i> Sélectionner ce magasin
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-md-12">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Aucun magasin Intermarché trouvé à proximité.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <a href="{% url 'detail_panier' panier.id %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Annuler
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Formulaire caché pour soumettre la sélection -->
+<form id="storeSelectionForm" method="GET" action="{% url 'intermarche_match_products' panier.id %}" style="display:none;">
+    <input type="hidden" name="store_id" id="selectedStoreId">
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialiser la carte
+    const userLat = {{ user_location.lat }};
+    const userLon = {{ user_location.lon }};
+
+    const map = L.map('map').setView([userLat, userLon], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Marqueur utilisateur
+    const userIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    L.marker([userLat, userLon], {icon: userIcon})
+        .addTo(map)
+        .bindPopup('<b>Votre position</b>')
+        .openPopup();
+
+    // Marqueurs magasins
+    const stores = {{ stores|safe }};
+    stores.forEach(store => {
+        const storeIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const marker = L.marker([store.latitude, store.longitude], {icon: storeIcon})
+            .addTo(map)
+            .bindPopup(`
+                <b>${store.name}</b><br>
+                ${store.distance_km} km<br>
+                <button class="btn btn-sm btn-primary mt-2" onclick="selectStore('${store.id}', '${store.name}')">
+                    Sélectionner
+                </button>
+            `);
+
+        marker.on('click', function() {
+            this.openPopup();
+        });
+    });
+
+    // Fonction pour sélectionner un magasin
+    function selectStore(storeId, storeName) {
+        if (confirm(`Confirmer la sélection de ${storeName} ?`)) {
+            document.getElementById('selectedStoreId').value = storeId;
+            document.getElementById('storeSelectionForm').submit();
+        }
+    }
+</script>
+{% endblock %}

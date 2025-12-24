@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Erreur - PanierFacile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .error-icon {
+        font-size: 4rem;
+        color: #dc3545;
+    }
+    .error-card {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card error-card shadow-lg border-danger">
+                <div class="card-body text-center py-5">
+                    <!-- Icône d'erreur -->
+                    <div class="mb-4">
+                        <i class="bi bi-exclamation-triangle-fill error-icon"></i>
+                    </div>
+
+                    <!-- Message d'erreur -->
+                    <h2 class="text-danger mb-3">Une erreur est survenue</h2>
+                    <p class="lead text-muted mb-4">
+                        Impossible de créer votre panier sur Intermarché Drive
+                    </p>
+
+                    <!-- Détails de l'erreur -->
+                    <div class="alert alert-danger text-start mb-4">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-info-circle"></i> Détails de l'erreur
+                        </h5>
+                        <p class="mb-0">{{ error_message }}</p>
+                    </div>
+
+                    <!-- Suggestions -->
+                    <div class="alert alert-info text-start mb-4">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-lightbulb"></i> Que faire ?
+                        </h6>
+                        <ul class="mb-0">
+                            <li>Vérifiez votre connexion internet</li>
+                            <li>Essayez de sélectionner un autre magasin Intermarché</li>
+                            <li>Réessayez dans quelques instants</li>
+                            <li>Contactez le support si le problème persiste</li>
+                        </ul>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'export_to_intermarche' panier.id %}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-arrow-clockwise"></i> Réessayer
+                        </a>
+                        <a href="{% url 'detail_panier' panier.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Retour au panier
+                        </a>
+                        <a href="{% url 'liste_paniers' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-list"></i> Voir mes autres paniers
+                        </a>
+                    </div>
+
+                    <!-- Support -->
+                    <div class="mt-4">
+                        <p class="text-muted small">
+                            <i class="bi bi-envelope"></i>
+                            Besoin d'aide ? Contactez-nous à
+                            <a href="mailto:support@panierfacile.com">support@panierfacile.com</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
