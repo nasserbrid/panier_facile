@@ -6,6 +6,7 @@ from django.contrib.auth.views import LogoutView
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django_ratelimit.decorators import ratelimit
 import json
 from authentication.utils import OverpassAPI
 
@@ -71,6 +72,7 @@ def profile_page(request):
     })
 
 
+@ratelimit(key='user', rate='10/m', method='POST')
 @login_required
 @require_http_methods(["POST"])
 def save_location(request):
@@ -82,7 +84,15 @@ def save_location(request):
     - address (adresse à géocoder)
 
     Retourne un JSON avec le statut de l'opération.
+    Rate limit: 10 requêtes par minute par utilisateur.
     """
+    # Vérifier si rate limit dépassé
+    if getattr(request, 'limited', False):
+        return JsonResponse({
+            'success': False,
+            'message': 'Trop de requêtes. Veuillez réessayer dans quelques instants.'
+        }, status=429)
+
     try:
         data = json.loads(request.body)
         user = request.user
@@ -92,6 +102,27 @@ def save_location(request):
         address = data.get('address', '')
 
         if latitude and longitude:
+            # Validation des coordonnées GPS
+            try:
+                lat = float(latitude)
+                lon = float(longitude)
+            except (TypeError, ValueError):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Coordonnées GPS invalides'
+                }, status=400)
+
+            if not (-90 <= lat <= 90):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Latitude doit être entre -90 et 90'
+                }, status=400)
+
+            if not (-180 <= lon <= 180):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Longitude doit être entre -180 et 180'
+                }, status=400)
             # Importer Point uniquement si GeoDjango est disponible
             try:
                 from django.contrib.gis.geos import Point

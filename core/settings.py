@@ -27,6 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set")
 
 STRIPE_SECRET_KEY = os.getenv("SECRET_KEY_STRIPE")
 STRIPE_PUBLISHABLE_KEY = os.getenv("PUBLISHABLE_KEY_STRIPE")
@@ -39,9 +41,24 @@ ALLOWED_HOSTS = ['panier-facile.fr','www.panier-facile.fr','panier-facile.onrend
 CSRF_TRUSTED_ORIGINS = ["https://panier-facile.fr","https://www.panier-facile.fr"]
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"  
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# Headers de sécurité HTTPS (activés uniquement en production)
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 an
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+
+# Protection XSS et MIME sniffing
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Referrer Policy
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
 # Application definition
 
@@ -66,6 +83,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',  # Content Security Policy
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -302,3 +320,48 @@ CELERY_RESULT_EXPIRES = 3600  # Les résultats expirent après 1 heure
 
 # Celery Beat (scheduler)
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# ============================================================================
+# CONTENT SECURITY POLICY (CSP)
+# ============================================================================
+
+# Configuration CSP pour protéger contre les attaques XSS
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = (
+    "'self'",
+    "https://js.stripe.com",
+    "https://cdn.jsdelivr.net",
+    "https://unpkg.com",  # Leaflet.js
+    "'unsafe-inline'",  # Nécessaire pour les scripts inline (à minimiser)
+)
+CSP_STYLE_SRC = (
+    "'self'",
+    "https://cdn.jsdelivr.net",
+    "https://cdnjs.cloudflare.com",
+    "https://unpkg.com",  # Leaflet CSS
+    "'unsafe-inline'",  # Nécessaire pour Bootstrap et styles inline
+)
+CSP_IMG_SRC = (
+    "'self'",
+    "data:",
+    "https:",  # Permet toutes les images HTTPS (pour OSM tiles, markers, etc.)
+)
+CSP_FONT_SRC = (
+    "'self'",
+    "https://cdnjs.cloudflare.com",
+    "https://cdn.jsdelivr.net",
+)
+CSP_CONNECT_SRC = (
+    "'self'",
+    "https://api.stripe.com",
+    "https://nominatim.openstreetmap.org",
+    "https://overpass-api.de",
+    "https://tile.openstreetmap.org",
+)
+CSP_FRAME_SRC = (
+    "https://js.stripe.com",
+)
+
+# En mode développement, désactiver CSP pour faciliter le debug
+if DEBUG:
+    CSP_REPORT_ONLY = True

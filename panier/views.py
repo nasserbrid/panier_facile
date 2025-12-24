@@ -797,6 +797,7 @@ from django.core import management
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+from django_ratelimit.decorators import ratelimit
 import os
 import time
 import logging
@@ -804,22 +805,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+@ratelimit(key='ip', rate='5/h', method=['GET', 'POST'])
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def trigger_notification(request):
     """
     Endpoint sécurisé pour déclencher les notifications quotidiennes.
     Appelé par cron-job.org avec un token de sécurité.
+    Rate limit: 5 requêtes par heure par IP.
     """
     start_time = time.time()
-    
+
+    # Vérifier si rate limit dépassé
+    if getattr(request, 'limited', False):
+        logger.warning(f"⚠️ Rate limit dépassé pour IP: {request.META.get('REMOTE_ADDR')}")
+        return JsonResponse({
+            "error": "Too many requests"
+        }, status=429)
+
     # Log de la requête entrante
     logger.info("=" * 70)
     logger.info(f"🔔 Requête de notification reçue à {timezone.now()}")
     logger.info(f"   User-Agent: {request.META.get('HTTP_USER_AGENT', 'Unknown')}")
     logger.info(f"   IP: {request.META.get('REMOTE_ADDR', 'Unknown')}")
     logger.info(f"   Method: {request.method}")
-    
+
     # Vérification du token de sécurité
     token = request.headers.get("X-CRON-TOKEN")
     expected_token = os.getenv("TOKEN")
