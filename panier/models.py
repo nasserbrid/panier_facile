@@ -57,3 +57,220 @@ class Panier(models.Model):
         from django.utils import timezone
         delta = timezone.now() - self.date_creation
         return delta.days
+
+
+class Ingredient(models.Model):
+    """
+    Modèle représentant un ingrédient dans un panier.
+    """
+    nom = models.CharField(max_length=255)
+    quantite = models.CharField(max_length=50, blank=True)
+    unite = models.CharField(max_length=50, blank=True)
+
+    class Meta:
+        verbose_name = "Ingrédient"
+        verbose_name_plural = "Ingrédients"
+
+    def __str__(self):
+        return f"{self.nom} ({self.quantite} {self.unite})".strip()
+
+
+class IngredientPanier(models.Model):
+    """
+    Modèle de liaison entre Panier et Ingredient (Many-to-Many avec attributs).
+    """
+    panier = models.ForeignKey(Panier, on_delete=models.CASCADE, related_name='ingredient_paniers')
+    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, related_name='ingredient_paniers')
+    quantite = models.DecimalField(max_digits=10, decimal_places=2, default=1)
+    checked = models.BooleanField(default=False, help_text="Indique si l'ingrédient a été coché")
+
+    class Meta:
+        unique_together = [['panier', 'ingredient']]
+        verbose_name = "Ingrédient du panier"
+        verbose_name_plural = "Ingrédients du panier"
+
+    def __str__(self):
+        return f"{self.ingredient.nom} dans {self.panier}"
+
+
+class IntermarcheProductMatch(models.Model):
+    """
+    Modèle représentant la correspondance entre un ingrédient PanierFacile
+    et un produit Intermarché.
+
+    Ce modèle sert de cache pour éviter de rechercher constamment les mêmes
+    produits via l'API Intermarché.
+    """
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='intermarche_matches'
+    )
+    store_id = models.CharField(
+        max_length=20,
+        help_text="Identifiant du magasin Intermarché (ex: 08177)"
+    )
+
+    # Informations produit Intermarché
+    intermarche_product_id = models.CharField(
+        max_length=100,
+        help_text="ID unique du produit Intermarché"
+    )
+    intermarche_product_ean13 = models.CharField(
+        max_length=13,
+        blank=True,
+        help_text="Code-barres EAN13 du produit"
+    )
+    intermarche_item_parent_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="ID parent de l'item (pour les produits avec variantes)"
+    )
+
+    # Détails du produit (cache)
+    product_label = models.CharField(
+        max_length=255,
+        help_text="Libellé du produit"
+    )
+    product_brand = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Marque du produit"
+    )
+    product_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Prix unitaire du produit"
+    )
+    product_image_url = models.URLField(
+        blank=True,
+        help_text="URL de l'image du produit"
+    )
+
+    # Métadonnées du matching
+    match_score = models.FloatField(
+        default=0.0,
+        help_text="Score de pertinence du matching (0.0 à 1.0)"
+    )
+    last_updated = models.DateTimeField(
+        auto_now=True,
+        help_text="Date de dernière mise à jour du match"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Date de création du match"
+    )
+
+    class Meta:
+        unique_together = [['ingredient', 'store_id', 'intermarche_product_id']]
+        indexes = [
+            models.Index(fields=['ingredient', 'store_id']),
+            models.Index(fields=['store_id', 'last_updated']),
+        ]
+        verbose_name = "Correspondance produit Intermarché"
+        verbose_name_plural = "Correspondances produits Intermarché"
+
+    def __str__(self):
+        return f"{self.ingredient.nom} → {self.product_label} (Magasin {self.store_id})"
+
+
+class IntermarcheCart(models.Model):
+    """
+    Modèle représentant un panier Intermarché créé depuis PanierFacile.
+
+    Ce modèle stocke les informations de synchronisation avec l'API
+    Intermarché pour permettre le suivi des paniers exportés.
+    """
+    STATUS_CHOICES = [
+        ('draft', 'Brouillon'),
+        ('sent', 'Envoyé à Intermarché'),
+        ('completed', 'Commande finalisée'),
+        ('failed', 'Échec'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='intermarche_carts'
+    )
+    panier = models.ForeignKey(
+        Panier,
+        on_delete=models.CASCADE,
+        related_name='intermarche_carts'
+    )
+
+    # Informations magasin
+    store_id = models.CharField(
+        max_length=20,
+        help_text="Identifiant du magasin Intermarché"
+    )
+    store_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nom du magasin Intermarché"
+    )
+
+    # Identifiant du panier anonyme Intermarché
+    anonymous_cart_id = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="UUID du panier anonyme côté Intermarché"
+    )
+
+    # Informations panier
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Montant total du panier en euros"
+    )
+    items_count = models.IntegerField(
+        default=0,
+        help_text="Nombre d'articles dans le panier"
+    )
+
+    # Statut et suivi
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft'
+    )
+    sync_response = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Réponse complète de l'API Intermarché lors de la synchronisation"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Message d'erreur en cas d'échec"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Date de création du panier Intermarché"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Date de dernière mise à jour"
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['store_id', 'created_at']),
+        ]
+        verbose_name = "Panier Intermarché"
+        verbose_name_plural = "Paniers Intermarché"
+
+    def __str__(self):
+        return f"Panier Intermarché {self.id} - {self.user.username} (Magasin {self.store_id})"
+
+    @property
+    def intermarche_url(self):
+        """
+        Retourne l'URL du panier sur le site Intermarché Drive.
+        """
+        return f"https://www.intermarche.com/drive/panier?anonymousId={self.anonymous_cart_id}&storeId={self.store_id}"
