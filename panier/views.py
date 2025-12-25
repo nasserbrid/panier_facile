@@ -159,7 +159,6 @@ def supprimer_course(request, course_id):
     """
     course = get_object_or_404(Course, id=course_id)
     user = request.user
-    user_lastname = user.last_name.lower()
 
     # Ici, je vérifie si la course est associée à au moins un panier
     if not course.paniers.exists():
@@ -172,7 +171,13 @@ def supprimer_course(request, course_id):
 
     # Ici, je vérifie les autorisations d'accès
     is_owner = user == owner
-    is_family = user_lastname and (user_lastname == owner.last_name.lower()) and not is_owner
+
+    # Ici, je vérifie si l'utilisateur est de la même famille (gestion des valeurs None/vides pour last_name)
+    is_family = False
+    if not is_owner and user.last_name and owner.last_name:
+        user_lastname = user.last_name.lower()
+        owner_lastname = owner.last_name.lower()
+        is_family = user_lastname == owner_lastname
 
     # Ici, je refuse l'accès si l'utilisateur n'est ni propriétaire ni membre de la famille
     if not (is_owner or is_family):
