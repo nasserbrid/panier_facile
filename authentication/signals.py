@@ -17,19 +17,19 @@ def assign_trial_period(sender, instance, created, **kwargs):
         created: Boolean - True si c'est une nouvelle création
         **kwargs: Arguments supplémentaires
     """
+    # Ici, je vérifie si c'est une nouvelle création d'utilisateur
     if created:
-        # Calculer la date de fin de la période d'essai (90 jours à partir de maintenant)
+        # Ici, je calcule la date de fin de la période d'essai (90 jours à partir de maintenant)
         trial_duration = timedelta(days=90)
         trial_end = timezone.now() + trial_duration
 
-        # Assigner la période d'essai à l'utilisateur
+        # Ici, j'assigne la période d'essai à l'utilisateur
         instance.trial_end_date = trial_end
         instance.subscription_status = 'trial'
 
-        # Sauvegarder les modifications
-        # update_fields évite les boucles infinies de signaux
+        # Ici, je sauvegarde les modifications en utilisant update_fields pour éviter les boucles infinies de signaux
         instance.save(update_fields=['trial_end_date', 'subscription_status'])
 
-        # Log pour le débogage (optionnel)
+        # Ici, j'affiche un log pour le débogage
         print(f"✓ Période d'essai de 90 jours attribuée à {instance.username}")
         print(f"  Fin de l'essai: {trial_end.strftime('%d/%m/%Y')}")

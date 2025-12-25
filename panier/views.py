@@ -153,23 +153,29 @@ def supprimer_course(request, course_id):
     Supprime une course.
 
     Autorisations :
-    - Propriétaire (utilisateur qui a créé/ajouté la course en premier) : OUI
+    - Propriétaire (utilisateur dont le panier contient la course) : OUI
     - Membre de la même famille : OUI
-    - Courses orphelines (sans panier) : OUI pour tous
+    - Autres utilisateurs : NON
     """
     course = get_object_or_404(Course, id=course_id)
     user = request.user
     user_lastname = user.last_name.lower()
 
-    # Déterminer le propriétaire
-    owner = course.paniers.first().user if course.paniers.exists() else None
+    # Ici, je vérifie si la course est associée à au moins un panier
+    if not course.paniers.exists():
+        return render(request, 'panier/acces_refuse.html',
+                      {"message": "Cette course n'est associée à aucun panier et ne peut pas être supprimée."},
+                      status=403)
 
-    # Vérifications d'accès
-    is_owner = owner and user == owner
-    is_family = owner and user_lastname and (user_lastname == owner.last_name.lower()) and not is_owner
-    is_orphan = not course.paniers.exists()  # Course sans panier
+    # Ici, je détermine le propriétaire (utilisateur du premier panier associé)
+    owner = course.paniers.first().user
 
-    if not (is_owner or is_family or is_orphan):
+    # Ici, je vérifie les autorisations d'accès
+    is_owner = user == owner
+    is_family = user_lastname and (user_lastname == owner.last_name.lower()) and not is_owner
+
+    # Ici, je refuse l'accès si l'utilisateur n'est ni propriétaire ni membre de la famille
+    if not (is_owner or is_family):
         return render(request, 'panier/acces_refuse.html',
                       {"message": "Vous n'avez pas le droit de supprimer cette course."},
                       status=403)
