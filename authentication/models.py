@@ -43,7 +43,7 @@ class User(AbstractUser):
     subscription_status = models.CharField(
         max_length=20,
         choices=[
-            ('trial', 'Période d'essai'),
+            ('trial', 'Période d\'essai'),
             ('active', 'Abonnement actif'),
             ('expired', 'Expiré'),
             ('canceled', 'Annulé'),
