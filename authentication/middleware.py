@@ -1,13 +1,15 @@
+# TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
+"""
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 
 
 class SubscriptionMiddleware:
-    """
+
     Middleware qui vérifie si l'utilisateur a un abonnement actif.
     Redirige vers la page d'upgrade si l'abonnement a expiré.
-    """
+
 
     # URLs exemptées de la vérification d'abonnement
     EXEMPT_URLS = [
@@ -48,10 +50,11 @@ class SubscriptionMiddleware:
         return response
 
     def _is_exempt_url(self, path):
-        """
+
         Vérifie si l'URL est exemptée de la vérification d'abonnement.
-        """
+
         for exempt_url in self.EXEMPT_URLS:
             if path.startswith(exempt_url):
                 return True
         return False
+"""

@@ -69,11 +69,13 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+    # TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
+    """
     @property
     def has_active_subscription(self):
-        """
+        '''
         Vérifie si l'utilisateur a un accès actif (période d'essai ou abonnement payant).
-        """
+        '''
         from django.utils import timezone
 
         if self.subscription_status == 'active':
@@ -86,9 +88,9 @@ class User(AbstractUser):
 
     @property
     def days_remaining(self):
-        """
+        '''
         Retourne le nombre de jours restants dans la période d'essai.
-        """
+        '''
         from django.utils import timezone
 
         if self.subscription_status == 'trial' and self.trial_end_date:
@@ -96,3 +98,4 @@ class User(AbstractUser):
             return max(0, delta.days)
 
         return 0
+    """
