@@ -163,20 +163,20 @@ def supprimer_course(request, course_id):
 
         # Ici, je vérifie si la course est associée à au moins un panier
         if not course.paniers.exists():
-            return render(request, 'panier/acces_refuse.html',
+            return render(request, 'panier/access_refuse.html',
                           {"message": "Cette course n'est associée à aucun panier et ne peut pas être supprimée."},
                           status=403)
 
         # Ici, je détermine le propriétaire (utilisateur du premier panier associé)
         panier = course.paniers.first()
         if not panier:
-            return render(request, 'panier/acces_refuse.html',
+            return render(request, 'panier/access_refuse.html',
                           {"message": "Cette course n'est associée à aucun panier valide."},
                           status=403)
 
         owner = panier.user
         if not owner:
-            return render(request, 'panier/acces_refuse.html',
+            return render(request, 'panier/access_refuse.html',
                           {"message": "Le panier associé n'a pas de propriétaire."},
                           status=403)
 
@@ -192,7 +192,7 @@ def supprimer_course(request, course_id):
 
         # Ici, je refuse l'accès si l'utilisateur n'est ni propriétaire ni membre de la famille
         if not (is_owner or is_family):
-            return render(request, 'panier/acces_refuse.html',
+            return render(request, 'panier/access_refuse.html',
                           {"message": "Vous n'avez pas le droit de supprimer cette course."},
                           status=403)
 
@@ -210,7 +210,7 @@ def supprimer_course(request, course_id):
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Erreur dans supprimer_course pour course_id={course_id}: {str(e)}", exc_info=True)
-        return render(request, 'panier/acces_refuse.html',
+        return render(request, 'panier/access_refuse.html',
                       {"message": f"Une erreur est survenue lors de la suppression de la course: {str(e)}"},
                       status=500)
 
