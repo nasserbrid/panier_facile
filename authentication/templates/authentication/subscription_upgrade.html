@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Abonnement expiré - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-warning">
+                <div class="card-body text-center py-5">
+                    <!-- Icône d'avertissement -->
+                    <div class="mb-4">
+                        <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+                    </div>
+
+                    <!-- Message principal -->
+                    <h2 class="text-warning mb-3">Votre période d'essai est terminée</h2>
+                    <p class="lead text-muted mb-4">
+                        Pour continuer à profiter de PanierFacile, abonnez-vous pour seulement <strong>1€ par mois</strong>
+                    </p>
+
+                    <!-- Avantages de l'abonnement -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-3">
+                                <i class="bi bi-star-fill text-warning"></i>
+                                Que comprend l'abonnement ?
+                            </h5>
+                            <ul class="list-unstyled text-start">
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Création illimitée de paniers personnalisés
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Export direct vers Intermarché Drive
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Recherche intelligente de produits
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Localisation des magasins à proximité
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Assistant IA pour vos courses
+                                </li>
+                                <li class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Notifications personnalisées
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Prix -->
+                    <div class="pricing-box mb-4">
+                        <div class="display-4 text-primary mb-2">1€<small class="text-muted fs-5">/mois</small></div>
+                        <p class="text-muted">Sans engagement • Résiliable à tout moment</p>
+                    </div>
+
+                    <!-- Bouton d'abonnement -->
+                    <button id="checkout-button" class="btn btn-primary btn-lg px-5 py-3 mb-3">
+                        <i class="bi bi-credit-card me-2"></i>
+                        S'abonner maintenant
+                    </button>
+
+                    <!-- Informations supplémentaires -->
+                    <div class="alert alert-info mt-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Paiement 100% sécurisé</strong> via Stripe
+                    </div>
+
+                    <p class="text-muted small mt-3">
+                        En vous abonnant, vous acceptez nos
+                        <a href="#">conditions générales d'utilisation</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+    const checkoutButton = document.getElementById('checkout-button');
+
+    checkoutButton.addEventListener('click', function() {
+        checkoutButton.disabled = true;
+        checkoutButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Chargement...';
+
+        fetch('{% url "create_subscription_checkout" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(session => {
+            if (session.error) {
+                alert('Erreur: ' + session.error);
+                checkoutButton.disabled = false;
+                checkoutButton.innerHTML = '<i class="bi bi-credit-card me-2"></i>S\'abonner maintenant';
+                return;
+            }
+            return stripe.redirectToCheckout({ sessionId: session.id });
+        })
+        .then(result => {
+            if (result && result.error) {
+                alert(result.error.message);
+                checkoutButton.disabled = false;
+                checkoutButton.innerHTML = '<i class="bi bi-credit-card me-2"></i>S\'abonner maintenant';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Une erreur est survenue. Veuillez réessayer.');
+            checkoutButton.disabled = false;
+            checkoutButton.innerHTML = '<i class="bi bi-credit-card me-2"></i>S\'abonner maintenant';
+        });
+    });
+</script>
+{% endblock %}

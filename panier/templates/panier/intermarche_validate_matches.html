@@ -3,29 +3,6 @@
 
 {% block title %}Validation des produits - PanierFacile{% endblock %}
 
-{% block extra_css %}
-<style>
-    .match-card {
-        transition: box-shadow 0.2s;
-    }
-    .match-card:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .product-image {
-        max-width: 80px;
-        max-height: 80px;
-        object-fit: contain;
-    }
-    .match-score {
-        font-size: 0.85rem;
-    }
-    .no-match-alert {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">

@@ -84,6 +84,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',  # Content Security Policy
+    'authentication.middleware.SubscriptionMiddleware',  # Vérification de l'abonnement
 ]
 
 ROOT_URLCONF = 'core.urls'

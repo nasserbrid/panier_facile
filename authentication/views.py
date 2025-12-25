@@ -6,9 +6,14 @@ from django.contrib.auth.views import LogoutView
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 import json
+import stripe
 from authentication.utils import OverpassAPI
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 # Create your views here.
 
@@ -214,3 +219,226 @@ def nearby_stores(request):
         'shop_types': OverpassAPI.SHOP_TYPES,
         'selected_type': shop_type_filter
     })
+
+
+# ========================================
+# VUES DE GESTION D'ABONNEMENT
+# ========================================
+
+@login_required
+def subscription_status(request):
+    """
+    Affiche le statut d'abonnement de l'utilisateur.
+    """
+    user = request.user
+    context = {
+        'user': user,
+        'has_active_subscription': user.has_active_subscription,
+        'days_remaining': user.days_remaining,
+        'subscription_status': user.subscription_status,
+        'trial_end_date': user.trial_end_date,
+    }
+    return render(request, 'authentication/subscription_status.html', context)
+
+
+@login_required
+def subscription_upgrade(request):
+    """
+    Page d'upgrade pour les utilisateurs dont l'abonnement a expiré.
+    """
+    user = request.user
+    context = {
+        'user': user,
+        'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
+    }
+    return render(request, 'authentication/subscription_upgrade.html', context)
+
+
+@csrf_exempt
+def create_subscription_checkout(request):
+    """
+    Crée une session Stripe Checkout pour l'abonnement à 1€/mois.
+    """
+    if request.method == "POST":
+        try:
+            user = request.user
+
+            success_url = request.build_absolute_uri(
+                reverse("subscription_success")
+            ) + "?session_id={CHECKOUT_SESSION_ID}"
+
+            cancel_url = request.build_absolute_uri(reverse("subscription_upgrade"))
+
+            # Créer ou récupérer le customer Stripe
+            if user.stripe_customer_id:
+                customer_id = user.stripe_customer_id
+            else:
+                customer = stripe.Customer.create(
+                    email=user.email,
+                    metadata={
+                        'user_id': user.id,
+                        'username': user.username,
+                    }
+                )
+                customer_id = customer.id
+                user.stripe_customer_id = customer_id
+                user.save(update_fields=['stripe_customer_id'])
+
+            # Créer la session de paiement
+            checkout_session = stripe.checkout.Session.create(
+                customer=customer_id,
+                payment_method_types=['card'],
+                mode='subscription',
+                line_items=[{
+                    'price': settings.STRIPE_PRICE_ID,  # L'ID du prix à 1€/mois
+                    'quantity': 1,
+                }],
+                success_url=success_url,
+                cancel_url=cancel_url,
+                metadata={
+                    'user_id': user.id,
+                }
+            )
+
+            return JsonResponse({'id': checkout_session.id})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@login_required
+def subscription_success(request):
+    """
+    Page de confirmation après un paiement réussi.
+    Met à jour le statut d'abonnement de l'utilisateur.
+    """
+    session_id = request.GET.get("session_id")
+    if not session_id:
+        return render(request, "authentication/subscription_success.html", {
+            "error": "Session introuvable"
+        })
+
+    try:
+        # Récupérer les infos de la session Stripe
+        session = stripe.checkout.Session.retrieve(
+            session_id,
+            expand=["customer", "subscription"]
+        )
+
+        user = request.user
+
+        # Mettre à jour l'utilisateur avec les infos Stripe
+        user.stripe_customer_id = session.customer.id if hasattr(session.customer, 'id') else session.customer
+        user.stripe_subscription_id = session.subscription.id if hasattr(session.subscription, 'id') else session.subscription
+        user.subscription_status = 'active'
+        user.save(update_fields=['stripe_customer_id', 'stripe_subscription_id', 'subscription_status'])
+
+        context = {
+            "customer_email": session.customer_email or user.email,
+            "subscription_id": user.stripe_subscription_id,
+            "amount_total": session.amount_total / 100 if session.amount_total else 1.00,
+        }
+
+        return render(request, "authentication/subscription_success.html", context)
+
+    except Exception as e:
+        return render(request, "authentication/subscription_success.html", {
+            "error": f"Erreur lors de la récupération de la session: {str(e)}"
+        })
+
+
+@csrf_exempt
+def stripe_subscription_webhook(request):
+    """
+    Webhook pour gérer les événements Stripe (renouvellement, annulation, etc.).
+    """
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        return JsonResponse({'error': 'Invalid payload'}, status=400)
+    except stripe.error.SignatureVerificationError:
+        return JsonResponse({'error': 'Invalid signature'}, status=400)
+
+    # Gérer les différents types d'événements
+    if event['type'] == 'customer.subscription.updated':
+        handle_subscription_updated(event['data']['object'])
+    elif event['type'] == 'customer.subscription.deleted':
+        handle_subscription_deleted(event['data']['object'])
+    elif event['type'] == 'invoice.payment_succeeded':
+        handle_payment_succeeded(event['data']['object'])
+    elif event['type'] == 'invoice.payment_failed':
+        handle_payment_failed(event['data']['object'])
+
+    return JsonResponse({'status': 'success'})
+
+
+def handle_subscription_updated(subscription):
+    """
+    Gère la mise à jour d'un abonnement.
+    """
+    from authentication.models import User
+
+    try:
+        user = User.objects.get(stripe_subscription_id=subscription['id'])
+
+        # Mettre à jour le statut selon le status Stripe
+        if subscription['status'] == 'active':
+            user.subscription_status = 'active'
+        elif subscription['status'] in ['canceled', 'unpaid']:
+            user.subscription_status = 'canceled'
+
+        user.save(update_fields=['subscription_status'])
+    except User.DoesNotExist:
+        pass
+
+
+def handle_subscription_deleted(subscription):
+    """
+    Gère l'annulation d'un abonnement.
+    """
+    from authentication.models import User
+
+    try:
+        user = User.objects.get(stripe_subscription_id=subscription['id'])
+        user.subscription_status = 'canceled'
+        user.save(update_fields=['subscription_status'])
+    except User.DoesNotExist:
+        pass
+
+
+def handle_payment_succeeded(invoice):
+    """
+    Gère le succès d'un paiement.
+    """
+    from authentication.models import User
+
+    try:
+        subscription_id = invoice.get('subscription')
+        if subscription_id:
+            user = User.objects.get(stripe_subscription_id=subscription_id)
+            user.subscription_status = 'active'
+            user.save(update_fields=['subscription_status'])
+    except User.DoesNotExist:
+        pass
+
+
+def handle_payment_failed(invoice):
+    """
+    Gère l'échec d'un paiement.
+    """
+    from authentication.models import User
+
+    try:
+        subscription_id = invoice.get('subscription')
+        if subscription_id:
+            user = User.objects.get(stripe_subscription_id=subscription_id)
+            user.subscription_status = 'expired'
+            user.save(update_fields=['subscription_status'])
+    except User.DoesNotExist:
+        pass

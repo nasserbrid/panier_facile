@@ -2435,3 +2435,88 @@ table th {
     font-size: 22px;
   }
 }
+
+/* ========================================
+   INTERMARCHÉ INTEGRATION STYLES
+======================================== */
+
+/* Select Store Page */
+#map {
+    height: 400px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.store-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.store-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.distance-badge {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Validate Matches Page */
+.match-card {
+    transition: box-shadow 0.2s;
+}
+
+.match-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.product-image {
+    max-width: 80px;
+    max-height: 80px;
+    object-fit: contain;
+}
+
+.match-score {
+    font-size: 0.85rem;
+}
+
+.no-match-alert {
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+/* Redirect Page */
+.success-icon {
+    font-size: 4rem;
+    color: #28a745;
+    animation: scaleIn 0.5s ease-in-out;
+}
+
+@keyframes scaleIn {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.redirect-card {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.countdown {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* Error Page */
+.error-icon {
+    font-size: 4rem;
+    color: #dc3545;
+}
+
+.error-card {
+    max-width: 600px;
+    margin: 0 auto;
+}

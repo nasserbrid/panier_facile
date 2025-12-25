@@ -17,6 +17,71 @@
                 </div>
             </div>
 
+            <!-- Statut d'abonnement -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-credit-card"></i> Mon Abonnement</h5>
+                </div>
+                <div class="card-body">
+                    {% if user.subscription_status == 'trial' %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-gift"></i> <strong>Période d'essai gratuite</strong>
+                        </div>
+                        <p class="mb-2">
+                            <strong>Statut:</strong>
+                            <span class="badge bg-info">Essai gratuit</span>
+                        </p>
+                        {% if user.has_active_subscription %}
+                        <p class="mb-2">
+                            <strong>Temps restant:</strong>
+                            <span class="badge bg-success">{{ user.days_remaining }} jour{{ user.days_remaining|pluralize }}</span>
+                        </p>
+                        <p class="mb-3 text-muted small">
+                            Fin de l'essai: {{ user.trial_end_date|date:"d/m/Y" }}
+                        </p>
+                        {% else %}
+                        <p class="mb-3">
+                            <span class="badge bg-danger">Période d'essai expirée</span>
+                        </p>
+                        {% endif %}
+
+                    {% elif user.subscription_status == 'active' %}
+                        <div class="alert alert-success mb-3">
+                            <i class="fas fa-check-circle"></i> <strong>Abonnement actif</strong>
+                        </div>
+                        <p class="mb-2">
+                            <strong>Montant:</strong> 1€/mois
+                        </p>
+                        <p class="mb-3">
+                            <strong>Statut:</strong>
+                            <span class="badge bg-success">Actif</span>
+                        </p>
+
+                    {% elif user.subscription_status == 'expired' %}
+                        <div class="alert alert-warning mb-3">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Abonnement expiré</strong>
+                        </div>
+                        <p class="mb-3">Pour continuer à utiliser PanierFacile, veuillez renouveler votre abonnement.</p>
+
+                    {% elif user.subscription_status == 'canceled' %}
+                        <div class="alert alert-danger mb-3">
+                            <i class="fas fa-times-circle"></i> <strong>Abonnement annulé</strong>
+                        </div>
+                        <p class="mb-3">Votre abonnement a été annulé.</p>
+                    {% endif %}
+
+                    <a href="{% url 'subscription_status' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-eye"></i> Voir les détails de mon abonnement
+                    </a>
+
+                    {% if not user.has_active_subscription %}
+                    <a href="{% url 'subscription_upgrade' %}" class="btn btn-warning btn-sm ms-2">
+                        <i class="fas fa-arrow-up"></i> Renouveler pour 1€/mois
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Section Géolocalisation -->
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">

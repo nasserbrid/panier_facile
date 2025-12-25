@@ -3,30 +3,6 @@
 
 {% block title %}Panier créé - PanierFacile{% endblock %}
 
-{% block extra_css %}
-<style>
-    .success-icon {
-        font-size: 4rem;
-        color: #28a745;
-        animation: scaleIn 0.5s ease-in-out;
-    }
-    @keyframes scaleIn {
-        0% { transform: scale(0); }
-        50% { transform: scale(1.1); }
-        100% { transform: scale(1); }
-    }
-    .redirect-card {
-        max-width: 600px;
-        margin: 0 auto;
-    }
-    .countdown {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #007bff;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="container mt-5">
     <div class="row justify-content-center">
@@ -106,25 +82,10 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/intermarche.js' %}"></script>
 <script>
-    // Compte à rebours et redirection automatique
-    let timeLeft = 5;
-    const countdownElement = document.getElementById('countdown');
+    // Initialize countdown and redirect
     const redirectUrl = "{{ redirect_url }}";
-
-    const timer = setInterval(function() {
-        timeLeft--;
-        countdownElement.textContent = timeLeft;
-
-        if (timeLeft <= 0) {
-            clearInterval(timer);
-            window.location.href = redirectUrl;
-        }
-    }, 1000);
-
-    // Annuler la redirection si l'utilisateur quitte la page
-    window.addEventListener('beforeunload', function() {
-        clearInterval(timer);
-    });
+    initRedirectCountdown(redirectUrl, 5);
 </script>
 {% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mon abonnement - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="bi bi-credit-card me-2"></i>
+                        Mon abonnement
+                    </h3>
+                </div>
+                <div class="card-body">
+                    {% if subscription_status == 'trial' %}
+                        <!-- Période d'essai -->
+                        <div class="alert alert-info">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-gift me-2"></i>
+                                Période d'essai gratuite
+                            </h4>
+                            <hr>
+                            <p class="mb-2">
+                                <strong>Statut :</strong>
+                                <span class="badge bg-info">Essai gratuit en cours</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Fin de l'essai :</strong>
+                                {{ trial_end_date|date:"d/m/Y à H:i" }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Temps restant :</strong>
+                                <span class="badge bg-success">{{ days_remaining }} jour{{ days_remaining|pluralize }}</span>
+                            </p>
+                        </div>
+
+                        <!-- Barre de progression -->
+                        {% if days_remaining > 0 %}
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-muted">Progression de la période d'essai</small>
+                                <small class="text-muted">{{ days_remaining }} / 90 jours restants</small>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                {% widthratio days_remaining 90 100 as progress_percent %}
+                                <div class="progress-bar bg-info" role="progressbar"
+                                     style="width: {{ progress_percent }}%;"
+                                     aria-valuenow="{{ days_remaining }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="90">
+                                    {{ progress_percent }}%
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Informations de renouvellement -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-arrow-right-circle me-2"></i>
+                                    Après votre période d'essai
+                                </h5>
+                                <p class="mb-2">
+                                    Votre abonnement se poursuivra automatiquement à <strong>1€/mois</strong>
+                                </p>
+                                <p class="text-muted small mb-0">
+                                    Résiliable à tout moment • Sans engagement
+                                </p>
+                                <a href="{% url 'subscription_upgrade' %}" class="btn btn-primary mt-3">
+                                    <i class="bi bi-credit-card me-2"></i>
+                                    Configurer mon abonnement
+                                </a>
+                            </div>
+                        </div>
+
+                    {% elif subscription_status == 'active' %}
+                        <!-- Abonnement actif -->
+                        <div class="alert alert-success">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-check-circle me-2"></i>
+                                Abonnement actif
+                            </h4>
+                            <hr>
+                            <p class="mb-2">
+                                <strong>Statut :</strong>
+                                <span class="badge bg-success">Actif</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Montant :</strong> 1€/mois
+                            </p>
+                            {% if user.stripe_subscription_id %}
+                            <p class="mb-0">
+                                <strong>ID d'abonnement :</strong>
+                                <code>{{ user.stripe_subscription_id }}</code>
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-gear me-2"></i>
+                                    Gérer mon abonnement
+                                </h5>
+                                <p class="text-muted mb-3">
+                                    Vous pouvez résilier votre abonnement à tout moment
+                                </p>
+                                <a href="#" class="btn btn-outline-danger" onclick="alert('La gestion de l\'abonnement sera disponible prochainement')">
+                                    <i class="bi bi-x-circle me-2"></i>
+                                    Résilier mon abonnement
+                                </a>
+                            </div>
+                        </div>
+
+                    {% elif subscription_status == 'expired' %}
+                        <!-- Abonnement expiré -->
+                        <div class="alert alert-warning">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Abonnement expiré
+                            </h4>
+                            <hr>
+                            <p class="mb-2">
+                                Votre période d'essai est terminée
+                            </p>
+                            <a href="{% url 'subscription_upgrade' %}" class="btn btn-warning">
+                                <i class="bi bi-arrow-right-circle me-2"></i>
+                                Renouveler pour 1€/mois
+                            </a>
+                        </div>
+
+                    {% elif subscription_status == 'canceled' %}
+                        <!-- Abonnement annulé -->
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-x-circle me-2"></i>
+                                Abonnement annulé
+                            </h4>
+                            <hr>
+                            <p class="mb-2">
+                                Votre abonnement a été annulé
+                            </p>
+                            <a href="{% url 'subscription_upgrade' %}" class="btn btn-primary">
+                                <i class="bi bi-arrow-clockwise me-2"></i>
+                                Réactiver mon abonnement
+                            </a>
+                        </div>
+                    {% endif %}
+
+                    <!-- Retour au profil -->
+                    <div class="mt-4 text-center">
+                        <a href="{% url 'profile' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Retour au profil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
