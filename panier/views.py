@@ -157,40 +157,62 @@ def supprimer_course(request, course_id):
     - Membre de la même famille : OUI
     - Autres utilisateurs : NON
     """
-    course = get_object_or_404(Course, id=course_id)
-    user = request.user
+    try:
+        course = get_object_or_404(Course, id=course_id)
+        user = request.user
 
-    # Ici, je vérifie si la course est associée à au moins un panier
-    if not course.paniers.exists():
+        # Ici, je vérifie si la course est associée à au moins un panier
+        if not course.paniers.exists():
+            return render(request, 'panier/acces_refuse.html',
+                          {"message": "Cette course n'est associée à aucun panier et ne peut pas être supprimée."},
+                          status=403)
+
+        # Ici, je détermine le propriétaire (utilisateur du premier panier associé)
+        panier = course.paniers.first()
+        if not panier:
+            return render(request, 'panier/acces_refuse.html',
+                          {"message": "Cette course n'est associée à aucun panier valide."},
+                          status=403)
+
+        owner = panier.user
+        if not owner:
+            return render(request, 'panier/acces_refuse.html',
+                          {"message": "Le panier associé n'a pas de propriétaire."},
+                          status=403)
+
+        # Ici, je vérifie les autorisations d'accès
+        is_owner = user == owner
+
+        # Ici, je vérifie si l'utilisateur est de la même famille (gestion des valeurs None/vides pour last_name)
+        is_family = False
+        if not is_owner and user.last_name and owner.last_name:
+            user_lastname = user.last_name.lower()
+            owner_lastname = owner.last_name.lower()
+            is_family = user_lastname == owner_lastname
+
+        # Ici, je refuse l'accès si l'utilisateur n'est ni propriétaire ni membre de la famille
+        if not (is_owner or is_family):
+            return render(request, 'panier/acces_refuse.html',
+                          {"message": "Vous n'avez pas le droit de supprimer cette course."},
+                          status=403)
+
+        if request.method == 'POST':
+            course.delete()
+            messages.success(request, "Course supprimée avec succès !")
+            return redirect('liste_courses')
+
+        return render(request, 'panier/supprimer_course.html', {
+            'course': course,
+            'can_delete': True
+        })
+
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Erreur dans supprimer_course pour course_id={course_id}: {str(e)}", exc_info=True)
         return render(request, 'panier/acces_refuse.html',
-                      {"message": "Cette course n'est associée à aucun panier et ne peut pas être supprimée."},
-                      status=403)
-
-    # Ici, je détermine le propriétaire (utilisateur du premier panier associé)
-    owner = course.paniers.first().user
-
-    # Ici, je vérifie les autorisations d'accès
-    is_owner = user == owner
-
-    # Ici, je vérifie si l'utilisateur est de la même famille (gestion des valeurs None/vides pour last_name)
-    is_family = False
-    if not is_owner and user.last_name and owner.last_name:
-        user_lastname = user.last_name.lower()
-        owner_lastname = owner.last_name.lower()
-        is_family = user_lastname == owner_lastname
-
-    # Ici, je refuse l'accès si l'utilisateur n'est ni propriétaire ni membre de la famille
-    if not (is_owner or is_family):
-        return render(request, 'panier/acces_refuse.html',
-                      {"message": "Vous n'avez pas le droit de supprimer cette course."},
-                      status=403)
-
-    if request.method == 'POST':
-        course.delete()
-        messages.success(request, "Course supprimée avec succès !")
-        return redirect('liste_courses')
-
-    return render(request, 'panier/supprimer_course.html', {'course': course})
+                      {"message": f"Une erreur est survenue lors de la suppression de la course: {str(e)}"},
+                      status=500)
 
 
 @login_required
