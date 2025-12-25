@@ -229,9 +229,9 @@ def nearby_stores(request):
 """
 @login_required
 def subscription_status(request):
-    """
+    '''
     Affiche le statut d'abonnement de l'utilisateur.
-    """
+    '''
     user = request.user
     context = {
         'user': user,
@@ -245,9 +245,9 @@ def subscription_status(request):
 
 @login_required
 def subscription_upgrade(request):
-    """
+    '''
     Page d'upgrade pour les utilisateurs dont l'abonnement a expiré.
-    """
+    '''
     user = request.user
     context = {
         'user': user,
@@ -258,9 +258,9 @@ def subscription_upgrade(request):
 
 @csrf_exempt
 def create_subscription_checkout(request):
-    """
+    '''
     Crée une session Stripe Checkout pour l'abonnement à 1€/mois.
-    """
+    '''
     if request.method == "POST":
         try:
             user = request.user
@@ -311,10 +311,10 @@ def create_subscription_checkout(request):
 
 @login_required
 def subscription_success(request):
-    """
+    '''
     Page de confirmation après un paiement réussi.
     Met à jour le statut d'abonnement de l'utilisateur.
-    """
+    '''
     session_id = request.GET.get("session_id")
     if not session_id:
         return render(request, "authentication/subscription_success.html", {
@@ -352,9 +352,9 @@ def subscription_success(request):
 
 @csrf_exempt
 def stripe_subscription_webhook(request):
-    """
+    '''
     Webhook pour gérer les événements Stripe (renouvellement, annulation, etc.).
-    """
+    '''
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
 
@@ -381,9 +381,9 @@ def stripe_subscription_webhook(request):
 
 
 def handle_subscription_updated(subscription):
-    """
+    '''
     Gère la mise à jour d'un abonnement.
-    """
+    '''
     from authentication.models import User
 
     try:
@@ -401,9 +401,9 @@ def handle_subscription_updated(subscription):
 
 
 def handle_subscription_deleted(subscription):
-    """
+    '''
     Gère l'annulation d'un abonnement.
-    """
+    '''
     from authentication.models import User
 
     try:
@@ -415,9 +415,9 @@ def handle_subscription_deleted(subscription):
 
 
 def handle_payment_succeeded(invoice):
-    """
+    '''
     Gère le succès d'un paiement.
-    """
+    '''
     from authentication.models import User
 
     try:
@@ -431,9 +431,9 @@ def handle_payment_succeeded(invoice):
 
 
 def handle_payment_failed(invoice):
-    """
+    '''
     Gère l'échec d'un paiement.
-    """
+    '''
     from authentication.models import User
 
     try:
