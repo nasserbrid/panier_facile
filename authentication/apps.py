@@ -10,6 +10,4 @@ class AuthenticationConfig(AppConfig):
         Import les signaux lorsque l'application Django démarre.
         La méthode ready() est appelée automatiquement par Django.
         """
-        # TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
-        # import authentication.signals
-        pass
+        import authentication.signals

@@ -1,5 +1,3 @@
-# TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
-"""
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -9,7 +7,7 @@ from .models import User
 
 @receiver(post_save, sender=User)
 def assign_trial_period(sender, instance, created, **kwargs):
-
+    """
     Assigne automatiquement une période d'essai de 3 mois (90 jours)
     à chaque nouvel utilisateur lors de sa création.
 
@@ -18,7 +16,7 @@ def assign_trial_period(sender, instance, created, **kwargs):
         instance: L'instance de l'utilisateur créé
         created: Boolean - True si c'est une nouvelle création
         **kwargs: Arguments supplémentaires
-
+    """
     if created:
         # Calculer la date de fin de la période d'essai (90 jours à partir de maintenant)
         trial_duration = timedelta(days=90)
@@ -35,4 +33,3 @@ def assign_trial_period(sender, instance, created, **kwargs):
         # Log pour le débogage (optionnel)
         print(f"✓ Période d'essai de 90 jours attribuée à {instance.username}")
         print(f"  Fin de l'essai: {trial_end.strftime('%d/%m/%Y')}")
-"""
