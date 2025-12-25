@@ -32,9 +32,7 @@ class User(AbstractUser):
         help_text="Position géographique (latitude, longitude)"
     )
 
-    # TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
     # Champs d'abonnement
-    """
     trial_end_date = models.DateTimeField(
         blank=True,
         null=True,
@@ -67,13 +65,10 @@ class User(AbstractUser):
         null=True,
         verbose_name="ID Abonnement Stripe"
     )
-    """
 
     def __str__(self):
         return self.username
 
-    # TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
-    """
     @property
     def has_active_subscription(self):
         '''
@@ -101,4 +96,3 @@ class User(AbstractUser):
             return max(0, delta.days)
 
         return 0
-    """
