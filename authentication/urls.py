@@ -24,11 +24,11 @@ urlpatterns = [
         template_name="authentication/password_reset_complete.html"),
          name="password_reset_complete"),
 
-    # Gestion d'abonnement
-    path('subscription/status/', views.subscription_status, name='subscription_status'),
-    path('subscription/upgrade/', views.subscription_upgrade, name='subscription_upgrade'),
-    path('subscription/create-checkout/', views.create_subscription_checkout, name='create_subscription_checkout'),
-    path('subscription/success/', views.subscription_success, name='subscription_success'),
-    path('subscription/webhook/', views.stripe_subscription_webhook, name='stripe_subscription_webhook'),
+    # Gestion d'abonnement - TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
+    # path('subscription/status/', views.subscription_status, name='subscription_status'),
+    # path('subscription/upgrade/', views.subscription_upgrade, name='subscription_upgrade'),
+    # path('subscription/create-checkout/', views.create_subscription_checkout, name='create_subscription_checkout'),
+    # path('subscription/success/', views.subscription_success, name='subscription_success'),
+    # path('subscription/webhook/', views.stripe_subscription_webhook, name='stripe_subscription_webhook'),
 
 ]

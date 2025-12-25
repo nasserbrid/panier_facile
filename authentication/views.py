@@ -223,8 +223,10 @@ def nearby_stores(request):
 
 # ========================================
 # VUES DE GESTION D'ABONNEMENT
+# TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
 # ========================================
 
+"""
 @login_required
 def subscription_status(request):
     """
@@ -442,3 +444,4 @@ def handle_payment_failed(invoice):
             user.save(update_fields=['subscription_status'])
     except User.DoesNotExist:
         pass
+"""
