@@ -125,6 +125,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Required by django-allauth
     'csp.middleware.CSPMiddleware',  # Content Security Policy
     # 'authentication.middleware.SubscriptionMiddleware',  # TEMPORAIREMENT DÉSACTIVÉ - À réactiver après migration
 ]
