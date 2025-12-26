@@ -25,7 +25,12 @@ def creer_course(request):
     if request.method == 'POST':
         form = CourseForm(request.POST)
         if form.is_valid():
-            form.save()
+            # Ici, je crée la course sans la sauvegarder encore
+            course = form.save(commit=False)
+            # Ici, j'assigne l'utilisateur connecté comme créateur
+            course.created_by = request.user
+            # Ici, je sauvegarde la course avec le créateur
+            course.save()
             messages.success(request, "Course créée avec succès !")
             return redirect('liste_courses')
     else:
@@ -40,12 +45,12 @@ def liste_courses(request):
 
     Pour les utilisateurs avec un nom de famille (last_name) :
     - Affiche toutes les courses présentes dans les paniers de la famille
-    - Affiche les courses non associées aux paniers familiaux
+    - Affiche les courses créées par la famille non encore dans un panier
     - Liste tous les paniers de la famille pour permettre l'ajout rapide
 
     Pour les utilisateurs sans nom de famille (utilisateur solo) :
     - Affiche toutes les courses présentes dans ses propres paniers
-    - Affiche les courses non associées à ses paniers personnels
+    - Affiche les courses créées par lui non encore dans un panier
     - Liste tous ses paniers personnels pour permettre l'ajout rapide
 
     Returns:
@@ -60,8 +65,10 @@ def liste_courses(request):
             paniers__user__last_name__iexact=last_name
         ).distinct()
 
-        # Courses non associées à un panier familial
-        courses_sans_panier = Course.objects.exclude(
+        # Ici, je récupère uniquement les courses créées par la famille ET non dans un panier familial
+        courses_sans_panier = Course.objects.filter(
+            created_by__last_name__iexact=last_name
+        ).exclude(
             paniers__user__last_name__iexact=last_name
         ).distinct()
 
@@ -74,8 +81,10 @@ def liste_courses(request):
             paniers__user=request.user
         ).distinct()
 
-        # Courses non associées aux paniers personnels
-        courses_sans_panier = Course.objects.exclude(
+        # Ici, je récupère uniquement les courses créées par l'utilisateur ET non dans ses paniers
+        courses_sans_panier = Course.objects.filter(
+            created_by=request.user
+        ).exclude(
             paniers__user=request.user
         ).distinct()
 
@@ -161,13 +170,39 @@ def supprimer_course(request, course_id):
         course = get_object_or_404(Course, id=course_id)
         user = request.user
 
-        # Ici, je vérifie si la course est associée à au moins un panier
+        # Ici, je vérifie si la course est associée à des paniers
         if not course.paniers.exists():
-            return render(request, 'panier/access_refuse.html',
-                          {"message": "Cette course n'est associée à aucun panier et ne peut pas être supprimée."},
-                          status=403)
+            # Ici, la course est orpheline (non associée à un panier)
+            # Seuls le créateur ou les membres de la famille du créateur peuvent la supprimer
 
-        # Ici, je détermine le propriétaire (utilisateur du premier panier associé)
+            last_name = user.last_name
+            can_delete_orphan = False
+
+            # Ici, je vérifie si l'utilisateur est le créateur de la course
+            if course.created_by == user:
+                can_delete_orphan = True
+            # Sinon, je vérifie si l'utilisateur est de la même famille que le créateur
+            elif last_name and course.created_by.last_name:
+                if last_name.lower() == course.created_by.last_name.lower():
+                    can_delete_orphan = True
+
+            if not can_delete_orphan:
+                return render(request, 'panier/access_refuse.html',
+                              {"message": "Vous n'avez pas le droit de supprimer cette course."},
+                              status=403)
+
+            if request.method == 'POST':
+                course.delete()
+                messages.success(request, "Course supprimée avec succès !")
+                return redirect('liste_courses')
+
+            return render(request, 'panier/supprimer_course.html', {
+                'course': course,
+                'can_delete': True
+            })
+
+        # Ici, la course est associée à au moins un panier
+        # Je détermine le propriétaire (utilisateur du premier panier associé)
         panier = course.paniers.first()
         if not panier:
             return render(request, 'panier/access_refuse.html',
@@ -328,6 +363,22 @@ def creer_panier(request):
             return redirect('liste_paniers')
     else:
         form = PanierForm()
+
+        # Ici, je filtre les courses selon la logique familiale
+        last_name = request.user.last_name
+        if last_name:
+            # Ici, l'utilisateur a un nom de famille
+            # Il voit uniquement les courses créées par sa famille
+            form.fields['courses'].queryset = Course.objects.filter(
+                created_by__last_name__iexact=last_name
+            )
+        else:
+            # Ici, l'utilisateur n'a pas de nom de famille (utilisateur principal)
+            # Il voit uniquement les courses qu'il a créées
+            form.fields['courses'].queryset = Course.objects.filter(
+                created_by=request.user
+            )
+
     return render(request, 'panier/creer_panier.html', {'form': form})
 
 

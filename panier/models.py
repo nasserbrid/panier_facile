@@ -4,7 +4,14 @@ from django.core.exceptions import ValidationError
 
 class Course(models.Model):
     titre = models.CharField(max_length=255)
-    ingredient = models.TextField()  
+    ingredient = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='courses_created',
+        verbose_name="Créé par",
+        help_text="Utilisateur qui a créé cette course"
+    )
 
     def __str__(self):
         return self.titre
