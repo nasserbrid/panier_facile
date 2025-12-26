@@ -80,6 +80,9 @@ urlpatterns = [
     path('logout/', authentication.views.CustomLogoutView.as_view(), name='logout'),
     path('signup/', authentication.views.signup_page, name='signup'),
 
+    # Django allauth (Google OAuth)
+    path('accounts/', include('allauth.urls')),
+
     # Auth reset / password
     path('auth/', include('authentication.urls')),
 
