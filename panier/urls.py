@@ -72,4 +72,9 @@ urlpatterns = [
     path('<int:panier_id>/intermarche/export/', views.export_to_intermarche, name='export_to_intermarche'),
     path('<int:panier_id>/intermarche/match/', views.intermarche_match_products, name='intermarche_match_products'),
     path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
+
+    # Contact et Avis
+    path('contact/', views.contact, name='contact'),
+    path('avis/soumettre/', views.submit_review, name='submit_review'),
+    path('avis/', views.reviews_list, name='reviews_list'),
 ]

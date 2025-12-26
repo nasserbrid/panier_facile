@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Avis clients - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="display-5 fw-bold">
+      <i class="fas fa-star text-warning me-2"></i>
+      Avis de nos utilisateurs
+    </h1>
+    <p class="lead text-muted">Découvrez ce que pensent nos early adopters de PanierFacile</p>
+    <a href="{% url 'submit_review' %}" class="btn btn-primary mt-3">
+      <i class="fas fa-plus me-2"></i>
+      Donner votre avis
+    </a>
+  </div>
+
+  {% if reviews %}
+  <div class="row g-4">
+    {% for review in reviews %}
+    <div class="col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm {% if review.is_featured %}border-warning{% endif %}">
+        {% if review.is_featured %}
+        <div class="card-header bg-warning text-dark">
+          <i class="fas fa-trophy me-2"></i>
+          <strong>Avis mis en avant</strong>
+        </div>
+        {% endif %}
+        <div class="card-body">
+          <!-- Note en étoiles -->
+          <div class="mb-3">
+            <span class="text-warning fs-5">{{ review.stars_display }}</span>
+            <span class="text-muted ms-2">{{ review.rating }}/5</span>
+          </div>
+
+          <!-- Titre de l'avis -->
+          <h5 class="card-title">{{ review.title }}</h5>
+
+          <!-- Contenu de l'avis -->
+          <p class="card-text">{{ review.review|truncatewords:50 }}</p>
+
+          <!-- Recommandation -->
+          {% if review.would_recommend %}
+          <div class="alert alert-success py-2 px-3 mb-3">
+            <i class="fas fa-thumbs-up me-2"></i>
+            <small>Recommande PanierFacile</small>
+          </div>
+          {% endif %}
+        </div>
+        <div class="card-footer bg-transparent">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{% if review.name %}{{ review.name }}{% else %}Utilisateur anonyme{% endif %}</strong>
+            </div>
+            <small class="text-muted">{{ review.created_at|date:"d/m/Y" }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination si nécessaire -->
+  <div class="text-center mt-5">
+    <p class="text-muted">{{ reviews.count }} avis client{{ reviews.count|pluralize }}</p>
+  </div>
+
+  {% else %}
+  <div class="text-center py-5">
+    <i class="fas fa-comment-slash fa-4x text-muted mb-4"></i>
+    <h3>Aucun avis pour le moment</h3>
+    <p class="text-muted">Soyez le premier à partager votre expérience !</p>
+    <a href="{% url 'submit_review' %}" class="btn btn-primary mt-3">
+      <i class="fas fa-star me-2"></i>
+      Donner le premier avis
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

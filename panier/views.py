@@ -6,7 +6,14 @@ from .forms import CourseForm, PanierForm
 
 
 def landing_page(request):
-    return render(request, 'panier/landing.html')
+    from .models import CustomerReview
+
+    # Ici, je récupère les 3 meilleurs avis (featured ou les mieux notés)
+    top_reviews = CustomerReview.objects.filter(is_approved=True).order_by('-is_featured', '-rating', '-created_at')[:3]
+
+    return render(request, 'panier/landing.html', {
+        'top_reviews': top_reviews
+    })
 
 
 @login_required
@@ -1542,3 +1549,63 @@ def intermarche_create_cart(request, panier_id):
         logger.error(f"Erreur inattendue: {str(e)}")
         messages.error(request, "Une erreur inattendue s'est produite.")
         return redirect('detail_panier', panier_id=panier.id)
+
+
+# ========== CONTACT ET AVIS ==========
+
+def contact(request):
+    """Affiche et traite le formulaire de contact"""
+    from .contact_forms import ContactForm
+    from .models import ContactMessage
+
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            # Ici, je sauvegarde le message de contact en base de données
+            ContactMessage.objects.create(
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['email'],
+                subject=form.cleaned_data['subject'],
+                message=form.cleaned_data['message']
+            )
+            messages.success(request, "Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.")
+            return redirect('contact')
+    else:
+        form = ContactForm()
+
+    return render(request, 'panier/contact.html', {'form': form})
+
+
+def submit_review(request):
+    """Affiche et traite le formulaire d'avis client"""
+    from .contact_forms import ReviewForm
+    from .models import CustomerReview
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            # Ici, je sauvegarde l'avis client en base de données
+            CustomerReview.objects.create(
+                name=form.cleaned_data['name'],
+                email=form.cleaned_data['email'],
+                rating=form.cleaned_data['rating'],
+                title=form.cleaned_data['title'],
+                review=form.cleaned_data['review'],
+                would_recommend=form.cleaned_data['would_recommend']
+            )
+            messages.success(request, "Merci pour votre avis ! Il sera publié après validation.")
+            return redirect('submit_review')
+    else:
+        form = ReviewForm()
+
+    return render(request, 'panier/submit_review.html', {'form': form})
+
+
+def reviews_list(request):
+    """Affiche la liste des avis clients approuvés"""
+    from .models import CustomerReview
+
+    # Ici, je récupère uniquement les avis approuvés
+    reviews = CustomerReview.objects.filter(is_approved=True).order_by('-created_at')
+
+    return render(request, 'panier/reviews_list.html', {'reviews': reviews})

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Contactez-nous - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">
+            <i class="fas fa-envelope me-2"></i>
+            Contactez-nous
+          </h2>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">
+            Une question ? Une suggestion ? Un problème ? N'hésitez pas à nous contacter, nous vous répondrons dans les plus brefs délais.
+          </p>
+
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="{{ form.name.id_for_label }}" class="form-label">
+                {{ form.name.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.name }}
+              {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.email.id_for_label }}" class="form-label">
+                {{ form.email.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.email }}
+              {% if form.email.errors %}
+                <div class="text-danger small">{{ form.email.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ form.subject.id_for_label }}" class="form-label">
+                {{ form.subject.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.subject }}
+              {% if form.subject.errors %}
+                <div class="text-danger small">{{ form.subject.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label for="{{ form.message.id_for_label }}" class="form-label">
+                {{ form.message.label }} <span class="text-danger">*</span>
+              </label>
+              {{ form.message }}
+              {% if form.message.errors %}
+                <div class="text-danger small">{{ form.message.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane me-1"></i> Envoyer le message
+              </button>
+              <a href="{% url 'landing' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Retour
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Section informations de contact -->
+      <div class="card shadow mt-4">
+        <div class="card-body">
+          <h5 class="card-title mb-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Autres moyens de nous contacter
+          </h5>
+          <p class="mb-2">
+            <i class="fas fa-clock me-2 text-primary"></i>
+            <strong>Temps de réponse moyen :</strong> 24-48 heures
+          </p>
+          <p class="mb-0">
+            <i class="fas fa-headset me-2 text-primary"></i>
+            <strong>Support disponible :</strong> Du lundi au vendredi, 9h-18h
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -281,3 +281,73 @@ class IntermarcheCart(models.Model):
         Retourne l'URL du panier sur le site Intermarché Drive.
         """
         return f"https://www.intermarche.com/drive/panier?anonymousId={self.anonymous_cart_id}&storeId={self.store_id}"
+
+
+class ContactMessage(models.Model):
+    """
+    Modèle pour stocker les messages de contact des utilisateurs.
+    """
+    name = models.CharField(max_length=100, verbose_name="Nom")
+    email = models.EmailField(verbose_name="Email")
+    subject = models.CharField(max_length=200, verbose_name="Sujet")
+    message = models.TextField(verbose_name="Message")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date d'envoi")
+    is_read = models.BooleanField(default=False, verbose_name="Lu")
+    is_replied = models.BooleanField(default=False, verbose_name="Répondu")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Message de contact"
+        verbose_name_plural = "Messages de contact"
+
+    def __str__(self):
+        return f"{self.name} - {self.subject} ({self.created_at.strftime('%d/%m/%Y')})"
+
+
+class CustomerReview(models.Model):
+    """
+    Modèle pour stocker les avis clients.
+    """
+    RATING_CHOICES = [
+        (1, '1 étoile'),
+        (2, '2 étoiles'),
+        (3, '3 étoiles'),
+        (4, '4 étoiles'),
+        (5, '5 étoiles'),
+    ]
+
+    name = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nom",
+        help_text="Nom du client (peut être anonyme)"
+    )
+    email = models.EmailField(
+        blank=True,
+        verbose_name="Email",
+        help_text="Email du client (non publié)"
+    )
+    rating = models.IntegerField(
+        choices=RATING_CHOICES,
+        verbose_name="Note"
+    )
+    title = models.CharField(max_length=200, verbose_name="Titre")
+    review = models.TextField(verbose_name="Avis")
+    would_recommend = models.BooleanField(default=False, verbose_name="Recommande")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
+    is_approved = models.BooleanField(default=False, verbose_name="Approuvé")
+    is_featured = models.BooleanField(default=False, verbose_name="Mis en avant")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Avis client"
+        verbose_name_plural = "Avis clients"
+
+    def __str__(self):
+        author = self.name if self.name else "Anonyme"
+        return f"{author} - {self.rating}/5 étoiles ({self.created_at.strftime('%d/%m/%Y')})"
+
+    @property
+    def stars_display(self):
+        """Retourne l'affichage en étoiles"""
+        return '⭐' * self.rating
