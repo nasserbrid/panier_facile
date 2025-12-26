@@ -19,22 +19,22 @@
 
           {% if form.courses.field.queryset %}
           <div class="list-group">
-            {% for choice in form.courses %}
+            {% for course in form.courses.field.queryset %}
             <div class="list-group-item d-flex justify-content-between align-items-center">
               <div class="form-check">
-                {{ choice.tag }}
-                <label class="form-check-label" for="{{ choice.id_for_label }}">
-                  {{ choice.choice_label }}
+                <input type="checkbox" name="courses" value="{{ course.id }}" id="id_courses_{{ forloop.counter0 }}" class="form-check-input">
+                <label class="form-check-label" for="id_courses_{{ forloop.counter0 }}">
+                  {{ course.titre }}
                 </label>
               </div>
               <div class="btn-group btn-group-sm" role="group">
-                <a href="{% url 'detail_course' choice.choice_value %}" class="btn btn-outline-info" title="Voir les détails">
+                <a href="{% url 'detail_course' course.id %}" class="btn btn-outline-info" title="Voir les détails">
                   <i class="fas fa-eye"></i>
                 </a>
-                <a href="{% url 'modifier_course' choice.choice_value %}" class="btn btn-outline-warning" title="Modifier">
+                <a href="{% url 'modifier_course' course.id %}" class="btn btn-outline-warning" title="Modifier">
                   <i class="fas fa-edit"></i>
                 </a>
-                <a href="{% url 'supprimer_course' choice.choice_value %}" class="btn btn-outline-danger" title="Supprimer">
+                <a href="{% url 'supprimer_course' course.id %}" class="btn btn-outline-danger" title="Supprimer">
                   <i class="fas fa-trash"></i>
                 </a>
               </div>
