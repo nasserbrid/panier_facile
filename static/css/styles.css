@@ -2520,3 +2520,90 @@ table th {
     max-width: 600px;
     margin: 0 auto;
 }
+
+/* ========================================
+   DRIVE / STORE SELECTION STYLES
+======================================== */
+
+/* Location message alert (initially hidden) */
+#locationMessage {
+    display: none;
+}
+
+/* Drive modal states */
+#driveSuccess,
+#driveError {
+    display: none;
+}
+
+#driveModalFooter {
+    display: none;
+}
+
+/* Icon sizes in modals */
+.drive-modal-icon {
+    font-size: 3rem;
+}
+
+/* Image placeholder for product validation */
+.product-image-placeholder {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.product-image-placeholder i {
+    font-size: 2rem;
+}
+
+/* Progress bar custom height */
+.progress-bar-thin {
+    height: 10px;
+}
+
+/* Match status arrows */
+.match-arrow {
+    font-size: 1.5rem;
+}
+
+/* Table column widths */
+.table-actions-wide {
+    width: 60%;
+}
+
+/* Card backgrounds */
+.card-yellow-light {
+    background: #fffbe6;
+    border-radius: 16px;
+}
+
+/* Centered containers for forms */
+.centered-form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+}
+
+.centered-form-card {
+    width: 400px;
+    border-radius: 16px;
+    background: #fffbe6;
+}
+
+/* Landing page avatar delays (for animations) */
+.avatar-delayed {
+    animation-delay: var(--delay);
+}
+
+/* Hidden forms */
+.form-hidden {
+    display: none;
+}
+
+/* Home page welcome card */
+.home-welcome-card {
+    background: #fffbe6;
+}

@@ -39,7 +39,7 @@
                 </div>
                 <div class="card-body">
                     <!-- Messages de statut -->
-                    <div id="locationMessage" class="alert" style="display: none;"></div>
+                    <div id="locationMessage" class="alert"></div>
 
                     <!-- Localisation actuelle -->
                     {% if user_location %}
@@ -212,24 +212,24 @@
                 </div>
 
                 <!-- État: Succès -->
-                <div id="driveSuccess" class="text-center" style="display: none;">
+                <div id="driveSuccess" class="text-center">
                     <div class="text-success mb-3">
-                        <i class="fas fa-check-circle" style="font-size: 3rem;"></i>
+                        <i class="fas fa-check-circle drive-modal-icon"></i>
                     </div>
                     <h5 class="text-success">Drive créé avec succès !</h5>
                     <p class="text-muted">Redirection vers la validation des produits...</p>
                 </div>
 
                 <!-- État: Erreur -->
-                <div id="driveError" class="text-center" style="display: none;">
+                <div id="driveError" class="text-center">
                     <div class="text-danger mb-3">
-                        <i class="fas fa-exclamation-circle" style="font-size: 3rem;"></i>
+                        <i class="fas fa-exclamation-circle drive-modal-icon"></i>
                     </div>
                     <h5 class="text-danger">Erreur lors de la création du drive</h5>
                     <p id="driveErrorMessage" class="text-muted"></p>
                 </div>
             </div>
-            <div class="modal-footer" id="driveModalFooter" style="display: none;">
+            <div class="modal-footer" id="driveModalFooter">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
