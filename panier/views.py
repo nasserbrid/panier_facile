@@ -1387,8 +1387,11 @@ def intermarche_match_products(request, panier_id):
     ingredient_paniers = panier.ingredient_paniers.all()
 
     if not ingredient_paniers.exists():
-        messages.warning(request, "Ce panier ne contient aucun ingrédient.")
+        logger.warning(f"Panier {panier_id} ne contient aucun ingrédient")
+        messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients.")
         return redirect('detail_panier', panier_id=panier.id)
+
+    logger.info(f"Panier {panier_id} contient {ingredient_paniers.count()} ingrédients, démarrage du matching avec store_id={store_id}")
 
     try:
         # Matcher les produits
@@ -1623,6 +1626,12 @@ def select_store_for_drive(request, panier_id):
     if not (is_same_family or is_own_basket):
         messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_paniers')
+
+    # Vérifier que le panier contient des ingrédients
+    ingredient_count = panier.ingredient_paniers.count()
+    if ingredient_count == 0:
+        messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients avant de créer un drive.")
+        return redirect('detail_panier', panier_id=panier.id)
 
     # Récupérer la localisation actuelle (session temporaire en priorité, sinon profil)
     user_location = None

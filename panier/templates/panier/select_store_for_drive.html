@@ -15,6 +15,18 @@
                 </a>
             </div>
 
+            <!-- Messages Django -->
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Info panier -->
             <div class="alert alert-info">
                 <strong>Panier:</strong> {{ panier.date_creation|date:"d/m/Y" }} - {{ panier.courses.count }} course(s)
@@ -120,10 +132,12 @@
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <a href="{% url 'intermarche_match_products' panier.id %}?store_id=scraping"
-                                       class="btn btn-primary">
+                                    <button type="button"
+                                            class="btn btn-primary btn-choose-store"
+                                            data-store-name="{{ store.name|default:'Intermarché' }}"
+                                            data-panier-id="{{ panier.id }}">
                                         <i class="fas fa-check"></i> Choisir
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -176,132 +190,62 @@
     </div>
 </div>
 
-<!-- JavaScript pour la géolocalisation -->
+<!-- Modal de confirmation Drive -->
+<div class="modal fade" id="driveModal" tabindex="-1" aria-labelledby="driveModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="driveModalLabel">
+                    <i class="fas fa-shopping-cart"></i> Création du drive
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- État: Chargement -->
+                <div id="driveLoading" class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <h6 id="driveStoreName"></h6>
+                    <p class="text-muted">Recherche des produits en cours...<br>
+                    <small>Cela peut prendre quelques secondes</small></p>
+                </div>
+
+                <!-- État: Succès -->
+                <div id="driveSuccess" class="text-center" style="display: none;">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-check-circle" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="text-success">Drive créé avec succès !</h5>
+                    <p class="text-muted">Redirection vers la validation des produits...</p>
+                </div>
+
+                <!-- État: Erreur -->
+                <div id="driveError" class="text-center" style="display: none;">
+                    <div class="text-danger mb-3">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="text-danger">Erreur lors de la création du drive</h5>
+                    <p id="driveErrorMessage" class="text-muted"></p>
+                </div>
+            </div>
+            <div class="modal-footer" id="driveModalFooter" style="display: none;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token pour JavaScript -->
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<!-- Configuration pour JavaScript -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const getLocationBtn = document.getElementById('getLocationBtn');
-    const geocodeBtn = document.getElementById('geocodeBtn');
-    const addressInput = document.getElementById('addressInput');
-    const locationMessage = document.getElementById('locationMessage');
-    const saveToProfile = document.getElementById('saveToProfile');
-
-    // Fonction pour afficher un message
-    function showMessage(message, type = 'info') {
-        locationMessage.className = `alert alert-${type}`;
-        locationMessage.textContent = message;
-        locationMessage.style.display = 'block';
-        setTimeout(() => {
-            locationMessage.style.display = 'none';
-        }, 5000);
-    }
-
-    // Fonction pour sauvegarder la localisation
-    function saveLocation(latitude, longitude, address) {
-        fetch('{% url "save_temp_location" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                latitude: latitude,
-                longitude: longitude,
-                address: address,
-                save_to_profile: saveToProfile.checked
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showMessage(data.message, 'success');
-                // Recharger la page pour afficher les magasins
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                showMessage('Erreur: ' + data.error, 'danger');
-            }
-        })
-        .catch(error => {
-            showMessage('Erreur de connexion', 'danger');
-            console.error('Error:', error);
-        });
-    }
-
-    // Géolocalisation GPS
-    getLocationBtn.addEventListener('click', function() {
-        if (!navigator.geolocation) {
-            showMessage('La géolocalisation n\'est pas supportée par votre navigateur', 'danger');
-            return;
-        }
-
-        showMessage('Détection de votre position en cours...', 'info');
-        getLocationBtn.disabled = true;
-
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-
-                // Reverse geocoding pour obtenir l'adresse
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const address = data.display_name || '';
-                        addressInput.value = address;
-                        saveLocation(lat, lon, address);
-                    })
-                    .catch(() => {
-                        saveLocation(lat, lon, '');
-                    })
-                    .finally(() => {
-                        getLocationBtn.disabled = false;
-                    });
-            },
-            function(error) {
-                let errorMsg = 'Impossible de récupérer votre position';
-                if (error.code === error.PERMISSION_DENIED) {
-                    errorMsg = 'Vous avez refusé l\'accès à votre position';
-                } else if (error.code === error.POSITION_UNAVAILABLE) {
-                    errorMsg = 'Position indisponible';
-                } else if (error.code === error.TIMEOUT) {
-                    errorMsg = 'Délai d\'attente dépassé';
-                }
-                showMessage(errorMsg, 'danger');
-                getLocationBtn.disabled = false;
-            }
-        );
-    });
-
-    // Géocodage d'adresse
-    geocodeBtn.addEventListener('click', function() {
-        const address = addressInput.value.trim();
-        if (!address) {
-            showMessage('Veuillez entrer une adresse', 'warning');
-            return;
-        }
-
-        showMessage('Recherche de l\'adresse en cours...', 'info');
-        geocodeBtn.disabled = true;
-
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
-                    saveLocation(lat, lon, data[0].display_name);
-                } else {
-                    showMessage('Adresse introuvable', 'warning');
-                }
-            })
-            .catch(error => {
-                showMessage('Erreur lors de la recherche', 'danger');
-                console.error('Error:', error);
-            })
-            .finally(() => {
-                geocodeBtn.disabled = false;
-            });
-    });
-});
+    // URL de sauvegarde de la localisation (utilisée par select_store.js)
+    const saveLocationUrl = '{% url "save_temp_location" %}';
 </script>
+
+<!-- JavaScript externe -->
+<script src="{% static 'js/select_store.js' %}"></script>
 
 {% endblock %}
