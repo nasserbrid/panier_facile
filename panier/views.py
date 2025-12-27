@@ -1656,8 +1656,8 @@ def select_store_for_drive(request, panier_id):
             # Chercher les supermarchés Intermarché
             overpass = OverpassAPI()
             all_stores = overpass.find_nearby_stores(
-                lat=user_location['latitude'],
-                lon=user_location['longitude'],
+                latitude=user_location['latitude'],
+                longitude=user_location['longitude'],
                 radius=5000  # 5km
             )
 
