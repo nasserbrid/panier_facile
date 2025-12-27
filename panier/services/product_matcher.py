@@ -36,10 +36,11 @@ class ProductMatcher:
         Initialise le matcher pour un magasin spécifique.
 
         Args:
-            store_id: ID du magasin Intermarché (ex: "08177")
+            store_id: ID du magasin Intermarché (ex: "08177" ou "scraping")
         """
         self.store_id = store_id
-        self.api_client = IntermarcheAPIClient()
+        # Plus besoin de l'API client, on utilise le scraper maintenant
+        # self.api_client = IntermarcheAPIClient()
 
     def _get_cache_key(self, ingredient_id: int) -> str:
         """
@@ -163,7 +164,7 @@ class ProductMatcher:
                 cache.set(cache_key, db_match.id, self.REDIS_CACHE_DURATION)
                 return db_match
 
-        # Niveau 3: API Call
+        # Niveau 3: Scraper Call (plus d'API disponible)
         try:
             logger.info(f"Searching Intermarché products for: {ingredient.nom}")
 
@@ -172,47 +173,34 @@ class ProductMatcher:
             if not search_keyword:
                 search_keyword = ingredient.nom
 
-            # Rechercher les produits
-            result = self.api_client.search_products(
-                store_id=self.store_id,
-                keyword=search_keyword,
-                page=1,
-                size=5,  # On récupère les 5 meilleurs résultats
-                tri="PERTINENCE"
-            )
+            # Rechercher les produits via scraping
+            from panier.intermarche_scraper import search_intermarche_products
 
-            products = result.get('products', [])
+            products = search_intermarche_products(search_keyword)
+
             if not products:
                 logger.warning(f"No products found for ingredient: {ingredient.nom}")
                 return None
 
-            # Calculer les scores et trouver le meilleur match
-            best_product = None
-            best_score = 0.0
-
-            for product in products:
-                score = self._calculate_match_score(ingredient.nom, product)
-                if score > best_score:
-                    best_score = score
-                    best_product = product
-
-            if not best_product:
-                return None
+            # Le scraper retourne déjà les produits triés par pertinence
+            # On prend le premier (le plus pertinent)
+            best_product = products[0]
 
             # Créer ou mettre à jour le match en DB
             with transaction.atomic():
                 match, created = IntermarcheProductMatch.objects.update_or_create(
                     ingredient=ingredient,
-                    store_id=self.store_id,
-                    intermarche_product_id=best_product['id'],
+                    store_id=self.store_id,  # 'scraping' par défaut
                     defaults={
-                        'intermarche_product_ean13': best_product.get('ean13', ''),
-                        'intermarche_item_parent_id': best_product.get('itemParentId'),
-                        'product_label': best_product.get('label', ''),
-                        'product_brand': best_product.get('brand', ''),
-                        'product_price': best_product.get('price', {}).get('value', 0),
-                        'product_image_url': best_product.get('image', ''),
-                        'match_score': best_score,
+                        # Données du scraper (différent de l'API)
+                        'product_name': best_product['name'],
+                        'price': best_product.get('price'),
+                        'is_available': best_product.get('is_available', True),
+                        'product_url': best_product.get('url'),
+                        'match_score': 1.0,  # Score parfait car déjà filtré par le scraper
+                        # Compatibilité backward avec les anciens champs API
+                        'product_label': best_product['name'],  # Même valeur pour compatibilité
+                        'product_price': best_product.get('price'),  # Même valeur pour compatibilité
                     }
                 )
 
@@ -220,15 +208,12 @@ class ProductMatcher:
             cache.set(cache_key, match.id, self.REDIS_CACHE_DURATION)
 
             action = "created" if created else "updated"
-            logger.info(f"Match {action} for {ingredient.nom}: {match.product_label} (score: {best_score:.2f})")
+            logger.info(f"Match {action} for {ingredient.nom}: {match.product_name} (price: {match.price}€)")
 
             return match
 
-        except IntermarcheAPIException as e:
-            logger.error(f"API error while matching ingredient {ingredient.nom}: {e.message}")
-            return None
         except Exception as e:
-            logger.error(f"Unexpected error while matching ingredient {ingredient.nom}: {str(e)}")
+            logger.error(f"Scraper error while matching ingredient {ingredient.nom}: {str(e)}")
             return None
 
     def match_panier_ingredients(

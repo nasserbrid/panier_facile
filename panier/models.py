@@ -206,6 +206,16 @@ class IntermarcheProductMatch(models.Model):
         name = self.product_name or self.product_label
         return f"{self.ingredient.nom} → {name} (Magasin {self.store_id})"
 
+    @property
+    def display_name(self):
+        """Retourne le nom du produit (compatible API et scraper)."""
+        return self.product_name or self.product_label or "Produit inconnu"
+
+    @property
+    def display_price(self):
+        """Retourne le prix du produit (compatible API et scraper)."""
+        return self.price or self.product_price or 0
+
 
 class IntermarcheCart(models.Model):
     """
