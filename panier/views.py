@@ -1627,12 +1627,17 @@ def select_store_for_drive(request, panier_id):
         messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_paniers')
 
-    # Vérifier que le panier contient des ingrédients (via les courses)
-    total_ingredients = 0
-    for course in panier.courses.all():
-        total_ingredients += course.ingredients.count()
+    # Vérifier que le panier contient des courses avec des ingrédients
+    courses_count = panier.courses.count()
+    has_ingredients = False
 
-    if total_ingredients == 0:
+    for course in panier.courses.all():
+        # Le champ ingredient est un TextField contenant du texte
+        if course.ingredient and course.ingredient.strip():
+            has_ingredients = True
+            break
+
+    if courses_count == 0 or not has_ingredients:
         messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients aux courses avant de créer un drive.")
         return redirect('detail_panier', panier_id=panier.id)
 
