@@ -120,7 +120,7 @@
                                     {% endif %}
                                 </div>
                                 <div>
-                                    <a href="{% url 'export_to_intermarche' panier.id %}?store_id={{ store.id }}"
+                                    <a href="{% url 'intermarche_match_products' panier.id %}?store_id=scraping"
                                        class="btn btn-primary">
                                         <i class="fas fa-check"></i> Choisir
                                     </a>

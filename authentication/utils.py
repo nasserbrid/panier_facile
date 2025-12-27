@@ -36,7 +36,7 @@ class OverpassAPI:
     ) -> List[Dict]:
         """
         Recherche spécifiquement les magasins Intermarché à proximité.
-        Plus rapide que find_nearby_stores car recherche directement par nom.
+        Utilise Nominatim pour des performances optimales.
 
         Args:
             latitude: Latitude du point de recherche
@@ -46,48 +46,8 @@ class OverpassAPI:
         Returns:
             Liste de dictionnaires contenant les informations des magasins Intermarché
         """
-        # Essayer d'abord avec Overpass
-        try:
-            return cls._find_intermarche_via_overpass(latitude, longitude, radius)
-        except (requests.Timeout, requests.RequestException) as e:
-            logger.warning(f"Overpass API indisponible ({e}), utilisation du fallback Nominatim")
-            # Fallback : utiliser Nominatim
-            return cls._find_intermarche_via_nominatim(latitude, longitude, radius)
-
-    @classmethod
-    def _find_intermarche_via_overpass(
-        cls,
-        latitude: float,
-        longitude: float,
-        radius: int = 5000
-    ) -> List[Dict]:
-        """Recherche Intermarché via Overpass API (méthode principale)."""
-        query = f"""
-        [out:json][timeout:10];
-        (
-          node["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
-          way["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
-        );
-        out center tags;
-        """
-
-        response = requests.post(
-            cls.OVERPASS_URL,
-            data={'data': query},
-            timeout=15
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        stores = []
-        for element in data.get('elements', []):
-            store = cls._parse_store_element(element, latitude, longitude)
-            if store:
-                stores.append(store)
-
-        stores.sort(key=lambda x: x['distance'])
-        logger.info(f"Overpass: Trouvé {len(stores)} magasins Intermarché dans un rayon de {radius/1000}km")
-        return stores
+        # Utiliser directement Nominatim (plus rapide et fiable qu'Overpass)
+        return cls._find_intermarche_via_nominatim(latitude, longitude, radius)
 
     @classmethod
     def _find_intermarche_via_nominatim(
