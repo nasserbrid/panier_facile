@@ -1624,9 +1624,19 @@ def select_store_for_drive(request, panier_id):
         messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_paniers')
 
-    # Récupérer la localisation actuelle (profil ou session)
+    # Récupérer la localisation actuelle (session temporaire en priorité, sinon profil)
     user_location = None
-    if request.user.location:
+
+    # 1. Vérifier la localisation temporaire en session (prioritaire)
+    if 'temp_location' in request.session:
+        temp_loc = request.session['temp_location']
+        user_location = {
+            'latitude': temp_loc['latitude'],
+            'longitude': temp_loc['longitude'],
+            'address': temp_loc.get('address', '')
+        }
+    # 2. Sinon, utiliser la localisation du profil
+    elif request.user.location:
         user_location = {
             'latitude': request.user.location.y,
             'longitude': request.user.location.x,
