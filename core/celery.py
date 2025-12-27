@@ -38,6 +38,13 @@ app.conf.beat_schedule = {
             'expires': 3600,
         },
     },
+    'update-intermarche-prices-daily': {
+        'task': 'panier.tasks.update_intermarche_prices',
+        'schedule': crontab(hour=2, minute=0),  # Tous les jours à 2h00 du matin
+        'options': {
+            'expires': 7200,  # La tâche expire après 2 heures si non exécutée
+        },
+    },
 }
 
 # Configuration du fuseau horaire pour Celery Beat

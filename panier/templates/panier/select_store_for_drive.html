@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Choisir un magasin - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-store"></i> Choisir un magasin pour le drive</h2>
+                <a href="{% url 'detail_panier' panier.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+            </div>
+
+            <!-- Info panier -->
+            <div class="alert alert-info">
+                <strong>Panier:</strong> {{ panier.date_creation|date:"d/m/Y" }} - {{ panier.courses.count }} course(s)
+            </div>
+
+            <!-- Section Géolocalisation -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Ma Localisation</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Messages de statut -->
+                    <div id="locationMessage" class="alert" style="display: none;"></div>
+
+                    <!-- Localisation actuelle -->
+                    {% if user_location %}
+                    <div class="alert alert-success">
+                        <h6><i class="fas fa-check-circle"></i> Localisation active</h6>
+                        {% if user_location.address %}
+                        <p class="mb-1"><strong>Adresse:</strong> {{ user_location.address }}</p>
+                        {% endif %}
+                        <p class="mb-0">
+                            <strong>Coordonnées:</strong>
+                            Lat: {{ user_location.latitude|floatformat:6 }},
+                            Long: {{ user_location.longitude|floatformat:6 }}
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> Vous devez vous géolocaliser pour voir les magasins à proximité
+                    </div>
+                    {% endif %}
+
+                    <!-- Bouton de géolocalisation GPS -->
+                    <div class="mb-3">
+                        <button id="getLocationBtn" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-crosshairs"></i> Détecter ma position GPS
+                        </button>
+                        <small class="form-text text-muted">
+                            Utilisez le GPS de votre appareil pour trouver les magasins près de vous
+                        </small>
+                    </div>
+
+                    <div class="text-center my-3">
+                        <strong>OU</strong>
+                    </div>
+
+                    <!-- Recherche d'adresse -->
+                    <div>
+                        <label for="addressInput" class="form-label">
+                            <i class="fas fa-search"></i> Rechercher une adresse
+                        </label>
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                id="addressInput"
+                                class="form-control"
+                                placeholder="Ex: 10 Rue de la Paix, Paris"
+                                value="{{ user_location.address|default:'' }}"
+                            >
+                            <button id="geocodeBtn" class="btn btn-secondary">
+                                <i class="fas fa-search"></i> Chercher
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Option pour sauvegarder dans le profil -->
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="saveToProfile">
+                        <label class="form-check-label" for="saveToProfile">
+                            Enregistrer cette localisation dans mon profil
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Magasins Intermarché -->
+            {% if intermarche_stores %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Magasins Intermarché à proximité ({{ intermarche_stores|length }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for store in intermarche_stores %}
+                        <div class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-store"></i> {{ store.name|default:"Intermarché" }}
+                                    </h6>
+                                    {% if store.address %}
+                                    <p class="mb-1 text-muted small">
+                                        <i class="fas fa-map-marker-alt"></i> {{ store.address }}
+                                    </p>
+                                    {% endif %}
+                                    {% if store.distance %}
+                                    <small class="text-success">
+                                        <i class="fas fa-walking"></i> {{ store.distance|floatformat:1 }} km
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <a href="{% url 'export_to_intermarche' panier.id %}?store_id={{ store.id }}"
+                                       class="btn btn-primary">
+                                        <i class="fas fa-check"></i> Choisir
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% elif user_location %}
+            <div class="alert alert-warning">
+                <i class="fas fa-info-circle"></i> Aucun magasin Intermarché trouvé dans un rayon de 5km.
+                Essayez d'élargir votre recherche ou entrez une autre adresse.
+            </div>
+            {% endif %}
+
+            <!-- Autres commerces -->
+            {% if nearby_stores %}
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt"></i> Autres commerces à proximité
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for store in nearby_stores %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title">{{ store.name }}</h6>
+                                    {% if store.type %}
+                                    <p class="card-text text-muted small">
+                                        <i class="fas fa-tag"></i> {{ store.type }}
+                                    </p>
+                                    {% endif %}
+                                    {% if store.distance %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-walking"></i> {{ store.distance|floatformat:1 }} km
+                                    </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript pour la géolocalisation -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    const geocodeBtn = document.getElementById('geocodeBtn');
+    const addressInput = document.getElementById('addressInput');
+    const locationMessage = document.getElementById('locationMessage');
+    const saveToProfile = document.getElementById('saveToProfile');
+
+    // Fonction pour afficher un message
+    function showMessage(message, type = 'info') {
+        locationMessage.className = `alert alert-${type}`;
+        locationMessage.textContent = message;
+        locationMessage.style.display = 'block';
+        setTimeout(() => {
+            locationMessage.style.display = 'none';
+        }, 5000);
+    }
+
+    // Fonction pour sauvegarder la localisation
+    function saveLocation(latitude, longitude, address) {
+        fetch('{% url "save_temp_location" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                latitude: latitude,
+                longitude: longitude,
+                address: address,
+                save_to_profile: saveToProfile.checked
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage(data.message, 'success');
+                // Recharger la page pour afficher les magasins
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showMessage('Erreur: ' + data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            showMessage('Erreur de connexion', 'danger');
+            console.error('Error:', error);
+        });
+    }
+
+    // Géolocalisation GPS
+    getLocationBtn.addEventListener('click', function() {
+        if (!navigator.geolocation) {
+            showMessage('La géolocalisation n\'est pas supportée par votre navigateur', 'danger');
+            return;
+        }
+
+        showMessage('Détection de votre position en cours...', 'info');
+        getLocationBtn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                // Reverse geocoding pour obtenir l'adresse
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const address = data.display_name || '';
+                        addressInput.value = address;
+                        saveLocation(lat, lon, address);
+                    })
+                    .catch(() => {
+                        saveLocation(lat, lon, '');
+                    })
+                    .finally(() => {
+                        getLocationBtn.disabled = false;
+                    });
+            },
+            function(error) {
+                let errorMsg = 'Impossible de récupérer votre position';
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMsg = 'Vous avez refusé l\'accès à votre position';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMsg = 'Position indisponible';
+                } else if (error.code === error.TIMEOUT) {
+                    errorMsg = 'Délai d\'attente dépassé';
+                }
+                showMessage(errorMsg, 'danger');
+                getLocationBtn.disabled = false;
+            }
+        );
+    });
+
+    // Géocodage d'adresse
+    geocodeBtn.addEventListener('click', function() {
+        const address = addressInput.value.trim();
+        if (!address) {
+            showMessage('Veuillez entrer une adresse', 'warning');
+            return;
+        }
+
+        showMessage('Recherche de l\'adresse en cours...', 'info');
+        geocodeBtn.disabled = true;
+
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    saveLocation(lat, lon, data[0].display_name);
+                } else {
+                    showMessage('Adresse introuvable', 'warning');
+                }
+            })
+            .catch(error => {
+                showMessage('Erreur lors de la recherche', 'danger');
+                console.error('Error:', error);
+            })
+            .finally(() => {
+                geocodeBtn.disabled = false;
+            });
+    });
+});
+</script>
+
+{% endblock %}

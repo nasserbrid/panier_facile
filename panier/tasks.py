@@ -135,3 +135,133 @@ def test_celery():
     """
     logger.info("✅ Celery fonctionne correctement!")
     return "Celery is working!"
+
+
+@shared_task(bind=True, max_retries=3, name='panier.tasks.update_intermarche_prices')
+def update_intermarche_prices(self):
+    """
+    Tâche Celery pour mettre à jour les prix Intermarché
+    Scrape les produits pour tous les ingrédients
+
+    Exécutée quotidiennement via Celery Beat
+    """
+    from .models import Ingredient, IntermarcheProductMatch
+    from .intermarche_scraper import search_intermarche_products
+
+    logger.info("Début de la mise à jour des prix Intermarché")
+
+    try:
+        # Récupérer tous les ingrédients
+        ingredients = Ingredient.objects.all()
+        total = ingredients.count()
+
+        logger.info(f"Mise à jour des prix pour {total} ingrédients")
+
+        updated_count = 0
+        created_count = 0
+        error_count = 0
+
+        for index, ingredient in enumerate(ingredients, 1):
+            try:
+                logger.info(f"[{index}/{total}] Recherche de '{ingredient.nom}'...")
+
+                # Rechercher les produits
+                products = search_intermarche_products(ingredient.nom)
+
+                if not products:
+                    logger.warning(f"Aucun produit trouvé pour '{ingredient.nom}'")
+                    continue
+
+                # Prendre le premier produit (le plus pertinent)
+                best_product = products[0]
+
+                # Mettre à jour ou créer le match
+                match, created = IntermarcheProductMatch.objects.update_or_create(
+                    ingredient=ingredient,
+                    defaults={
+                        'product_name': best_product['name'],
+                        'price': best_product.get('price'),
+                        'is_available': best_product.get('is_available', True),
+                        'product_url': best_product.get('url'),
+                        'last_updated': timezone.now()
+                    }
+                )
+
+                if created:
+                    created_count += 1
+                    logger.info(f"✓ Créé match pour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
+                else:
+                    updated_count += 1
+                    logger.info(f"✓ Mis à jour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
+
+            except Exception as e:
+                error_count += 1
+                logger.error(f"✗ Erreur pour '{ingredient.nom}': {e}")
+                continue
+
+        logger.info(f"Mise à jour terminée: {created_count} créés, {updated_count} mis à jour, {error_count} erreurs")
+
+        return {
+            'status': 'success',
+            'total': total,
+            'created': created_count,
+            'updated': updated_count,
+            'errors': error_count
+        }
+
+    except Exception as e:
+        logger.error(f"Erreur lors de la mise à jour des prix: {e}")
+        # Retry avec backoff exponentiel
+        raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+
+
+@shared_task(name='panier.tasks.update_single_ingredient_price')
+def update_single_ingredient_price(ingredient_id: int):
+    """
+    Tâche pour mettre à jour le prix d'un seul ingrédient
+
+    Args:
+        ingredient_id: ID de l'ingrédient à mettre à jour
+    """
+    from .models import Ingredient, IntermarcheProductMatch
+    from .intermarche_scraper import search_intermarche_products
+
+    try:
+        ingredient = Ingredient.objects.get(id=ingredient_id)
+        logger.info(f"Mise à jour du prix pour '{ingredient.nom}'")
+
+        products = search_intermarche_products(ingredient.nom)
+
+        if not products:
+            logger.warning(f"Aucun produit trouvé pour '{ingredient.nom}'")
+            return {'status': 'no_products_found'}
+
+        best_product = products[0]
+
+        match, created = IntermarcheProductMatch.objects.update_or_create(
+            ingredient=ingredient,
+            defaults={
+                'product_name': best_product['name'],
+                'price': best_product.get('price'),
+                'is_available': best_product.get('is_available', True),
+                'product_url': best_product.get('url'),
+                'last_updated': timezone.now()
+            }
+        )
+
+        action = 'created' if created else 'updated'
+        logger.info(f"Prix {action} pour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
+
+        return {
+            'status': 'success',
+            'action': action,
+            'product': best_product
+        }
+
+    except Ingredient.DoesNotExist:
+        logger.error(f"Ingrédient {ingredient_id} non trouvé")
+        return {'status': 'error', 'message': 'Ingredient not found'}
+
+    except Exception as e:
+        logger.error(f"Erreur lors de la mise à jour de l'ingrédient {ingredient_id}: {e}")
+        return {'status': 'error', 'message': str(e)}

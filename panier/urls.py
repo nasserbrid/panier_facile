@@ -69,9 +69,13 @@ urlpatterns = [
     path('chatbot/reset/', views.reset_rag_system, name='reset_rag'),
 
     # Intégration Intermarché
+    path('<int:panier_id>/select-store/', views.select_store_for_drive, name='select_store_for_drive'),
     path('<int:panier_id>/intermarche/export/', views.export_to_intermarche, name='export_to_intermarche'),
     path('<int:panier_id>/intermarche/match/', views.intermarche_match_products, name='intermarche_match_products'),
     path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
+
+    # Géolocalisation
+    path('save-location/', views.save_temp_location, name='save_temp_location'),
 
     # Contact et Avis
     path('contact/', views.contact, name='contact'),

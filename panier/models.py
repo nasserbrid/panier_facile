@@ -105,8 +105,7 @@ class IntermarcheProductMatch(models.Model):
     Modèle représentant la correspondance entre un ingrédient PanierFacile
     et un produit Intermarché.
 
-    Ce modèle sert de cache pour éviter de rechercher constamment les mêmes
-    produits via l'API Intermarché.
+    Ce modèle sert de cache pour les produits récupérés via API ou scraping.
     """
     ingredient = models.ForeignKey(
         Ingredient,
@@ -115,13 +114,16 @@ class IntermarcheProductMatch(models.Model):
     )
     store_id = models.CharField(
         max_length=20,
-        help_text="Identifiant du magasin Intermarché (ex: 08177)"
+        default='scraping',
+        help_text="Identifiant du magasin Intermarché (ex: 08177) ou 'scraping'"
     )
 
     # Informations produit Intermarché
     intermarche_product_id = models.CharField(
         max_length=100,
-        help_text="ID unique du produit Intermarché"
+        blank=True,
+        null=True,
+        help_text="ID unique du produit Intermarché (API uniquement)"
     )
     intermarche_product_ean13 = models.CharField(
         max_length=13,
@@ -136,23 +138,46 @@ class IntermarcheProductMatch(models.Model):
     )
 
     # Détails du produit (cache)
+    product_name = models.CharField(
+        max_length=255,
+        help_text="Nom du produit (scraping)"
+    )
     product_label = models.CharField(
         max_length=255,
-        help_text="Libellé du produit"
+        blank=True,
+        help_text="Libellé du produit (API)"
     )
     product_brand = models.CharField(
         max_length=100,
         blank=True,
         help_text="Marque du produit"
     )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Prix unitaire du produit"
+    )
     product_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        help_text="Prix unitaire du produit"
+        null=True,
+        blank=True,
+        help_text="Prix unitaire du produit (API - deprecated, use price)"
+    )
+    product_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="URL du produit sur le site Intermarché"
     )
     product_image_url = models.URLField(
         blank=True,
         help_text="URL de l'image du produit"
+    )
+    is_available = models.BooleanField(
+        default=True,
+        help_text="Disponibilité du produit"
     )
 
     # Métadonnées du matching
@@ -170,7 +195,6 @@ class IntermarcheProductMatch(models.Model):
     )
 
     class Meta:
-        unique_together = [['ingredient', 'store_id', 'intermarche_product_id']]
         indexes = [
             models.Index(fields=['ingredient', 'store_id']),
             models.Index(fields=['store_id', 'last_updated']),
@@ -179,7 +203,8 @@ class IntermarcheProductMatch(models.Model):
         verbose_name_plural = "Correspondances produits Intermarché"
 
     def __str__(self):
-        return f"{self.ingredient.nom} → {self.product_label} (Magasin {self.store_id})"
+        name = self.product_name or self.product_label
+        return f"{self.ingredient.nom} → {name} (Magasin {self.store_id})"
 
 
 class IntermarcheCart(models.Model):

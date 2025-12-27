@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse
 from .models import Panier, Course
 from .forms import CourseForm, PanierForm
 
@@ -1599,6 +1601,115 @@ def submit_review(request):
         form = ReviewForm()
 
     return render(request, 'panier/submit_review.html', {'form': form})
+
+
+@login_required
+def select_store_for_drive(request, panier_id):
+    """
+    Page de sélection de magasin avec géolocalisation intégrée.
+    Permet à l'utilisateur de:
+    - Se géolocaliser directement depuis cette page
+    - Voir les magasins Intermarché à proximité
+    - Voir les autres commerces à proximité
+    - Choisir un magasin pour son drive
+    """
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family and panier.user.last_name else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    # Récupérer la localisation actuelle (profil ou session)
+    user_location = None
+    if request.user.location:
+        user_location = {
+            'latitude': request.user.location.y,
+            'longitude': request.user.location.x,
+            'address': request.user.address or ''
+        }
+
+    # Récupérer les magasins si une localisation est disponible
+    stores = []
+    nearby_stores = []
+
+    if user_location:
+        try:
+            # Récupérer les magasins Intermarché via API (si disponible)
+            # Sinon, on pourrait utiliser Overpass API pour trouver les magasins
+            from authentication.utils import OverpassAPI
+
+            # Chercher les supermarchés Intermarché
+            overpass = OverpassAPI()
+            all_stores = overpass.find_nearby_stores(
+                lat=user_location['latitude'],
+                lon=user_location['longitude'],
+                radius=5000  # 5km
+            )
+
+            # Filtrer les Intermarché
+            stores = [store for store in all_stores if 'intermarché' in store.get('name', '').lower() or 'intermarche' in store.get('name', '').lower()]
+
+            # Autres commerces (hors Intermarché)
+            nearby_stores = [store for store in all_stores if store not in stores][:10]  # Limiter à 10
+
+        except Exception as e:
+            logger.error(f"Erreur lors de la récupération des magasins: {e}")
+            messages.warning(request, "Impossible de récupérer les magasins à proximité pour le moment.")
+
+    context = {
+        'panier': panier,
+        'user_location': user_location,
+        'intermarche_stores': stores,
+        'nearby_stores': nearby_stores,
+    }
+
+    return render(request, 'panier/select_store_for_drive.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def save_temp_location(request):
+    """
+    Sauvegarde temporairement la localisation de l'utilisateur.
+    Peut être utilisé pour stocker la localisation sans mettre à jour le profil.
+    """
+    import json
+    from django.contrib.gis.geos import Point
+
+    try:
+        data = json.loads(request.body)
+        latitude = float(data.get('latitude'))
+        longitude = float(data.get('longitude'))
+        address = data.get('address', '')
+
+        # Option 1: Sauvegarder dans le profil utilisateur
+        if data.get('save_to_profile', False):
+            request.user.location = Point(longitude, latitude, srid=4326)
+            request.user.address = address
+            request.user.save()
+
+        # Option 2: Sauvegarder en session (temporaire)
+        request.session['temp_location'] = {
+            'latitude': latitude,
+            'longitude': longitude,
+            'address': address
+        }
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Localisation enregistrée avec succès'
+        })
+
+    except (ValueError, KeyError, json.JSONDecodeError) as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 
 def reviews_list(request):
