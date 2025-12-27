@@ -1627,10 +1627,13 @@ def select_store_for_drive(request, panier_id):
         messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_paniers')
 
-    # Vérifier que le panier contient des ingrédients
-    ingredient_count = panier.ingredient_paniers.count()
-    if ingredient_count == 0:
-        messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients avant de créer un drive.")
+    # Vérifier que le panier contient des ingrédients (via les courses)
+    total_ingredients = 0
+    for course in panier.courses.all():
+        total_ingredients += course.ingredients.count()
+
+    if total_ingredients == 0:
+        messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients aux courses avant de créer un drive.")
         return redirect('detail_panier', panier_id=panier.id)
 
     # Récupérer la localisation actuelle (session temporaire en priorité, sinon profil)
