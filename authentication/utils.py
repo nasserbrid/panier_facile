@@ -46,9 +46,24 @@ class OverpassAPI:
         Returns:
             Liste de dictionnaires contenant les informations des magasins Intermarché
         """
-        # Requête optimisée pour Intermarché uniquement
+        # Essayer d'abord avec Overpass
+        try:
+            return cls._find_intermarche_via_overpass(latitude, longitude, radius)
+        except (requests.Timeout, requests.RequestException) as e:
+            logger.warning(f"Overpass API indisponible ({e}), utilisation du fallback Nominatim")
+            # Fallback : utiliser Nominatim
+            return cls._find_intermarche_via_nominatim(latitude, longitude, radius)
+
+    @classmethod
+    def _find_intermarche_via_overpass(
+        cls,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """Recherche Intermarché via Overpass API (méthode principale)."""
         query = f"""
-        [out:json][timeout:15];
+        [out:json][timeout:10];
         (
           node["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
           way["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
@@ -56,35 +71,84 @@ class OverpassAPI:
         out center tags;
         """
 
+        response = requests.post(
+            cls.OVERPASS_URL,
+            data={'data': query},
+            timeout=15
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        stores = []
+        for element in data.get('elements', []):
+            store = cls._parse_store_element(element, latitude, longitude)
+            if store:
+                stores.append(store)
+
+        stores.sort(key=lambda x: x['distance'])
+        logger.info(f"Overpass: Trouvé {len(stores)} magasins Intermarché dans un rayon de {radius/1000}km")
+        return stores
+
+    @classmethod
+    def _find_intermarche_via_nominatim(
+        cls,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """Recherche Intermarché via Nominatim (fallback)."""
         try:
-            response = requests.post(
-                cls.OVERPASS_URL,
-                data={'data': query},
-                timeout=20
-            )
+            # Recherche via Nominatim
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'format': 'json',
+                'q': 'Intermarché',
+                'bounded': 1,
+                'viewbox': f"{longitude - 0.05},{latitude - 0.05},{longitude + 0.05},{latitude + 0.05}",
+                'limit': 20
+            }
+            headers = {
+                'User-Agent': 'PanierFacile/1.0'
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 
             stores = []
-            for element in data.get('elements', []):
-                store = cls._parse_store_element(element, latitude, longitude)
-                if store:
-                    stores.append(store)
+            for item in data:
+                try:
+                    store_lat = float(item['lat'])
+                    store_lon = float(item['lon'])
+                    distance = cls._calculate_distance(latitude, longitude, store_lat, store_lon)
 
-            # Trier par distance
+                    # Filtrer par rayon
+                    if distance <= radius:
+                        stores.append({
+                            'id': item.get('osm_id', 0),
+                            'name': item.get('display_name', 'Intermarché').split(',')[0],
+                            'type': 'supermarket',
+                            'type_label': 'Supermarché',
+                            'latitude': store_lat,
+                            'longitude': store_lon,
+                            'address': item.get('display_name', ''),
+                            'distance': distance,
+                            'distance_text': cls._format_distance(distance),
+                            'phone': '',
+                            'website': '',
+                            'opening_hours': '',
+                            'osm_url': f"https://www.openstreetmap.org/{item.get('osm_type', 'node')}/{item.get('osm_id', 0)}"
+                        })
+                except (ValueError, KeyError) as e:
+                    logger.debug(f"Erreur parsing Nominatim: {e}")
+                    continue
+
             stores.sort(key=lambda x: x['distance'])
-
-            logger.info(f"Trouvé {len(stores)} magasins Intermarché dans un rayon de {radius/1000}km")
+            logger.info(f"Nominatim: Trouvé {len(stores)} magasins Intermarché dans un rayon de {radius/1000}km")
             return stores
 
-        except requests.Timeout:
-            logger.error("Timeout lors de la requête Overpass pour Intermarché")
-            return []
-        except requests.RequestException as e:
-            logger.error(f"Erreur lors de la requête Overpass: {e}")
-            return []
         except Exception as e:
-            logger.error(f"Erreur lors du traitement des données: {e}")
+            logger.error(f"Erreur Nominatim fallback: {e}")
             return []
 
     @classmethod
