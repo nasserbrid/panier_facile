@@ -28,6 +28,66 @@ class OverpassAPI:
     }
 
     @classmethod
+    def find_intermarche_stores(
+        cls,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """
+        Recherche spécifiquement les magasins Intermarché à proximité.
+        Plus rapide que find_nearby_stores car recherche directement par nom.
+
+        Args:
+            latitude: Latitude du point de recherche
+            longitude: Longitude du point de recherche
+            radius: Rayon de recherche en mètres (par défaut 5km)
+
+        Returns:
+            Liste de dictionnaires contenant les informations des magasins Intermarché
+        """
+        # Requête optimisée pour Intermarché uniquement
+        query = f"""
+        [out:json][timeout:15];
+        (
+          node["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
+          way["name"~"Intermarché|INTERMARCHÉ|Intermarche|INTERMARCHE",i](around:{radius},{latitude},{longitude});
+        );
+        out center tags;
+        """
+
+        try:
+            response = requests.post(
+                cls.OVERPASS_URL,
+                data={'data': query},
+                timeout=20
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            stores = []
+            for element in data.get('elements', []):
+                store = cls._parse_store_element(element, latitude, longitude)
+                if store:
+                    stores.append(store)
+
+            # Trier par distance
+            stores.sort(key=lambda x: x['distance'])
+
+            logger.info(f"Trouvé {len(stores)} magasins Intermarché dans un rayon de {radius/1000}km")
+            return stores
+
+        except requests.Timeout:
+            logger.error("Timeout lors de la requête Overpass pour Intermarché")
+            return []
+        except requests.RequestException as e:
+            logger.error(f"Erreur lors de la requête Overpass: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Erreur lors du traitement des données: {e}")
+            return []
+
+    @classmethod
     def find_nearby_stores(
         cls,
         latitude: float,

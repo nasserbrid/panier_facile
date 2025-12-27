@@ -1649,23 +1649,32 @@ def select_store_for_drive(request, panier_id):
 
     if user_location:
         try:
-            # Récupérer les magasins Intermarché via API (si disponible)
-            # Sinon, on pourrait utiliser Overpass API pour trouver les magasins
             from authentication.utils import OverpassAPI
 
-            # Chercher les supermarchés Intermarché
             overpass = OverpassAPI()
-            all_stores = overpass.find_nearby_stores(
+
+            # Recherche optimisée des magasins Intermarché
+            stores = overpass.find_intermarche_stores(
                 latitude=user_location['latitude'],
                 longitude=user_location['longitude'],
                 radius=5000  # 5km
             )
 
-            # Filtrer les Intermarché
-            stores = [store for store in all_stores if 'intermarché' in store.get('name', '').lower() or 'intermarche' in store.get('name', '').lower()]
-
-            # Autres commerces (hors Intermarché)
-            nearby_stores = [store for store in all_stores if store not in stores][:10]  # Limiter à 10
+            # Recherche des autres commerces (optionnel)
+            try:
+                all_stores = overpass.find_nearby_stores(
+                    latitude=user_location['latitude'],
+                    longitude=user_location['longitude'],
+                    radius=2000,  # 2km seulement pour les autres
+                    shop_types=['supermarket', 'convenience']  # Limiter aux types principaux
+                )
+                # Exclure les Intermarché déjà trouvés
+                nearby_stores = [s for s in all_stores
+                                if 'intermarché' not in s.get('name', '').lower()
+                                and 'intermarche' not in s.get('name', '').lower()][:10]
+            except Exception:
+                # Si la recherche des autres commerces échoue, continuer quand même
+                nearby_stores = []
 
         except Exception as e:
             logger.error(f"Erreur lors de la récupération des magasins: {e}")
