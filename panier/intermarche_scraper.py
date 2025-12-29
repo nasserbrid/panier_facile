@@ -121,9 +121,14 @@ class IntermarcheScraper:
 
             # DEBUG: Chercher les classes CSS présentes sur la page
             try:
+                # Prendre un screenshot pour debug
+                screenshot_path = f"/tmp/intermarche_debug_{query[:20]}.png"
+                self.driver.save_screenshot(screenshot_path)
+                logger.info(f"📸 Screenshot sauvegardé: {screenshot_path}")
+
                 body_html = self.driver.find_element(By.TAG_NAME, "body").get_attribute("innerHTML")
-                # Logger les 500 premiers caractères du HTML
-                logger.debug(f"HTML de la page (extrait): {body_html[:500]}")
+                # Logger les 1000 premiers caractères du HTML
+                logger.info(f"HTML de la page (extrait): {body_html[:1000]}")
 
                 # Chercher différentes variantes possibles de sélecteurs
                 possible_selectors = [
@@ -132,15 +137,19 @@ class IntermarcheScraper:
                     "product",
                     "item-product",
                     "search-result",
-                    "result-item"
+                    "result-item",
+                    "product-list-item",
+                    "search-product",
+                    "productCard"
                 ]
 
+                logger.info("🔍 Test des sélecteurs CSS possibles:")
                 for selector in possible_selectors:
                     elements = self.driver.find_elements(By.CLASS_NAME, selector)
                     if elements:
-                        logger.info(f"✓ Trouvé {len(elements)} éléments avec classe '{selector}'")
+                        logger.info(f"  ✓ Trouvé {len(elements)} éléments avec classe '{selector}'")
                     else:
-                        logger.debug(f"✗ Aucun élément avec classe '{selector}'")
+                        logger.info(f"  ✗ Aucun élément avec classe '{selector}'")
 
             except Exception as e:
                 logger.error(f"Erreur lors du debug HTML: {e}")
