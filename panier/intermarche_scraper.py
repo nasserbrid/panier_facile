@@ -115,6 +115,36 @@ class IntermarcheScraper:
             # Gérer le popup cookies si présent
             self._handle_cookie_popup()
 
+            # DEBUG: Logger l'URL actuelle et le titre de la page
+            logger.info(f"URL actuelle: {self.driver.current_url}")
+            logger.info(f"Titre de la page: {self.driver.title}")
+
+            # DEBUG: Chercher les classes CSS présentes sur la page
+            try:
+                body_html = self.driver.find_element(By.TAG_NAME, "body").get_attribute("innerHTML")
+                # Logger les 500 premiers caractères du HTML
+                logger.debug(f"HTML de la page (extrait): {body_html[:500]}")
+
+                # Chercher différentes variantes possibles de sélecteurs
+                possible_selectors = [
+                    "product-item",
+                    "product-card",
+                    "product",
+                    "item-product",
+                    "search-result",
+                    "result-item"
+                ]
+
+                for selector in possible_selectors:
+                    elements = self.driver.find_elements(By.CLASS_NAME, selector)
+                    if elements:
+                        logger.info(f"✓ Trouvé {len(elements)} éléments avec classe '{selector}'")
+                    else:
+                        logger.debug(f"✗ Aucun élément avec classe '{selector}'")
+
+            except Exception as e:
+                logger.error(f"Erreur lors du debug HTML: {e}")
+
             # Attendre les produits
             try:
                 WebDriverWait(self.driver, self.timeout).until(
@@ -122,6 +152,7 @@ class IntermarcheScraper:
                 )
             except TimeoutException:
                 logger.warning(f"Timeout en attendant les produits pour '{query}'")
+                logger.warning(f"Le sélecteur 'product-item' n'existe pas sur la page")
                 return products
 
             # Récupérer les produits
