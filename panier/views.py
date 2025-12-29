@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
-from .models import Panier, Course
+from .models import Panier, Course, Ingredient, IngredientPanier
 from .forms import CourseForm, PanierForm
 
 
@@ -1383,15 +1383,41 @@ def intermarche_match_products(request, panier_id):
         messages.error(request, "Aucun magasin sélectionné.")
         return redirect('export_to_intermarche', panier_id=panier.id)
 
-    # Récupérer les ingrédients du panier
-    ingredient_paniers = panier.ingredient_paniers.all()
+    # Récupérer les ingrédients du panier depuis les courses
+    # Le système utilise Course.ingredient (TextField) et non IngredientPanier
+    courses_with_ingredients = []
+    for course in panier.courses.all():
+        if course.ingredient and course.ingredient.strip():
+            courses_with_ingredients.append(course)
 
-    if not ingredient_paniers.exists():
+    if not courses_with_ingredients:
         logger.warning(f"Panier {panier_id} ne contient aucun ingrédient")
         messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients.")
         return redirect('detail_panier', panier_id=panier.id)
 
-    logger.info(f"Panier {panier_id} contient {ingredient_paniers.count()} ingrédients, démarrage du matching avec store_id={store_id}")
+    # Convertir les courses en objets Ingredient et IngredientPanier
+    # pour que le ProductMatcher puisse fonctionner
+    ingredient_paniers = []
+    for course in courses_with_ingredients:
+        # Parser les ingrédients (séparés par \n)
+        ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
+
+        for ingredient_text in ingredient_lines:
+            # Créer ou récupérer l'objet Ingredient
+            ingredient, _ = Ingredient.objects.get_or_create(
+                nom=ingredient_text,
+                defaults={'quantite': '1', 'unite': ''}
+            )
+
+            # Créer ou récupérer l'IngredientPanier
+            ing_panier, _ = IngredientPanier.objects.get_or_create(
+                panier=panier,
+                ingredient=ingredient,
+                defaults={'quantite': 1}
+            )
+            ingredient_paniers.append(ing_panier)
+
+    logger.info(f"Panier {panier_id} contient {len(ingredient_paniers)} ingrédients, démarrage du matching avec store_id={store_id}")
 
     try:
         # Matcher les produits
