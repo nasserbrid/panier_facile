@@ -265,3 +265,148 @@ def update_single_ingredient_price(ingredient_id: int):
     except Exception as e:
         logger.error(f"Erreur lors de la mise à jour de l'ingrédient {ingredient_id}: {e}")
         return {'status': 'error', 'message': str(e)}
+
+
+@shared_task(bind=True, max_retries=2, name='panier.tasks.match_panier_with_intermarche')
+def match_panier_with_intermarche(self, panier_id: int, store_id: str = 'scraping'):
+    """
+    Tâche Celery asynchrone pour matcher les ingrédients d'un panier avec Intermarché
+
+    Cette tâche permet de scraper les produits en arrière-plan sans bloquer l'utilisateur.
+    Le scraping peut prendre plusieurs minutes (2-4s par ingrédient), donc l'exécution
+    asynchrone améliore grandement l'UX.
+
+    Args:
+        panier_id: ID du panier à matcher
+        store_id: ID du magasin Intermarché (ou 'scraping' pour scraping générique)
+
+    Returns:
+        dict: Résultats du matching avec statistiques
+    """
+    from .models import Panier, Ingredient, IngredientPanier, IntermarcheProductMatch
+    from .intermarche_scraper import search_intermarche_products
+
+    try:
+        # Récupérer le panier
+        panier = Panier.objects.get(id=panier_id)
+        logger.info(f"🚀 Début du matching asynchrone pour le panier #{panier_id}")
+
+        # Récupérer les ingrédients du panier depuis les courses
+        courses_with_ingredients = []
+        for course in panier.courses.all():
+            if course.ingredient and course.ingredient.strip():
+                courses_with_ingredients.append(course)
+
+        if not courses_with_ingredients:
+            logger.warning(f"❌ Panier {panier_id} ne contient aucun ingrédient")
+            return {
+                'status': 'error',
+                'message': 'Panier ne contient aucun ingrédient',
+                'matched': 0,
+                'total': 0
+            }
+
+        # Convertir les courses en objets Ingredient et IngredientPanier
+        ingredient_paniers = []
+        for course in courses_with_ingredients:
+            ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
+
+            for ingredient_text in ingredient_lines:
+                ingredient, _ = Ingredient.objects.get_or_create(
+                    nom=ingredient_text,
+                    defaults={'quantite': '1', 'unite': ''}
+                )
+
+                ing_panier, _ = IngredientPanier.objects.get_or_create(
+                    panier=panier,
+                    ingredient=ingredient,
+                    defaults={'quantite': 1}
+                )
+                ingredient_paniers.append(ing_panier)
+
+        total_ingredients = len(ingredient_paniers)
+        logger.info(f"📦 {total_ingredients} ingrédients à matcher pour le panier #{panier_id}")
+
+        # Matcher chaque ingrédient
+        matched_count = 0
+        error_count = 0
+
+        for index, ing_panier in enumerate(ingredient_paniers, 1):
+            try:
+                ingredient = ing_panier.ingredient
+                logger.info(f"[{index}/{total_ingredients}] 🔍 Recherche de '{ingredient.nom}'...")
+
+                # Scraper les produits Intermarché
+                products = search_intermarche_products(ingredient.nom)
+
+                if not products:
+                    logger.warning(f"⚠️  Aucun produit trouvé pour '{ingredient.nom}'")
+                    error_count += 1
+                    continue
+
+                # Prendre le premier produit (le plus pertinent)
+                best_product = products[0]
+
+                # Créer ou mettre à jour le match
+                match, created = IntermarcheProductMatch.objects.update_or_create(
+                    ingredient=ingredient,
+                    store_id=store_id,
+                    defaults={
+                        'product_name': best_product.get('name', ''),
+                        'price': best_product.get('price'),
+                        'is_available': best_product.get('is_available', True),
+                        'product_url': best_product.get('url', ''),
+                        'match_score': 0.8,  # Score par défaut pour le premier résultat
+                        'last_updated': timezone.now()
+                    }
+                )
+
+                matched_count += 1
+                action = "✅ Créé" if created else "🔄 Mis à jour"
+                logger.info(
+                    f"{action} match pour '{ingredient.nom}': "
+                    f"{best_product.get('name')} - {best_product.get('price')}€"
+                )
+
+            except Exception as e:
+                error_count += 1
+                logger.error(f"❌ Erreur pour '{ingredient.nom}': {e}")
+                continue
+
+        # Résultats finaux
+        success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
+
+        logger.info(
+            f"✨ Matching terminé pour panier #{panier_id}: "
+            f"{matched_count}/{total_ingredients} matchés ({success_rate:.1f}%), "
+            f"{error_count} erreurs"
+        )
+
+        return {
+            'status': 'success',
+            'panier_id': panier_id,
+            'matched': matched_count,
+            'total': total_ingredients,
+            'errors': error_count,
+            'success_rate': success_rate
+        }
+
+    except Panier.DoesNotExist:
+        logger.error(f"❌ Panier {panier_id} non trouvé")
+        return {
+            'status': 'error',
+            'message': f'Panier {panier_id} non trouvé'
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Erreur globale pour panier {panier_id}: {e}")
+        # Retry avec backoff exponentiel
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        else:
+            return {
+                'status': 'error',
+                'message': str(e),
+                'matched': 0,
+                'total': 0
+            }

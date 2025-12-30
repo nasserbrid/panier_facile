@@ -72,6 +72,7 @@ urlpatterns = [
     path('<int:panier_id>/select-store/', views.select_store_for_drive, name='select_store_for_drive'),
     path('<int:panier_id>/intermarche/export/', views.export_to_intermarche, name='export_to_intermarche'),
     path('<int:panier_id>/intermarche/match/', views.intermarche_match_products, name='intermarche_match_products'),
+    path('<int:panier_id>/intermarche/progress/<str:store_id>/', views.intermarche_matching_progress, name='intermarche_matching_progress'),
     path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
 
     # Géolocalisation

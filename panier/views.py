@@ -1417,59 +1417,87 @@ def intermarche_match_products(request, panier_id):
             )
             ingredient_paniers.append(ing_panier)
 
-    logger.info(f"Panier {panier_id} contient {len(ingredient_paniers)} ingrédients, démarrage du matching avec store_id={store_id}")
+    logger.info(f"Panier {panier_id} contient {len(ingredient_paniers)} ingrédients")
 
-    try:
-        # Matcher les produits
-        matcher = ProductMatcher(store_id)
+    # Lancer la tâche Celery asynchrone pour le matching
+    from .tasks import match_panier_with_intermarche
 
-        # Force refresh si demandé
-        force_refresh = request.GET.get('refresh') == '1'
-        matches = matcher.match_panier_ingredients(
-            list(ingredient_paniers),
-            use_cache=not force_refresh
-        )
+    logger.info(f"🚀 Lancement de la tâche Celery pour matcher le panier {panier_id}")
+    task = match_panier_with_intermarche.delay(panier_id, store_id)
 
-        # Préparer les données pour le template
-        matches_data = []
-        for ing_panier in ingredient_paniers:
-            match = matches.get(ing_panier.id)
-            matches_data.append({
-                'ingredient_panier': ing_panier,
-                'match': match,
-                'has_match': match is not None
-            })
+    # Stocker le task_id dans la session pour le suivi
+    request.session[f'matching_task_{panier_id}'] = task.id
 
-        # Statistiques
-        total = len(matches_data)
-        matched = sum(1 for m in matches_data if m['has_match'])
-        match_rate = (matched / total * 100) if total > 0 else 0
+    # Rediriger vers la page de progression
+    messages.info(
+        request,
+        f"Préparation de votre panier en cours... ({len(ingredient_paniers)} produits à chercher)"
+    )
+    return redirect('intermarche_matching_progress', panier_id=panier.id, store_id=store_id)
 
-        # POST: Validation et création du panier
-        if request.method == 'POST':
-            # Filtrer uniquement les ingrédients avec un match
-            valid_matches = {k: v for k, v in matches.items() if v is not None}
 
-            if not valid_matches:
-                messages.error(request, "Aucun produit trouvé. Impossible de créer le panier Intermarché.")
-                return redirect('detail_panier', panier_id=panier.id)
+@login_required
+def intermarche_matching_progress(request, panier_id, store_id):
+    """
+    Page de progression du matching asynchrone avec Intermarché
 
-            # Rediriger vers la création du panier
-            return redirect(f"{reverse('intermarche_create_cart', args=[panier.id])}?store_id={store_id}")
+    Cette vue affiche la progression en temps réel du scraping Celery
+    et redirige automatiquement vers les résultats une fois terminé.
 
-        return render(request, 'panier/intermarche_validate_matches.html', {
-            'panier': panier,
-            'store_id': store_id,
-            'matches_data': matches_data,
-            'total': total,
-            'matched': matched,
-            'match_rate': round(match_rate, 1)
-        })
+    Args:
+        panier_id: ID du panier
+        store_id: ID du magasin Intermarché
+    """
+    from celery.result import AsyncResult
 
-    except IntermarcheAPIException as e:
-        logger.error(f"Erreur API Intermarché: {e.message}")
-        messages.error(request, "Erreur lors de la recherche des produits.")
-        return redirect('detail_panier', panier_id=panier.id)
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    # Récupérer le task_id depuis la session
+    task_id = request.session.get(f'matching_task_{panier_id}')
+
+    if not task_id:
+        # Pas de tâche en cours, rediriger vers la sélection du magasin
+        messages.warning(request, "Aucune recherche de produits en cours.")
+        return redirect('select_store_for_drive', panier_id=panier.id)
+
+    # Récupérer le statut de la tâche Celery
+    task_result = AsyncResult(task_id)
+
+    context = {
+        'panier': panier,
+        'store_id': store_id,
+        'task_id': task_id,
+        'task_status': task_result.state,  # PENDING, STARTED, SUCCESS, FAILURE
+    }
+
+    # Si la tâche est terminée avec succès, récupérer les résultats
+    if task_result.ready():
+        if task_result.successful():
+            result_data = task_result.result
+            context['result'] = result_data
+            context['matched_count'] = result_data.get('matched', 0)
+            context['total_count'] = result_data.get('total', 0)
+            context['success_rate'] = result_data.get('success_rate', 0)
+
+            # Nettoyer le task_id de la session
+            if f'matching_task_{panier_id}' in request.session:
+                del request.session[f'matching_task_{panier_id}']
+
+        else:
+            # La tâche a échoué
+            context['error'] = str(task_result.info)
+            messages.error(request, "Une erreur est survenue lors de la recherche des produits.")
+
+    return render(request, 'panier/intermarche_matching_progress.html', context)
 
 
 @login_required
