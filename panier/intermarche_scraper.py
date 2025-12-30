@@ -1,19 +1,17 @@
 """
 Scraper pour récupérer les produits Intermarché
-Utilise Selenium pour gérer le JavaScript du site
+Utilise undetected-chromedriver pour contourner les protections anti-bot
 """
 
 import logging
 import time
+import random
 from typing import List, Dict, Optional
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 
 logger = logging.getLogger(__name__)
 
@@ -48,34 +46,67 @@ class IntermarcheScraper:
         self.close_driver()
 
     def start_driver(self):
-        """Démarre le driver Selenium Chrome"""
+        """Démarre le driver undetected-chromedriver avec anti-détection"""
         try:
-            options = Options()
+            options = uc.ChromeOptions()
 
-            if self.headless:
-                options.add_argument('--headless=new')
-
-            # Options pour compatibilité Docker/serveur
+            # Options essentielles pour Docker/serveur
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
 
-            # User agent pour éviter la détection
-            options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            # IMPORTANT: En headless, on utilise le nouveau mode headless qui est moins détectable
+            if self.headless:
+                options.add_argument('--headless=new')
 
             # Désactiver les images pour aller plus vite
-            prefs = {'profile.managed_default_content_settings.images': 2}
+            prefs = {
+                'profile.managed_default_content_settings.images': 2,
+                'profile.default_content_setting_values.notifications': 2,  # Bloquer notifications
+            }
             options.add_experimental_option('prefs', prefs)
 
-            service = Service(ChromeDriverManager().install())
-            self.driver = webdriver.Chrome(service=service, options=options)
-            self.driver.set_page_load_timeout(self.timeout)
+            # Désactiver l'automatisation visible
+            options.add_argument('--disable-blink-features=AutomationControlled')
 
-            logger.info("Driver Selenium démarré avec succès")
+            # User agent aléatoire parmi des vrais navigateurs
+            user_agents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            ]
+            options.add_argument(f'user-agent={random.choice(user_agents)}')
+
+            # Créer le driver avec undetected-chromedriver
+            self.driver = uc.Chrome(
+                options=options,
+                version_main=None,  # Auto-détecte la version de Chrome
+                use_subprocess=True,  # Meilleure compatibilité
+            )
+
+            # Timeout et configuration
+            self.driver.set_page_load_timeout(30)  # Augmenter le timeout pour les pages lentes
+
+            # Masquer les propriétés webdriver
+            self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': '''
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['fr-FR', 'fr', 'en-US', 'en']
+                    });
+                '''
+            })
+
+            logger.info("✅ Driver undetected-chromedriver démarré avec succès (anti-bot activé)")
 
         except Exception as e:
-            logger.error(f"Erreur lors du démarrage du driver: {e}")
+            logger.error(f"❌ Erreur lors du démarrage du driver: {e}")
             raise
 
     def close_driver(self):
@@ -109,11 +140,16 @@ class IntermarcheScraper:
 
             self.driver.get(search_url)
 
-            # Attendre que les résultats se chargent
-            time.sleep(3)  # Temps pour le chargement initial
+            # Attendre de façon aléatoire pour simuler un comportement humain
+            random_wait = random.uniform(2, 4)
+            logger.info(f"⏳ Attente de {random_wait:.1f}s pour simuler un comportement humain")
+            time.sleep(random_wait)
 
             # Gérer le popup cookies si présent
             self._handle_cookie_popup()
+
+            # Attente supplémentaire après le cookie popup
+            time.sleep(random.uniform(1, 2))
 
             # DEBUG: Logger l'URL actuelle et le titre de la page
             logger.info(f"URL actuelle: {self.driver.current_url}")
