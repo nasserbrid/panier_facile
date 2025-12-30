@@ -35,7 +35,9 @@ RUN apt-get update && apt-get install -y \
 # Étape 3 : Installer les dépendances Python
 # -----------------------------
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir undetected-chromedriver==3.5.5
 
 # -----------------------------
 # Étape 4 : Copier le code source
