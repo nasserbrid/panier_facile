@@ -1,12 +1,19 @@
 """
-Scraper pour récupérer les produits Intermarché
+Scraper pour récupérer les produits Intermarché et créer un panier automatique
 Utilise undetected-chromedriver pour contourner les protections anti-bot
+
+Flow:
+1. Cherche chaque ingrédient sur https://www.intermarche.com/recherche/{ingredient}
+2. Extrait les produits de la page de résultats
+3. Ajoute automatiquement les produits au panier
+4. Retourne le lien du panier à l'utilisateur
 """
 
 import logging
 import time
 import random
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
+from urllib.parse import quote_plus
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -19,10 +26,12 @@ logger = logging.getLogger(__name__)
 class IntermarcheScraper:
     """
     Scraper pour Intermarché Drive
+    Automatise la recherche de produits et l'ajout au panier
     """
 
     BASE_URL = "https://www.intermarche.com"
-    SEARCH_URL = f"{BASE_URL}/drive/recherche"
+    SEARCH_URL = f"{BASE_URL}/recherche"
+    CART_URL = f"{BASE_URL}/commandes/panier"
 
     def __init__(self, headless: bool = True, timeout: int = 10):
         """
@@ -120,10 +129,10 @@ class IntermarcheScraper:
 
     def search_product(self, query: str) -> List[Dict]:
         """
-        Recherche un produit sur Intermarché
+        Recherche un produit sur Intermarché via /recherche/{ingredient}
 
         Args:
-            query: Terme de recherche
+            query: Terme de recherche (nom de l'ingrédient)
 
         Returns:
             Liste de dictionnaires contenant les informations produits
@@ -134,9 +143,11 @@ class IntermarcheScraper:
         products = []
 
         try:
-            # Construire l'URL de recherche
-            search_url = f"{self.SEARCH_URL}?search={query.replace(' ', '+')}"
-            logger.info(f"Recherche de '{query}' sur {search_url}")
+            # URL de recherche: https://www.intermarche.com/recherche/{query}
+            # Encoder l'URL correctement (espaces -> %20)
+            encoded_query = query.replace(' ', '%20')
+            search_url = f"{self.SEARCH_URL}/{encoded_query}"
+            logger.info(f"🔍 Recherche de '{query}' sur {search_url}")
 
             self.driver.get(search_url)
 
@@ -145,67 +156,74 @@ class IntermarcheScraper:
             logger.info(f"⏳ Attente de {random_wait:.1f}s pour simuler un comportement humain")
             time.sleep(random_wait)
 
-            # Gérer le popup cookies si présent
+            # Gérer le popup cookies si présent (première visite)
             self._handle_cookie_popup()
 
             # Attente supplémentaire après le cookie popup
             time.sleep(random.uniform(1, 2))
 
-            # DEBUG: Logger l'URL actuelle et le titre de la page
+            # Logger l'URL actuelle pour vérifier les redirections
             logger.info(f"URL actuelle: {self.driver.current_url}")
             logger.info(f"Titre de la page: {self.driver.title}")
 
-            # DEBUG: Chercher les classes CSS présentes sur la page
+            # DEBUG: Analyser la structure de la page
             try:
-                # Prendre un screenshot pour debug
-                screenshot_path = f"/tmp/intermarche_debug_{query[:20]}.png"
+                # Screenshot pour debug
+                screenshot_path = f"/tmp/intermarche_search_{query[:20].replace('/', '_')}.png"
                 self.driver.save_screenshot(screenshot_path)
                 logger.info(f"📸 Screenshot sauvegardé: {screenshot_path}")
 
+                # Extraire le HTML pour analyse
                 body_html = self.driver.find_element(By.TAG_NAME, "body").get_attribute("innerHTML")
-                # Logger les 1000 premiers caractères du HTML
-                logger.info(f"HTML de la page (extrait): {body_html[:1000]}")
+                logger.info(f"HTML de la page (premiers 1000 chars): {body_html[:1000]}")
 
-                # Chercher différentes variantes possibles de sélecteurs
+                # Tester différents sélecteurs possibles
                 possible_selectors = [
                     "product-item",
                     "product-card",
+                    "ProductCard",
                     "product",
                     "item-product",
                     "search-result",
                     "result-item",
-                    "product-list-item",
-                    "search-product",
-                    "productCard"
+                    "product-list-item"
                 ]
 
-                logger.info("🔍 Test des sélecteurs CSS possibles:")
+                logger.info("🔍 Test des sélecteurs CSS:")
                 for selector in possible_selectors:
                     elements = self.driver.find_elements(By.CLASS_NAME, selector)
                     if elements:
-                        logger.info(f"  ✓ Trouvé {len(elements)} éléments avec classe '{selector}'")
+                        logger.info(f"  ✅ Trouvé {len(elements)} éléments avec classe '{selector}'")
                     else:
-                        logger.info(f"  ✗ Aucun élément avec classe '{selector}'")
+                        logger.info(f"  ❌ Aucun élément avec classe '{selector}'")
 
             except Exception as e:
                 logger.error(f"Erreur lors du debug HTML: {e}")
 
-            # Attendre les produits
-            try:
-                WebDriverWait(self.driver, self.timeout).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "product-item"))
-                )
-            except TimeoutException:
-                logger.warning(f"Timeout en attendant les produits pour '{query}'")
-                logger.warning(f"Le sélecteur 'product-item' n'existe pas sur la page")
+            # Attendre les produits (on testera différents sélecteurs)
+            product_elements = []
+
+            # Essayer de trouver les produits avec différents sélecteurs
+            for selector in possible_selectors:
+                try:
+                    WebDriverWait(self.driver, self.timeout).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, selector))
+                    )
+                    product_elements = self.driver.find_elements(By.CLASS_NAME, selector)
+                    if product_elements:
+                        logger.info(f"✅ Utilisation du sélecteur '{selector}' - {len(product_elements)} produits trouvés")
+                        break
+                except TimeoutException:
+                    continue
+
+            if not product_elements:
+                logger.warning(f"❌ Aucun produit trouvé pour '{query}' - aucun sélecteur n'a fonctionné")
                 return products
 
-            # Récupérer les produits
-            product_elements = self.driver.find_elements(By.CLASS_NAME, "product-item")
+            logger.info(f"📦 Trouvé {len(product_elements)} produits pour '{query}'")
 
-            logger.info(f"Trouvé {len(product_elements)} produits pour '{query}'")
-
-            for element in product_elements[:10]:  # Limiter à 10 produits
+            # Extraire les données des produits (limiter à 10 pour performance)
+            for element in product_elements[:10]:
                 try:
                     product_data = self._extract_product_data(element)
                     if product_data:
@@ -215,7 +233,7 @@ class IntermarcheScraper:
                     continue
 
         except Exception as e:
-            logger.error(f"Erreur lors de la recherche de '{query}': {e}")
+            logger.error(f"❌ Erreur lors de la recherche de '{query}': {e}")
 
         return products
 
@@ -315,6 +333,68 @@ class IntermarcheScraper:
         except (ValueError, AttributeError):
             logger.warning(f"Impossible de parser le prix: {price_text}")
             return None
+
+    def add_product_to_cart(self, product_element) -> bool:
+        """
+        Ajoute un produit au panier en cliquant sur le bouton d'ajout
+
+        Args:
+            product_element: WebElement représentant le produit
+
+        Returns:
+            True si l'ajout a réussi, False sinon
+        """
+        try:
+            # Chercher le bouton d'ajout au panier dans l'élément produit
+            # Boutons possibles: "Ajouter", icône panier, bouton avec quantité, etc.
+            add_button = None
+
+            # Essayer différents sélecteurs pour le bouton d'ajout
+            button_selectors = [
+                (By.CLASS_NAME, "add-to-cart"),
+                (By.CLASS_NAME, "addToCart"),
+                (By.CLASS_NAME, "btn-add"),
+                (By.XPATH, ".//button[contains(text(), 'Ajouter')]"),
+                (By.XPATH, ".//button[contains(@class, 'cart')]"),
+            ]
+
+            for by, selector in button_selectors:
+                try:
+                    add_button = product_element.find_element(by, selector)
+                    if add_button and add_button.is_displayed():
+                        break
+                except NoSuchElementException:
+                    continue
+
+            if not add_button:
+                logger.warning("Bouton d'ajout au panier non trouvé pour ce produit")
+                return False
+
+            # Scroller vers l'élément pour s'assurer qu'il est visible
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", add_button)
+            time.sleep(0.5)
+
+            # Cliquer sur le bouton
+            add_button.click()
+            logger.info("✅ Produit ajouté au panier")
+
+            # Attendre un peu pour que l'ajout soit effectif
+            time.sleep(random.uniform(0.5, 1))
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Erreur lors de l'ajout au panier: {e}")
+            return False
+
+    def get_cart_url(self) -> str:
+        """
+        Retourne l'URL du panier Intermarché
+
+        Returns:
+            URL du panier
+        """
+        return self.CART_URL
 
 
 def search_intermarche_products(ingredient_name: str) -> List[Dict]:
