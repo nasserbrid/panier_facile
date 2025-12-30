@@ -93,7 +93,5 @@ zstandard==0.25.0
 django-allauth==65.3.0
 PyJWT==2.10.1
 cryptography==46.0.3
-selenium==4.27.1
-webdriver-manager==4.0.2
-undetected-chromedriver==3.5.5
+playwright==1.49.1
 setuptools>=65.0.0

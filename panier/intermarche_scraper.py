@@ -1,24 +1,24 @@
 """
 Scraper pour récupérer les produits Intermarché et créer un panier automatique
-Utilise undetected-chromedriver pour contourner les protections anti-bot
+Utilise Playwright pour contourner les protections anti-bot (DataDome)
 
 Flow:
 1. Cherche chaque ingrédient sur https://www.intermarche.com/recherche/{ingredient}
 2. Extrait les produits de la page de résultats
 3. Ajoute automatiquement les produits au panier
 4. Retourne le lien du panier à l'utilisateur
+
+Playwright est plus robuste que Selenium pour éviter la détection:
+- Empreinte digitale du navigateur moins détectable
+- Meilleure gestion des contextes
+- Pas besoin de CAPTCHA solver externe (gratuit!)
 """
 
 import logging
 import time
 import random
-from typing import List, Dict, Optional, Tuple
-from urllib.parse import quote_plus
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from typing import List, Dict, Optional
+from playwright.sync_api import sync_playwright, Browser, Page, BrowserContext
 
 logger = logging.getLogger(__name__)
 
@@ -33,99 +33,112 @@ class IntermarcheScraper:
     SEARCH_URL = f"{BASE_URL}/recherche"
     CART_URL = f"{BASE_URL}/commandes/panier"
 
-    def __init__(self, headless: bool = True, timeout: int = 10):
+    def __init__(self, headless: bool = True, timeout: int = 30000):
         """
         Initialise le scraper
 
         Args:
             headless: Si True, le navigateur s'exécute sans interface graphique
-            timeout: Temps d'attente max pour les éléments (secondes)
+            timeout: Temps d'attente max pour les éléments (millisecondes)
         """
         self.headless = headless
         self.timeout = timeout
-        self.driver = None
+        self.playwright = None
+        self.browser = None
+        self.context = None
+        self.page = None
 
     def __enter__(self):
         """Context manager: démarre le navigateur"""
-        self.start_driver()
+        self.start_browser()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager: ferme le navigateur"""
-        self.close_driver()
+        self.close_browser()
 
-    def start_driver(self):
-        """Démarre le driver undetected-chromedriver avec anti-détection"""
+    def start_browser(self):
+        """Démarre Playwright avec configuration anti-détection"""
         try:
-            options = uc.ChromeOptions()
+            self.playwright = sync_playwright().start()
 
-            # Options essentielles pour Docker/serveur
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument('--disable-gpu')
-            options.add_argument('--window-size=1920,1080')
-
-            # IMPORTANT: En headless, on utilise le nouveau mode headless qui est moins détectable
-            if self.headless:
-                options.add_argument('--headless=new')
-
-            # Désactiver les images pour aller plus vite
-            prefs = {
-                'profile.managed_default_content_settings.images': 2,
-                'profile.default_content_setting_values.notifications': 2,  # Bloquer notifications
-            }
-            options.add_experimental_option('prefs', prefs)
-
-            # Désactiver l'automatisation visible
-            options.add_argument('--disable-blink-features=AutomationControlled')
-
-            # User agent aléatoire parmi des vrais navigateurs
-            user_agents = [
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            ]
-            options.add_argument(f'user-agent={random.choice(user_agents)}')
-
-            # Créer le driver avec undetected-chromedriver
-            self.driver = uc.Chrome(
-                options=options,
-                version_main=None,  # Auto-détecte la version de Chrome
-                use_subprocess=True,  # Meilleure compatibilité
+            # Lancer Chromium avec des options anti-détection
+            self.browser = self.playwright.chromium.launch(
+                headless=self.headless,
+                args=[
+                    '--disable-blink-features=AutomationControlled',
+                    '--no-sandbox',
+                    '--disable-dev-shm-usage',
+                ]
             )
 
-            # Timeout et configuration
-            self.driver.set_page_load_timeout(30)  # Augmenter le timeout pour les pages lentes
+            # Créer un contexte avec un user agent réaliste et des permissions
+            self.context = self.browser.new_context(
+                viewport={'width': 1920, 'height': 1080},
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                locale='fr-FR',
+                timezone_id='Europe/Paris',
+                permissions=['geolocation'],
+                geolocation={'latitude': 48.8566, 'longitude': 2.3522},  # Paris
+                extra_http_headers={
+                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+                }
+            )
 
-            # Masquer les propriétés webdriver
-            self.driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
-                'source': '''
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined
-                    });
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [1, 2, 3, 4, 5]
-                    });
-                    Object.defineProperty(navigator, 'languages', {
-                        get: () => ['fr-FR', 'fr', 'en-US', 'en']
-                    });
-                '''
-            })
+            # Masquer les propriétés webdriver pour éviter la détection
+            self.context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
 
-            logger.info("✅ Driver undetected-chromedriver démarré avec succès (anti-bot activé)")
+                // Masquer les propriétés d'automatisation
+                delete navigator.__proto__.webdriver;
+
+                // Simuler les plugins Chrome normaux
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+
+                // Langues réalistes
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['fr-FR', 'fr', 'en-US', 'en']
+                });
+
+                // Éviter la détection de headless
+                Object.defineProperty(navigator, 'platform', {
+                    get: () => 'Win32'
+                });
+
+                // Chrome runtime
+                window.chrome = {
+                    runtime: {}
+                };
+            """)
+
+            # Créer une page
+            self.page = self.context.new_page()
+            self.page.set_default_timeout(self.timeout)
+
+            logger.info("✅ Playwright démarré avec succès (mode anti-détection activé)")
 
         except Exception as e:
-            logger.error(f"❌ Erreur lors du démarrage du driver: {e}")
+            logger.error(f"❌ Erreur lors du démarrage de Playwright: {e}")
             raise
 
-    def close_driver(self):
-        """Ferme le driver Selenium"""
-        if self.driver:
-            try:
-                self.driver.quit()
-                logger.info("Driver Selenium fermé")
-            except Exception as e:
-                logger.error(f"Erreur lors de la fermeture du driver: {e}")
+    def close_browser(self):
+        """Ferme le navigateur Playwright"""
+        try:
+            if self.page:
+                self.page.close()
+            if self.context:
+                self.context.close()
+            if self.browser:
+                self.browser.close()
+            if self.playwright:
+                self.playwright.stop()
+            logger.info("Playwright fermé")
+        except Exception as e:
+            logger.error(f"Erreur lors de la fermeture de Playwright: {e}")
 
     def search_product(self, query: str) -> List[Dict]:
         """
@@ -137,87 +150,79 @@ class IntermarcheScraper:
         Returns:
             Liste de dictionnaires contenant les informations produits
         """
-        if not self.driver:
-            self.start_driver()
+        if not self.page:
+            self.start_browser()
 
         products = []
 
         try:
             # URL de recherche: https://www.intermarche.com/recherche/{query}
-            # Encoder l'URL correctement (espaces -> %20)
             encoded_query = query.replace(' ', '%20')
             search_url = f"{self.SEARCH_URL}/{encoded_query}"
             logger.info(f"🔍 Recherche de '{query}' sur {search_url}")
 
-            self.driver.get(search_url)
+            # Naviguer vers la page de recherche
+            self.page.goto(search_url, wait_until='domcontentloaded')
 
             # Attendre de façon aléatoire pour simuler un comportement humain
             random_wait = random.uniform(2, 4)
             logger.info(f"⏳ Attente de {random_wait:.1f}s pour simuler un comportement humain")
             time.sleep(random_wait)
 
-            # Gérer le popup cookies si présent (première visite)
+            # Gérer le popup cookies si présent
             self._handle_cookie_popup()
 
             # Attente supplémentaire après le cookie popup
             time.sleep(random.uniform(1, 2))
 
             # Logger l'URL actuelle pour vérifier les redirections
-            logger.info(f"URL actuelle: {self.driver.current_url}")
-            logger.info(f"Titre de la page: {self.driver.title}")
+            logger.info(f"URL actuelle: {self.page.url}")
+            logger.info(f"Titre de la page: {self.page.title()}")
 
-            # DEBUG: Analyser la structure de la page
-            try:
-                # Screenshot pour debug
-                screenshot_path = f"/tmp/intermarche_search_{query[:20].replace('/', '_')}.png"
-                self.driver.save_screenshot(screenshot_path)
-                logger.info(f"📸 Screenshot sauvegardé: {screenshot_path}")
+            # Vérifier si on est bloqué par un CAPTCHA
+            page_content = self.page.content()
+            if 'geo.captcha-delivery.com' in page_content or 'datadome' in page_content.lower():
+                logger.warning("⚠️  CAPTCHA DataDome détecté - mais Playwright devrait mieux le gérer que Selenium")
+                # Attendre un peu plus pour que le challenge se résolve automatiquement
+                time.sleep(5)
 
-                # Extraire le HTML pour analyse
-                body_html = self.driver.find_element(By.TAG_NAME, "body").get_attribute("innerHTML")
-                logger.info(f"HTML de la page (premiers 1000 chars): {body_html[:1000]}")
+            # Attendre que les produits se chargent
+            # Tester différents sélecteurs possibles
+            possible_selectors = [
+                '.product-item',
+                '.product-card',
+                '.ProductCard',
+                '[class*="product"]',
+                '[data-testid*="product"]',
+                'article',
+            ]
 
-                # Tester différents sélecteurs possibles
-                possible_selectors = [
-                    "product-item",
-                    "product-card",
-                    "ProductCard",
-                    "product",
-                    "item-product",
-                    "search-result",
-                    "result-item",
-                    "product-list-item"
-                ]
-
-                logger.info("🔍 Test des sélecteurs CSS:")
-                for selector in possible_selectors:
-                    elements = self.driver.find_elements(By.CLASS_NAME, selector)
-                    if elements:
-                        logger.info(f"  ✅ Trouvé {len(elements)} éléments avec classe '{selector}'")
-                    else:
-                        logger.info(f"  ❌ Aucun élément avec classe '{selector}'")
-
-            except Exception as e:
-                logger.error(f"Erreur lors du debug HTML: {e}")
-
-            # Attendre les produits (on testera différents sélecteurs)
-            product_elements = []
-
-            # Essayer de trouver les produits avec différents sélecteurs
+            product_elements = None
             for selector in possible_selectors:
                 try:
-                    WebDriverWait(self.driver, self.timeout).until(
-                        EC.presence_of_element_located((By.CLASS_NAME, selector))
-                    )
-                    product_elements = self.driver.find_elements(By.CLASS_NAME, selector)
-                    if product_elements:
+                    # Attendre que les éléments soient présents
+                    self.page.wait_for_selector(selector, timeout=10000)
+                    product_elements = self.page.query_selector_all(selector)
+                    if product_elements and len(product_elements) > 0:
                         logger.info(f"✅ Utilisation du sélecteur '{selector}' - {len(product_elements)} produits trouvés")
                         break
-                except TimeoutException:
+                except Exception:
                     continue
 
             if not product_elements:
                 logger.warning(f"❌ Aucun produit trouvé pour '{query}' - aucun sélecteur n'a fonctionné")
+
+                # DEBUG: Sauvegarder screenshot et HTML
+                try:
+                    screenshot_path = f"/tmp/intermarche_search_{query[:20].replace('/', '_')}.png"
+                    self.page.screenshot(path=screenshot_path)
+                    logger.info(f"📸 Screenshot sauvegardé: {screenshot_path}")
+
+                    html_content = self.page.content()
+                    logger.info(f"HTML de la page (premiers 1000 chars): {html_content[:1000]}")
+                except Exception as e:
+                    logger.error(f"Erreur lors du debug: {e}")
+
                 return products
 
             logger.info(f"📦 Trouvé {len(product_elements)} produits pour '{query}'")
@@ -241,69 +246,93 @@ class IntermarcheScraper:
         """Gère le popup de cookies s'il apparaît"""
         try:
             # Chercher le bouton "Tout accepter" ou similaire
-            accept_button = WebDriverWait(self.driver, 3).until(
-                EC.element_to_be_clickable((By.ID, "didomi-notice-agree-button"))
-            )
-            accept_button.click()
-            logger.info("Popup cookies accepté")
-            time.sleep(1)
-        except (TimeoutException, NoSuchElementException):
-            # Pas de popup, on continue
-            pass
+            cookie_button = self.page.query_selector('#didomi-notice-agree-button')
+            if cookie_button and cookie_button.is_visible():
+                cookie_button.click()
+                logger.info("✅ Popup cookies accepté")
+                time.sleep(1)
         except Exception as e:
-            logger.warning(f"Erreur lors de la gestion du popup cookies: {e}")
+            # Pas de popup ou erreur, on continue
+            pass
 
     def _extract_product_data(self, element) -> Optional[Dict]:
         """
         Extrait les données d'un élément produit
 
         Args:
-            element: WebElement Selenium représentant un produit
+            element: ElementHandle Playwright représentant un produit
 
         Returns:
             Dictionnaire avec les données du produit ou None
         """
         try:
-            # Nom du produit
-            try:
-                name_element = element.find_element(By.CLASS_NAME, "product-title")
-                name = name_element.text.strip()
-            except NoSuchElementException:
-                name = None
+            # Nom du produit - essayer plusieurs sélecteurs
+            name = None
+            name_selectors = [
+                '.product-title',
+                '[class*="title"]',
+                'h2',
+                'h3',
+                '[data-testid*="title"]'
+            ]
+
+            for selector in name_selectors:
+                try:
+                    name_el = element.query_selector(selector)
+                    if name_el:
+                        name = name_el.text_content().strip()
+                        if name:
+                            break
+                except:
+                    continue
 
             if not name:
                 return None
 
-            # Prix
-            try:
-                price_element = element.find_element(By.CLASS_NAME, "product-price")
-                price_text = price_element.text.strip()
-                # Nettoyer le prix: "3,99 €" -> 3.99
-                price = self._parse_price(price_text)
-            except NoSuchElementException:
-                price = None
+            # Prix - essayer plusieurs sélecteurs
+            price = None
+            price_selectors = [
+                '.product-price',
+                '[class*="price"]',
+                '[data-testid*="price"]'
+            ]
 
-            # Disponibilité
+            for selector in price_selectors:
+                try:
+                    price_el = element.query_selector(selector)
+                    if price_el:
+                        price_text = price_el.text_content().strip()
+                        price = self._parse_price(price_text)
+                        if price:
+                            break
+                except:
+                    continue
+
+            # URL du produit
+            product_url = None
             try:
-                # Vérifier s'il y a un indicateur "rupture" ou "indisponible"
-                out_of_stock = element.find_elements(By.CLASS_NAME, "out-of-stock")
-                is_available = len(out_of_stock) == 0
+                link_el = element.query_selector('a')
+                if link_el:
+                    href = link_el.get_attribute('href')
+                    if href:
+                        product_url = href if href.startswith('http') else f"{self.BASE_URL}{href}"
             except:
-                is_available = True  # Par défaut, on suppose disponible
+                pass
 
-            # URL du produit (optionnel)
+            # Disponibilité (par défaut disponible)
+            is_available = True
             try:
-                link_element = element.find_element(By.TAG_NAME, "a")
-                product_url = link_element.get_attribute("href")
-            except NoSuchElementException:
-                product_url = None
+                out_of_stock = element.query_selector('[class*="out-of-stock"], [class*="indisponible"]')
+                is_available = out_of_stock is None
+            except:
+                pass
 
             product_data = {
                 'name': name,
                 'price': price,
                 'is_available': is_available,
                 'url': product_url,
-                'source': 'intermarche_scraper'
+                'source': 'intermarche_playwright'
             }
 
             logger.debug(f"Produit extrait: {name} - {price}€")
@@ -339,39 +368,36 @@ class IntermarcheScraper:
         Ajoute un produit au panier en cliquant sur le bouton d'ajout
 
         Args:
-            product_element: WebElement représentant le produit
+            product_element: ElementHandle représentant le produit
 
         Returns:
             True si l'ajout a réussi, False sinon
         """
         try:
-            # Chercher le bouton d'ajout au panier dans l'élément produit
-            # Boutons possibles: "Ajouter", icône panier, bouton avec quantité, etc.
-            add_button = None
-
-            # Essayer différents sélecteurs pour le bouton d'ajout
+            # Chercher le bouton d'ajout au panier
             button_selectors = [
-                (By.CLASS_NAME, "add-to-cart"),
-                (By.CLASS_NAME, "addToCart"),
-                (By.CLASS_NAME, "btn-add"),
-                (By.XPATH, ".//button[contains(text(), 'Ajouter')]"),
-                (By.XPATH, ".//button[contains(@class, 'cart')]"),
+                '.add-to-cart',
+                '.addToCart',
+                '.btn-add',
+                'button[class*="cart"]',
+                'button[class*="ajouter"]'
             ]
 
-            for by, selector in button_selectors:
+            add_button = None
+            for selector in button_selectors:
                 try:
-                    add_button = product_element.find_element(by, selector)
-                    if add_button and add_button.is_displayed():
+                    add_button = product_element.query_selector(selector)
+                    if add_button and add_button.is_visible():
                         break
-                except NoSuchElementException:
+                except:
                     continue
 
             if not add_button:
                 logger.warning("Bouton d'ajout au panier non trouvé pour ce produit")
                 return False
 
-            # Scroller vers l'élément pour s'assurer qu'il est visible
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", add_button)
+            # Scroller vers l'élément
+            add_button.scroll_into_view_if_needed()
             time.sleep(0.5)
 
             # Cliquer sur le bouton
