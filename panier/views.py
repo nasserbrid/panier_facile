@@ -1269,7 +1269,6 @@ def reset_rag_system(request):
 
 from panier.models import IntermarcheCart
 from panier.intermarche_api import IntermarcheAPIClient, IntermarcheAPIException
-from panier.services.product_matcher import ProductMatcher
 from authentication.utils import OverpassAPI
 import uuid
 
@@ -1538,12 +1537,28 @@ def intermarche_create_cart(request, panier_id):
             messages.error(request, "Ce panier ne contient aucun ingrédient.")
             return redirect('detail_panier', panier_id=panier.id)
 
-        # Matcher les produits
-        matcher = ProductMatcher(store_id)
-        matches = matcher.match_panier_ingredients(ingredient_paniers)
+        # Récupérer les matches déjà créés par la tâche Celery
+        from .models import IntermarcheProductMatch
 
-        # Convertir en items pour l'API
-        items = matcher.get_cart_items_from_matches(matches, ingredient_paniers)
+        items = []
+        for ing_panier in ingredient_paniers:
+            try:
+                # Récupérer le match depuis la DB (déjà créé par le Celery task)
+                match = IntermarcheProductMatch.objects.get(
+                    ingredient=ing_panier.ingredient,
+                    store_id=store_id
+                )
+
+                if match.is_available and match.price:
+                    items.append({
+                        'product_name': match.product_name,
+                        'price': float(match.price),
+                        'quantity': ing_panier.quantite or 1
+                    })
+
+            except IntermarcheProductMatch.DoesNotExist:
+                logger.warning(f"Aucun match trouvé pour {ing_panier.ingredient.nom}")
+                continue
 
         if not items:
             messages.error(request, "Aucun produit trouvé. Impossible de créer le panier Intermarché.")

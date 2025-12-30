@@ -132,27 +132,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Gestion du clic sur "Choisir" un magasin
     const chooseStoreBtns = document.querySelectorAll('.btn-choose-store');
-    const driveModal = new bootstrap.Modal(document.getElementById('driveModal'));
 
     chooseStoreBtns.forEach(btn => {
         btn.addEventListener('click', function() {
-            const storeName = this.getAttribute('data-store-name');
             const panierId = this.getAttribute('data-panier-id');
 
-            // Afficher le nom du magasin dans la modal
-            document.getElementById('driveStoreName').textContent = storeName;
-
-            // Réinitialiser les états
-            document.getElementById('driveLoading').style.display = 'block';
-            document.getElementById('driveSuccess').style.display = 'none';
-            document.getElementById('driveError').style.display = 'none';
-            document.getElementById('driveModalFooter').style.display = 'none';
-
-            // Afficher la modal
-            driveModal.show();
-
-            // Rediriger vers la page de matching
-            // On utilise un iframe caché pour vérifier si le panier a des ingrédients
+            // Rediriger directement vers la page de matching (pas de modal intermédiaire)
             window.location.href = `/panier/${panierId}/intermarche/match/?store_id=scraping`;
         });
     });
