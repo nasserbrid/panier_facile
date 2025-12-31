@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
+from django_ratelimit.decorators import ratelimit
 from .models import Panier, Course, Ingredient, IngredientPanier
 from .forms import CourseForm, PanierForm
 
