@@ -359,8 +359,18 @@ def ajouter_course_a_panier(request, course_id, panier_id):
 # ========== PANIERS ==========
 
 @login_required
+@ratelimit(key='user', rate='50/h', method='POST')
 def creer_panier(request):
+    """
+    Créer un nouveau panier.
+    Rate limit: 50 créations par heure par utilisateur pour éviter les abus.
+    """
     if request.method == 'POST':
+        # Vérifier si rate limit dépassé
+        if getattr(request, 'limited', False):
+            messages.error(request, 'Trop de paniers créés. Veuillez patienter quelques instants.')
+            return redirect('liste_paniers')
+
         form = PanierForm(request.POST)
         if form.is_valid():
             panier = form.save(commit=False)
@@ -459,20 +469,29 @@ def supprimer_panier(request, panier_id):
 
 # Ajout de courses via formulaire (ajout en masse)
 @login_required
+@ratelimit(key='user', rate='50/h', method='POST')
 def ajouter_course_au_panier(request, panier_id):
-    """Affiche un formulaire pour ajouter plusieurs courses à un panier"""
+    """
+    Affiche un formulaire pour ajouter plusieurs courses à un panier.
+    Rate limit: 50 ajouts par heure par utilisateur pour éviter les abus.
+    """
     panier = get_object_or_404(Panier, id=panier_id)
-    
+
     # Vérifier l'accès
     user_has_family = bool(request.user.last_name)
     is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
     is_own_basket = panier.user == request.user
-    
+
     if not (is_same_family or is_own_basket):
         messages.error(request, "Vous n'avez pas accès à ce panier.")
         return redirect('liste_paniers')
-    
+
     if request.method == 'POST':
+        # Vérifier si rate limit dépassé
+        if getattr(request, 'limited', False):
+            messages.error(request, 'Trop d\'ajouts de courses. Veuillez patienter quelques instants.')
+            return redirect('detail_panier', panier_id=panier.id)
+
         form = PanierForm(request.POST, instance=panier)
         if form.is_valid():
             form.save()
@@ -1178,7 +1197,18 @@ def init_rag_if_needed():
         logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)
         raise e
     
+@ratelimit(key='user_or_ip', rate='30/m', method='GET')
 def chatbot_ui(request):
+    """
+    Endpoint du chatbot avec support RAG.
+    Rate limit: 30 requêtes par minute par utilisateur ou IP pour éviter les abus.
+    """
+    # Vérifier si rate limit dépassé
+    if getattr(request, 'limited', False):
+        return JsonResponse({
+            "error": "Trop de requêtes au chatbot. Veuillez patienter quelques instants."
+        }, status=429)
+
     question = request.GET.get("question", "").strip()
     if not question:
         return JsonResponse({"answer": "", "error": "Aucune question fournie"}, status=400)
@@ -1627,14 +1657,23 @@ def intermarche_create_cart(request, panier_id):
 
 # ========== CONTACT ET AVIS ==========
 
+@ratelimit(key='ip', rate='5/h', method='POST')
 def contact(request):
-    """Affiche et traite le formulaire de contact"""
+    """
+    Affiche et traite le formulaire de contact.
+    Rate limit: 5 soumissions par heure par IP pour éviter le spam.
+    """
     from .contact_forms import ContactForm
     from .models import ContactMessage
     from django.core.mail import send_mail
     from django.conf import settings
 
     if request.method == 'POST':
+        # Vérifier si rate limit dépassé
+        if getattr(request, 'limited', False):
+            messages.error(request, 'Trop de messages envoyés. Veuillez réessayer dans quelques instants.')
+            return redirect('contact')
+
         form = ContactForm(request.POST)
         if form.is_valid():
             name = form.cleaned_data['name']
@@ -1655,7 +1694,7 @@ def contact(request):
                 admin_email = settings.EMAIL_HOST_USER
                 email_subject = f"[Contact PanierFacile] {subject}"
                 email_body = f"""
-Nouveau message de contact reçu sur PanierFacile
+Nouveau message de contact reçu via PanierFacile
 
 Nom: {name}
 Email: {email}

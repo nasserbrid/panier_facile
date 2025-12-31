@@ -2,13 +2,14 @@ from django.shortcuts import render, redirect
 from authentication.forms import SignupForm
 from django.contrib.auth import login
 from django.conf import settings
-from django.contrib.auth.views import LogoutView
+from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
+from django.contrib import messages
 import json
 import stripe
 from authentication.utils import OverpassAPI
@@ -19,36 +20,63 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 """
+Vue pour la connexion personnalisée avec rate limiting.
+
+Hérite de Django LoginView et ajoute une protection contre le brute force.
+Rate limit: 10 tentatives de connexion par minute par IP.
+"""
+class CustomLoginView(LoginView):
+    template_name = 'authentication/login.html'
+    redirect_authenticated_user = True
+
+    @ratelimit(key='ip', rate='10/m', method='POST')
+    def dispatch(self, request, *args, **kwargs):
+        # Vérifier si rate limit dépassé
+        if request.method == 'POST' and getattr(request, 'limited', False):
+            messages.error(request, 'Trop de tentatives de connexion. Veuillez réessayer dans quelques instants.')
+            return redirect('login')
+        return super().dispatch(request, *args, **kwargs)
+
+
+"""
 Vue pour la déconnexion personnalisée d'un utilisateur.
-    
+
     Hérite de Django LogoutView et redirige vers la page de connexion
     après la déconnexion.
 """
 class CustomLogoutView(LogoutView):
     next_page = 'login'
-    
 
+
+@ratelimit(key='ip', rate='3/h', method='POST')
 def signup_page(request):
     """
     Vue pour la page d'inscription d'un nouvel utilisateur.
-    
+
     Cette vue gère l'affichage du formulaire d'inscription et la création
     de l'utilisateur lorsque le formulaire est soumis.
 
     Si le formulaire est valide, l'utilisateur est créé, connecté et redirigé
     vers la page définie par LOGIN_REDIRECT_URL dans settings.
+
+    Rate limit: 3 inscriptions par heure par IP pour éviter les abus.
 """
-    
+
     form = SignupForm()
-    
+
     if request.method == 'POST':
+        # Vérifier si rate limit dépassé
+        if getattr(request, 'limited', False):
+            messages.error(request, 'Trop de tentatives d\'inscription. Veuillez réessayer dans quelques instants.')
+            return redirect('signup')
+
         form = SignupForm(request.POST)
-        
+
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect(settings.LOGIN_REDIRECT_URL)
-    
+
     return render(request, "authentication/signup.html", context={"form": form})
 
 
