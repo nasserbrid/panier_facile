@@ -2,7 +2,7 @@
   {
     "title": "Voir la liste des paniers",
     "steps": [
-      "Cliquer sur l'onglet 'Paniers'",
+      "Cliquer sur l'onglet 'Panier'",
       "La liste des paniers apparaît",
       "Cliquer sur 'Détails' pour voir le contenu d'un panier",
       "Cliquer sur 'Modifier' pour éditer un panier",
@@ -12,7 +12,7 @@
   {
     "title": "Voir la liste des courses",
     "steps": [
-      "Cliquer sur l'onglet 'Courses'",
+      "Cliquer sur l'onglet 'Voir mes courses'",
       "La liste des courses apparaît",
       "Cliquer sur 'Détails' pour voir les ingrédients d'une course",
       "Cliquer sur 'Modifier' pour éditer une course",
