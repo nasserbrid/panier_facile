@@ -1631,18 +1631,58 @@ def contact(request):
     """Affiche et traite le formulaire de contact"""
     from .contact_forms import ContactForm
     from .models import ContactMessage
+    from django.core.mail import send_mail
+    from django.conf import settings
 
     if request.method == 'POST':
         form = ContactForm(request.POST)
         if form.is_valid():
+            name = form.cleaned_data['name']
+            email = form.cleaned_data['email']
+            subject = form.cleaned_data['subject']
+            message_text = form.cleaned_data['message']
+
             # Ici, je sauvegarde le message de contact en base de données
             ContactMessage.objects.create(
-                name=form.cleaned_data['name'],
-                email=form.cleaned_data['email'],
-                subject=form.cleaned_data['subject'],
-                message=form.cleaned_data['message']
+                name=name,
+                email=email,
+                subject=subject,
+                message=message_text
             )
-            messages.success(request, "Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.")
+
+            # Envoyer un email à l'administrateur
+            try:
+                admin_email = settings.EMAIL_HOST_USER
+                email_subject = f"[Contact PanierFacile] {subject}"
+                email_body = f"""
+Nouveau message de contact reçu sur PanierFacile
+
+Nom: {name}
+Email: {email}
+Sujet: {subject}
+
+Message:
+{message_text}
+
+---
+Ce message a été envoyé depuis le formulaire de contact de PanierFacile.
+Vous pouvez répondre directement à l'adresse: {email}
+                """
+
+                send_mail(
+                    subject=email_subject,
+                    message=email_body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[admin_email],
+                    fail_silently=False,
+                )
+
+                logger.info(f"Email de contact envoyé de {email} vers {admin_email}")
+                messages.success(request, "Votre message a été envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.")
+            except Exception as e:
+                logger.error(f"Erreur lors de l'envoi de l'email de contact: {e}")
+                messages.warning(request, "Votre message a été enregistré, mais l'email de notification n'a pas pu être envoyé.")
+
             return redirect('contact')
     else:
         form = ContactForm()
