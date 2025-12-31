@@ -43,7 +43,7 @@
   {
     "title": "Ajouter une course à un panier",
     "steps": [
-      "Cliquer sur l'onglet 'Courses'",
+      "Cliquer sur l'onglet 'Voir mes Courses'",
       "Sélectionner la course désirée",
       "Cliquer sur le bouton 'Ajouter au panier'",
       "Choisir le panier dans la liste déroulante"
