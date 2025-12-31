@@ -7,6 +7,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const openBtn = document.getElementById('openChatBtn');
     const closeBtn = document.getElementById('closeChatBtn');
 
+    // Récupérer l'URL du chatbot depuis l'attribut data-url
+    const chatbotConfig = document.getElementById('chatbot-config');
+    const chatbotUrl = chatbotConfig ? chatbotConfig.dataset.url : '/chatbot/';
+
     // ---------- Gestion de l'ouverture et de la fermeture ----------
     // Je fais apparaître le chat quand je clique sur le bouton
     openBtn.addEventListener('click', () => {
@@ -78,20 +82,24 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Je remplis l'input avec une suggestion et je l'envoie
-    window.askQuestion = function(question) {
-        questionInput.value = question;
-        sendQuestion();
-    };
+    // Je gère les boutons de suggestion (avec data-question)
+    const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+    suggestionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const question = this.dataset.question;
+            if (question) {
+                questionInput.value = question;
+                sendQuestion();
+            }
+        });
+    });
 
     // Je gère l'envoi via la touche Enter
-    function handleKeyPress(event) {
+    questionInput.addEventListener('keypress', function(event) {
         if (event.key === 'Enter') {
             sendQuestion();
         }
-    }
-
-    questionInput.addEventListener('keypress', handleKeyPress);
+    });
 
     // Je mets le focus sur l'input au chargement
     questionInput.focus();
