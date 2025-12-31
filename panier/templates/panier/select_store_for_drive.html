@@ -46,13 +46,8 @@
                     <div class="alert alert-success">
                         <h6><i class="fas fa-check-circle"></i> Localisation active</h6>
                         {% if user_location.address %}
-                        <p class="mb-1"><strong>Adresse:</strong> {{ user_location.address }}</p>
+                        <p class="mb-0"><strong>Adresse:</strong> {{ user_location.address }}</p>
                         {% endif %}
-                        <p class="mb-0">
-                            <strong>Coordonnées:</strong>
-                            Lat: {{ user_location.latitude|floatformat:6 }},
-                            Long: {{ user_location.longitude|floatformat:6 }}
-                        </p>
                     </div>
                     {% else %}
                     <div class="alert alert-warning">
