@@ -48,5 +48,13 @@
       "Cliquer sur le bouton 'Ajouter au panier'",
       "Choisir le panier dans la liste déroulante"
     ]
+  },
+  {
+    "title": "Connaître les commerces à proximité de chez moi",
+    "steps": [
+      "Cliquer sur votre nom d'utilisateur en haut à droite",
+      "Cliquer sur le bouton 'Detecter ma position GPS'",
+      "Cliquer sur le bouton 'Voir les commerces proches'"
+    ]
   }
 ]
