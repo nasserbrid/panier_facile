@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 from django.contrib import messages
 import json
 import stripe
@@ -29,7 +30,7 @@ class CustomLoginView(LoginView):
     template_name = 'authentication/login.html'
     redirect_authenticated_user = True
 
-    @ratelimit(key='ip', rate='10/m', method='POST')
+    @method_decorator(ratelimit(key='ip', rate='10/m', method='POST'))
     def dispatch(self, request, *args, **kwargs):
         # Vérifier si rate limit dépassé
         if request.method == 'POST' and getattr(request, 'limited', False):
