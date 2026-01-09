@@ -27,10 +27,7 @@ def service_worker(request):
 
 def manifest(request):
     """
-    Servir le manifest.json depuis la racine
+    Servir le manifest.json depuis la racine avec chemins dynamiques des icônes
     """
-    manifest_path = os.path.join(settings.BASE_DIR, 'static', 'manifest.json')
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        manifest_content = f.read()
-
-    return HttpResponse(manifest_content, content_type='application/manifest+json')
+    response = render(request, 'pwa/manifest.json', content_type='application/manifest+json')
+    return response
