@@ -2651,3 +2651,19 @@ table th {
     height: 30px;
     font-size: 1rem;
 }
+
+/* ========================================
+   PWA & BASE.HTML INLINE STYLES
+======================================== */
+
+/* Configuration elements (hidden) */
+#stripe-key,
+#chatbot-config {
+    display: none;
+}
+
+/* Main content container */
+.main-content {
+    min-height: 80vh;
+    color: black;
+}

@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>PanierFacile</title>
 
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+
+    <!-- Theme Color (barre de statut mobile) -->
+    <meta name="theme-color" content="#0d6efd">
+
+    <!-- Apple Touch Icon (iOS) -->
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192x192.png' %}">
+
+    <!-- Meta pour PWA -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="PanierFacile">
+    <meta name="description" content="Gérez vos listes de courses facilement avec PanierFacile">
+
     <!-- Styles CSS -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}" />
     <link
@@ -108,10 +124,7 @@
     </nav>
 
     <!--Contenu Principal -->
-    <div
-      class="d-flex flex-column justify-content-center align-items-center text-center"
-      style="min-height: 80vh; color: black"
-    >
+    <div class="d-flex flex-column justify-content-center align-items-center text-center main-content">
       {% block content %} {% endblock content %}
     </div>
 
@@ -120,14 +133,14 @@
     <script src="https://js.stripe.com/v3/"></script>
 
     <!-- Configuration pour JavaScript (variables Django) -->
-    <div id="stripe-key" data-key="{{ STRIPE_PUBLISHABLE_KEY }}" style="display:none;"></div>
-    <div id="chatbot-config" data-url="{% url 'chatbot_ui' %}" style="display:none;"></div>
+    <div id="stripe-key" data-key="{{ STRIPE_PUBLISHABLE_KEY }}"></div>
+    <div id="chatbot-config" data-url="{% url 'chatbot_ui' %}"></div>
 
     <!-- Bouton flottant chatbot -->
     <button id="openChatBtn" class="chat-toggle-btn">💬</button>
 
     <!-- Fenêtre chatbot -->
-    <div class="chatbot-container" id="chatbot" style="display:none;">
+    <div class="chatbot-container" id="chatbot">
         <div class="chat-header">
             <h4>🤖 Assistant Panier Facile</h4>
             <button id="closeChatBtn" class="close-btn">✖</button>
@@ -154,6 +167,7 @@
     <!-- Scripts JavaScript externes -->
     <script src="{% static 'js/base.js' %}"></script>
     <script src="{% static 'js/chatbot.js' %}"></script>
+    <script src="{% static 'js/pwa.js' %}"></script>
 <footer class="footer bg-dark text-light text-center py-3 mt-4">
     <p class="mb-1">© 2025 PanierFacile</p>
     <p class="mb-0">
