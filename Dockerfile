@@ -54,14 +54,20 @@ RUN apt-get update && apt-get install -y \
 # Étape 3 : Installer les dépendances Python
 # -----------------------------
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
+# Installer pip et les dépendances avec nettoyage agressif pour économiser la RAM
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip cache purge && \
+    find /usr/local/lib/python3.12 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 # -----------------------------
 # Étape 3.5 : Installer les navigateurs Playwright
 # -----------------------------
 # Installer Chromium pour Playwright (nécessaire pour le scraping Intermarché)
 # Les dépendances système sont déjà installées à l'étape 2
-RUN playwright install chromium
+RUN echo "=== Installing Playwright Chromium ===" && \
+    playwright install chromium && \
+    echo "=== Playwright installation complete ==="
 
 # -----------------------------
 # Étape 4 : Copier le code source
@@ -73,7 +79,9 @@ COPY . .
 # -----------------------------
 # Utiliser SQLite temporairement pour collectstatic (pas besoin de vraie DB)
 ENV DATABASE_URL=sqlite:///tmp/db.sqlite3
-RUN python manage.py collectstatic --noinput
+RUN echo "=== Running collectstatic ===" && \
+    python manage.py collectstatic --noinput --verbosity 2 && \
+    echo "=== Collectstatic complete - $(ls -1 staticfiles/ | wc -l) files collected ==="
 
 # -----------------------------
 # Étape 6 : Exposer le port
