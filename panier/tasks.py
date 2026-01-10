@@ -331,47 +331,66 @@ def match_panier_with_intermarche(self, panier_id: int, store_id: str = 'scrapin
         matched_count = 0
         error_count = 0
 
-        for index, ing_panier in enumerate(ingredient_paniers, 1):
-            try:
-                ingredient = ing_panier.ingredient
-                logger.info(f"[{index}/{total_ingredients}] 🔍 Recherche de '{ingredient.nom}'...")
+        # 🚀 OPTIMISATION: Ouvrir le navigateur UNE FOIS pour tous les ingrédients
+        from .intermarche_scraper import IntermarcheScraper
 
-                # Scraper les produits Intermarché
-                products = search_intermarche_products(ingredient.nom)
+        logger.info("🌐 Démarrage du navigateur Playwright (réutilisé pour tous les produits)...")
+        with IntermarcheScraper(headless=True, timeout=20000) as scraper:
+            for index, ing_panier in enumerate(ingredient_paniers, 1):
+                try:
+                    ingredient = ing_panier.ingredient
+                    logger.info(f"[{index}/{total_ingredients}] 🔍 Recherche de '{ingredient.nom}'...")
 
-                if not products:
-                    logger.warning(f"⚠️  Aucun produit trouvé pour '{ingredient.nom}'")
+                    # ⚡ CACHE: Vérifier si on a déjà un match récent (< 24h)
+                    from datetime import timedelta
+                    cache_duration = timedelta(hours=24)
+                    existing_match = IntermarcheProductMatch.objects.filter(
+                        ingredient=ingredient,
+                        store_id=store_id,
+                        last_updated__gte=timezone.now() - cache_duration
+                    ).first()
+
+                    if existing_match and existing_match.product_name:
+                        logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+                        matched_count += 1
+                        continue
+
+                    # Scraper les produits Intermarché (en réutilisant le même navigateur)
+                    products = scraper.search_product(ingredient.nom)
+
+                    if not products:
+                        logger.warning(f"⚠️  Aucun produit trouvé pour '{ingredient.nom}'")
+                        error_count += 1
+                        continue
+
+                    # Prendre le premier produit (le plus pertinent)
+                    best_product = products[0]
+
+                    # Créer ou mettre à jour le match
+                    match, created = IntermarcheProductMatch.objects.update_or_create(
+                        ingredient=ingredient,
+                        store_id=store_id,
+                        defaults={
+                            'product_name': best_product.get('name', ''),
+                            'price': best_product.get('price'),
+                            'is_available': best_product.get('is_available', True),
+                            'product_url': best_product.get('url', ''),
+                            'match_score': 0.8,  # Score par défaut pour le premier résultat
+                            'last_updated': timezone.now()
+                        }
+                    )
+
+                    matched_count += 1
+                    action = "✅ Créé" if created else "🔄 Mis à jour"
+                    logger.info(
+                        f"{action} match pour '{ingredient.nom}': "
+                        f"{best_product.get('name')} - {best_product.get('price')}€"
+                    )
+
+                except Exception as e:
                     error_count += 1
+                    logger.error(f"❌ Erreur pour '{ingredient.nom}': {e}")
                     continue
-
-                # Prendre le premier produit (le plus pertinent)
-                best_product = products[0]
-
-                # Créer ou mettre à jour le match
-                match, created = IntermarcheProductMatch.objects.update_or_create(
-                    ingredient=ingredient,
-                    store_id=store_id,
-                    defaults={
-                        'product_name': best_product.get('name', ''),
-                        'price': best_product.get('price'),
-                        'is_available': best_product.get('is_available', True),
-                        'product_url': best_product.get('url', ''),
-                        'match_score': 0.8,  # Score par défaut pour le premier résultat
-                        'last_updated': timezone.now()
-                    }
-                )
-
-                matched_count += 1
-                action = "✅ Créé" if created else "🔄 Mis à jour"
-                logger.info(
-                    f"{action} match pour '{ingredient.nom}': "
-                    f"{best_product.get('name')} - {best_product.get('price')}€"
-                )
-
-            except Exception as e:
-                error_count += 1
-                logger.error(f"❌ Erreur pour '{ingredient.nom}': {e}")
-                continue
 
         # Résultats finaux
         success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
