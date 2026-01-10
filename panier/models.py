@@ -339,6 +339,161 @@ class ContactMessage(models.Model):
         return f"{self.name} - {self.subject} ({self.created_at.strftime('%d/%m/%Y')})"
 
 
+class CarrefourProductMatch(models.Model):
+    """
+    Modèle représentant la correspondance entre un ingrédient PanierFacile
+    et un produit Carrefour.
+
+    Ce modèle sert de cache pour les produits récupérés via scraping.
+    """
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='carrefour_matches'
+    )
+    store_id = models.CharField(
+        max_length=20,
+        default='scraping',
+        help_text="Identifiant du magasin Carrefour ou 'scraping'"
+    )
+
+    # Détails du produit (cache)
+    product_name = models.CharField(
+        max_length=255,
+        help_text="Nom du produit"
+    )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Prix unitaire du produit"
+    )
+    product_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text="URL du produit sur le site Carrefour"
+    )
+    is_available = models.BooleanField(
+        default=True,
+        help_text="Disponibilité du produit"
+    )
+
+    # Métadonnées du matching
+    match_score = models.FloatField(
+        default=0.0,
+        help_text="Score de pertinence du matching (0.0 à 1.0)"
+    )
+    last_updated = models.DateTimeField(
+        auto_now=True,
+        help_text="Date de dernière mise à jour du match"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Date de création du match"
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['ingredient', 'store_id']),
+            models.Index(fields=['store_id', 'last_updated']),
+        ]
+        verbose_name = "Correspondance produit Carrefour"
+        verbose_name_plural = "Correspondances produits Carrefour"
+
+    def __str__(self):
+        return f"{self.ingredient.nom} → {self.product_name} (Magasin {self.store_id})"
+
+    @property
+    def display_name(self):
+        """Retourne le nom du produit."""
+        return self.product_name or "Produit inconnu"
+
+    @property
+    def display_price(self):
+        """Retourne le prix du produit."""
+        return self.price or 0
+
+
+class CarrefourCart(models.Model):
+    """
+    Modèle représentant un panier Carrefour créé depuis PanierFacile.
+    """
+    STATUS_CHOICES = [
+        ('draft', 'Brouillon'),
+        ('sent', 'Envoyé à Carrefour'),
+        ('completed', 'Commande finalisée'),
+        ('failed', 'Échec'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='carrefour_carts'
+    )
+    panier = models.ForeignKey(
+        Panier,
+        on_delete=models.CASCADE,
+        related_name='carrefour_carts'
+    )
+
+    # Informations magasin
+    store_id = models.CharField(
+        max_length=20,
+        help_text="Identifiant du magasin Carrefour"
+    )
+    store_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Nom du magasin Carrefour"
+    )
+
+    # Informations panier
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Montant total du panier en euros"
+    )
+    items_count = models.IntegerField(
+        default=0,
+        help_text="Nombre d'articles dans le panier"
+    )
+
+    # Statut et suivi
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft'
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Message d'erreur en cas d'échec"
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="Date de création du panier Carrefour"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="Date de dernière mise à jour"
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['store_id', 'created_at']),
+        ]
+        verbose_name = "Panier Carrefour"
+        verbose_name_plural = "Paniers Carrefour"
+
+    def __str__(self):
+        return f"Panier Carrefour {self.id} - {self.user.username} (Magasin {self.store_id})"
+
+
 class CustomerReview(models.Model):
     """
     Modèle pour stocker les avis clients.

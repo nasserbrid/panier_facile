@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panier Carrefour - PanierFacile{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'liste_paniers' %}">Mes paniers</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'detail_panier' panier.id %}">Panier {{ panier.id }}</a></li>
+                    <li class="breadcrumb-item active">Produits Carrefour</li>
+                </ol>
+            </nav>
+
+            <!-- Header -->
+            <div class="card shadow-lg mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Votre panier Carrefour
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Statistiques -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card bg-light text-center">
+                                <div class="card-body">
+                                    <h3 class="text-success mb-0">{{ matched_count }}</h3>
+                                    <small class="text-muted">produits trouvés</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light text-center">
+                                <div class="card-body">
+                                    <h3 class="text-primary mb-0">{{ total_ingredients }}</h3>
+                                    <small class="text-muted">ingrédients total</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-light text-center">
+                                <div class="card-body">
+                                    <h3 class="text-info mb-0">{{ total_price|floatformat:2 }} €</h3>
+                                    <small class="text-muted">total estimé</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Liste des produits trouvés -->
+                    {% if matches %}
+                    <h4 class="mb-3"><i class="fas fa-check-circle text-success"></i> Produits correspondants</h4>
+                    <div class="list-group mb-4">
+                        {% for match in matches %}
+                        <div class="list-group-item">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6 class="mb-1">{{ match.ingredient.nom }}</h6>
+                                    <p class="mb-0 text-muted small">
+                                        <i class="fas fa-arrow-right"></i> {{ match.match.product_name }}
+                                    </p>
+                                </div>
+                                <div class="col-md-3 text-center">
+                                    <span class="badge bg-primary">{{ match.match.price }} €</span>
+                                    {% if match.match.is_available %}
+                                    <span class="badge bg-success">Disponible</span>
+                                    {% else %}
+                                    <span class="badge bg-warning">Indisponible</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    {% if match.match.product_url %}
+                                    <a href="{{ match.match.product_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt"></i> Voir
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Ingrédients non trouvés -->
+                    {% if missing_ingredients %}
+                    <h4 class="mb-3"><i class="fas fa-exclamation-triangle text-warning"></i> Ingrédients non trouvés</h4>
+                    <div class="alert alert-warning">
+                        <ul class="mb-0">
+                            {% for ingredient in missing_ingredients %}
+                            <li>{{ ingredient }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Information importante -->
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle"></i> Comment procéder ?</h5>
+                        <ol class="mb-0">
+                            <li>Notez ou copiez les noms des produits ci-dessus</li>
+                            <li>Rendez-vous sur <a href="https://www.carrefour.fr" target="_blank" class="alert-link">carrefour.fr</a></li>
+                            <li>Recherchez et ajoutez chaque produit à votre panier Carrefour</li>
+                            <li>Validez votre commande drive sur leur site</li>
+                        </ol>
+                    </div>
+
+                    <!-- Boutons d'action -->
+                    <div class="d-grid gap-2">
+                        <a href="https://www.carrefour.fr" target="_blank" class="btn btn-primary btn-lg">
+                            <i class="fas fa-external-link-alt"></i> Aller sur Carrefour.fr
+                        </a>
+                        <a href="{% url 'detail_panier' panier.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour à mon panier
+                        </a>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-save"></i> Enregistrer ce panier Carrefour
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Liste imprimable (pour faciliter le transfert) -->
+            <div class="card shadow-lg mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Liste pour copier-coller</h5>
+                </div>
+                <div class="card-body">
+                    <textarea class="form-control" rows="10" id="productList" readonly>{% for match in matches %}{{ match.match.product_name }}
+{% endfor %}</textarea>
+                    <button class="btn btn-outline-primary mt-2 w-100" onclick="copyProductList()">
+                        <i class="fas fa-copy"></i> Copier la liste
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyProductList() {
+    const textarea = document.getElementById('productList');
+    textarea.select();
+    document.execCommand('copy');
+    alert('Liste copiée dans le presse-papier !');
+}
+</script>
+{% endblock %}

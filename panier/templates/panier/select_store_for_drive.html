@@ -32,6 +32,50 @@
                 <strong>Panier:</strong> {{ panier.date_creation|date:"d/m/Y" }} - {{ panier.courses.count }} course(s)
             </div>
 
+            <!-- Section de choix d'enseigne -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-basket"></i> Choisissez votre enseigne</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Sélectionnez l'enseigne de drive pour votre panier :</p>
+                    <div class="row">
+                        <!-- Option Intermarché -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-store fa-3x text-success mb-3"></i>
+                                    <h5 class="card-title">Intermarché Drive</h5>
+                                    <p class="card-text text-muted small">
+                                        ⚠️ Actuellement bloqué par anti-bot DataDome
+                                    </p>
+                                    <button class="btn btn-outline-success w-100" disabled>
+                                        <i class="fas fa-ban"></i> Temporairement indisponible
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option Carrefour -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-shopping-cart fa-3x text-primary mb-3"></i>
+                                    <h5 class="card-title">Carrefour Drive</h5>
+                                    <p class="card-text text-muted small">
+                                        ✅ Recherche automatique de vos produits
+                                    </p>
+                                    <button class="btn btn-primary w-100 btn-choose-carrefour"
+                                            data-panier-id="{{ panier.id }}">
+                                        <i class="fas fa-check"></i> Utiliser Carrefour
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section Géolocalisation -->
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
@@ -242,5 +286,22 @@
 
 <!-- JavaScript externe -->
 <script src="{% static 'js/select_store.js' %}"></script>
+
+<!-- Script pour Carrefour Drive -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gérer le bouton Carrefour
+    const carrefourBtn = document.querySelector('.btn-choose-carrefour');
+
+    if (carrefourBtn) {
+        carrefourBtn.addEventListener('click', function() {
+            const panierId = this.dataset.panierId;
+
+            // Rediriger vers le matching Carrefour
+            window.location.href = `/panier/${panierId}/carrefour/match/?store_id=scraping`;
+        });
+    }
+});
+</script>
 
 {% endblock %}

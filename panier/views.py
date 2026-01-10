@@ -1905,3 +1905,230 @@ def reviews_list(request):
     reviews = CustomerReview.objects.filter(is_approved=True).order_by('-created_at')
 
     return render(request, 'panier/reviews_list.html', {'reviews': reviews})
+
+
+# =========================================
+# CARREFOUR DRIVE - VIEWS
+# =========================================
+
+@login_required
+def carrefour_match_products(request, panier_id):
+    """
+    Étape 2 Carrefour: Validation des correspondances produits.
+
+    Cette vue lance le matching asynchrone des ingrédients du panier
+    avec les produits Carrefour et redirige vers la page de progression.
+
+    Flow:
+    1. Récupérer le store_id depuis GET
+    2. Lancer la tâche Celery de matching
+    3. Rediriger vers la page de progression
+    """
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    store_id = request.GET.get('store_id', 'scraping')
+
+    # Vérifier que le panier contient des ingrédients
+    courses_with_ingredients = []
+    for course in panier.courses.all():
+        if course.ingredient and course.ingredient.strip():
+            courses_with_ingredients.append(course)
+
+    if not courses_with_ingredients:
+        logger.warning(f"Panier {panier_id} ne contient aucun ingrédient")
+        messages.warning(request, "Ce panier ne contient aucun ingrédient. Veuillez d'abord ajouter des ingrédients.")
+        return redirect('detail_panier', panier_id=panier.id)
+
+    # Compter les ingrédients pour afficher le nombre dans le message
+    ingredient_count = 0
+    for course in courses_with_ingredients:
+        ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
+        ingredient_count += len(ingredient_lines)
+
+    # Lancer la tâche Celery asynchrone pour le matching Carrefour
+    from .tasks import match_carrefour_products
+
+    logger.info(f"🚀 Lancement de la tâche Celery Carrefour pour matcher le panier {panier_id}")
+    task = match_carrefour_products.delay(panier_id, store_id)
+
+    # Stocker le task_id dans la session pour le suivi
+    request.session[f'carrefour_matching_task_{panier_id}'] = task.id
+
+    # Rediriger vers la page de progression
+    messages.info(
+        request,
+        f"Préparation de votre panier Carrefour en cours... ({ingredient_count} produits à chercher)"
+    )
+    return redirect('carrefour_matching_progress', panier_id=panier.id, store_id=store_id)
+
+
+@login_required
+def carrefour_matching_progress(request, panier_id, store_id):
+    """
+    Page de progression du matching asynchrone avec Carrefour.
+
+    Cette vue affiche la progression en temps réel du scraping Celery
+    et redirige automatiquement vers les résultats une fois terminé.
+
+    Args:
+        panier_id: ID du panier
+        store_id: ID du magasin Carrefour
+    """
+    from celery.result import AsyncResult
+
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    # Récupérer le task_id depuis la session
+    task_id = request.session.get(f'carrefour_matching_task_{panier_id}')
+
+    if not task_id:
+        logger.warning(f"❌ Aucune tâche de matching Carrefour trouvée pour panier {panier_id}")
+        messages.error(request, "Aucune tâche de matching en cours.")
+        return redirect('select_store_for_drive', panier_id=panier.id)
+
+    # Récupérer l'état de la tâche Celery
+    task_result = AsyncResult(task_id)
+
+    context = {
+        'panier': panier,
+        'store_id': store_id,
+        'task_id': task_id,
+        'task_state': task_result.state,
+        'task_info': task_result.info if task_result.info else {},
+    }
+
+    # Si la tâche est terminée avec succès, rediriger vers la page de résultats
+    if task_result.ready() and task_result.successful():
+        result = task_result.result
+        if result.get('status') == 'success':
+            messages.success(
+                request,
+                f"✅ {result.get('matched', 0)}/{result.get('total', 0)} produits Carrefour trouvés!"
+            )
+            return redirect('carrefour_create_cart', panier_id=panier.id)
+        else:
+            messages.error(request, f"❌ Erreur: {result.get('message', 'Erreur inconnue')}")
+            return redirect('select_store_for_drive', panier_id=panier.id)
+
+    # Si la tâche a échoué
+    if task_result.failed():
+        messages.error(request, "❌ Le matching Carrefour a échoué. Veuillez réessayer.")
+        return redirect('select_store_for_drive', panier_id=panier.id)
+
+    # Sinon, afficher la page de progression
+    return render(request, 'panier/carrefour_matching_progress.html', context)
+
+
+@login_required
+def carrefour_create_cart(request, panier_id):
+    """
+    Étape 3 Carrefour: Affiche le récapitulatif des produits matchés
+    et permet la création du panier Carrefour.
+
+    Cette vue affiche:
+    - La liste des correspondances trouvées
+    - Le total estimé
+    - Les produits non trouvés
+    """
+    from .models import IngredientPanier, CarrefourProductMatch, CarrefourCart
+
+    panier = get_object_or_404(Panier, id=panier_id)
+
+    # Vérifier l'accès au panier
+    user_has_family = bool(request.user.last_name)
+    is_same_family = panier.user.last_name.lower() == request.user.last_name.lower() if user_has_family else False
+    is_own_basket = panier.user == request.user
+
+    if not (is_same_family or is_own_basket):
+        messages.error(request, "Vous n'avez pas accès à ce panier.")
+        return redirect('liste_paniers')
+
+    store_id = request.GET.get('store_id', 'scraping')
+
+    # Récupérer tous les ingrédients du panier
+    ingredient_paniers = IngredientPanier.objects.filter(panier=panier).select_related('ingredient')
+
+    # Récupérer les correspondances Carrefour
+    matches = []
+    total_price = 0
+    matched_count = 0
+    missing_ingredients = []
+
+    for ing_panier in ingredient_paniers:
+        match = CarrefourProductMatch.objects.filter(
+            ingredient=ing_panier.ingredient,
+            store_id=store_id
+        ).first()
+
+        if match and match.product_name:
+            matches.append({
+                'ingredient': ing_panier.ingredient,
+                'match': match,
+                'quantity': ing_panier.quantite
+            })
+            if match.price:
+                total_price += float(match.price) * float(ing_panier.quantite)
+            matched_count += 1
+        else:
+            missing_ingredients.append(ing_panier.ingredient.nom)
+
+    # Si POST, créer le panier Carrefour
+    if request.method == 'POST':
+        try:
+            carrefour_cart = CarrefourCart.objects.create(
+                user=request.user,
+                panier=panier,
+                store_id=store_id,
+                store_name=f"Carrefour (ID: {store_id})",
+                total_amount=total_price,
+                items_count=matched_count,
+                status='draft'
+            )
+
+            messages.success(
+                request,
+                f"✅ Panier Carrefour créé avec {matched_count} produits (Total: {total_price:.2f}€)"
+            )
+
+            # Pour Carrefour, on ne peut pas créer automatiquement le panier sur leur site
+            # On affiche simplement les résultats
+            messages.info(
+                request,
+                "ℹ️ Veuillez ajouter manuellement ces produits sur carrefour.fr"
+            )
+
+            return redirect('detail_panier', panier_id=panier.id)
+
+        except Exception as e:
+            logger.error(f"❌ Erreur création panier Carrefour: {e}")
+            messages.error(request, f"Erreur lors de la création du panier: {e}")
+
+    context = {
+        'panier': panier,
+        'matches': matches,
+        'total_price': total_price,
+        'matched_count': matched_count,
+        'total_ingredients': len(ingredient_paniers),
+        'missing_ingredients': missing_ingredients,
+        'store_id': store_id,
+    }
+
+    return render(request, 'panier/carrefour_create_cart.html', context)

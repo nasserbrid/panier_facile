@@ -75,6 +75,11 @@ urlpatterns = [
     path('<int:panier_id>/intermarche/progress/<str:store_id>/', views.intermarche_matching_progress, name='intermarche_matching_progress'),
     path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
 
+    # Intégration Carrefour
+    path('<int:panier_id>/carrefour/match/', views.carrefour_match_products, name='carrefour_match_products'),
+    path('<int:panier_id>/carrefour/progress/<str:store_id>/', views.carrefour_matching_progress, name='carrefour_matching_progress'),
+    path('<int:panier_id>/carrefour/create/', views.carrefour_create_cart, name='carrefour_create_cart'),
+
     # Géolocalisation
     path('save-location/', views.save_temp_location, name='save_temp_location'),
 

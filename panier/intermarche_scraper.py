@@ -1,29 +1,18 @@
 """
-Scraper pour récupérer les produits Intermarché et créer un panier automatique
-Utilise Playwright pour contourner les protections anti-bot (DataDome)
+Scraper pour récupérer les produits Intermarché Drive
+Hérite de BaseDriveScraper pour réutiliser la logique commune.
 
-Flow:
-1. Cherche chaque ingrédient sur https://www.intermarche.com/recherche/{ingredient}
-2. Extrait les produits de la page de résultats
-3. Ajoute automatiquement les produits au panier
-4. Retourne le lien du panier à l'utilisateur
-
-Playwright est plus robuste que Selenium pour éviter la détection:
-- Empreinte digitale du navigateur moins détectable
-- Meilleure gestion des contextes
-- Pas besoin de CAPTCHA solver externe (gratuit!)
+Note: Actuellement bloqué par DataDome anti-bot protection.
 """
 
 import logging
-import time
-import random
 from typing import List, Dict, Optional
-from playwright.sync_api import sync_playwright, Browser, Page, BrowserContext
+from .base_scraper import BaseDriveScraper
 
 logger = logging.getLogger(__name__)
 
 
-class IntermarcheScraper:
+class IntermarcheScraper(BaseDriveScraper):
     """
     Scraper pour Intermarché Drive
     Automatise la recherche de produits et l'ajout au panier
