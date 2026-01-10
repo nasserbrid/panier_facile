@@ -69,10 +69,6 @@ from . import views
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # PWA routes (IMPORTANT: à la racine pour le bon scope)
-    path('sw.js', views.service_worker, name='service_worker'),
-    path('manifest.json', views.manifest, name='manifest'),
-
     # Landing page
     path('', panier.views.landing_page, name='landing'),
 
