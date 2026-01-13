@@ -500,63 +500,71 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
         matched_count = 0
         error_count = 0
 
-        # 🚀 OPTIMISATION: Ouvrir le navigateur UNE FOIS pour tous les ingrédients
-        logger.info("🌐 Démarrage du navigateur Playwright Carrefour (réutilisé pour tous les produits)...")
-        with CarrefourScraper(headless=True, timeout=20000) as scraper:
-            for index, ing_panier in enumerate(ingredient_paniers, 1):
-                try:
-                    ingredient = ing_panier.ingredient
-                    logger.info(f"[{index}/{total_ingredients}] 🔍 Recherche Carrefour de '{ingredient.nom}'...")
+        # ⚡ PHASE 1: Vérifier le cache AVANT de démarrer le navigateur (évite conflit async/sync)
+        cache_duration = timedelta(hours=24)
+        ingredients_to_scrape = []
 
-                    # ⚡ CACHE: Vérifier si on a déjà un match récent (< 24h)
-                    cache_duration = timedelta(hours=24)
-                    existing_match = CarrefourProductMatch.objects.filter(
-                        ingredient=ingredient,
-                        store_id=store_id,
-                        last_updated__gte=timezone.now() - cache_duration
-                    ).first()
+        for ing_panier in ingredient_paniers:
+            ingredient = ing_panier.ingredient
+            existing_match = CarrefourProductMatch.objects.filter(
+                ingredient=ingredient,
+                store_id=store_id,
+                last_updated__gte=timezone.now() - cache_duration
+            ).first()
 
-                    if existing_match and existing_match.product_name:
-                        logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+            if existing_match and existing_match.product_name:
+                logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+                matched_count += 1
+            else:
+                ingredients_to_scrape.append(ing_panier)
+
+        # ⚡ PHASE 2: Scraper uniquement les ingrédients non cachés
+        if ingredients_to_scrape:
+            logger.info(f"🌐 Démarrage du navigateur Playwright Carrefour pour {len(ingredients_to_scrape)} ingrédients...")
+            with CarrefourScraper(headless=True, timeout=20000) as scraper:
+                for index, ing_panier in enumerate(ingredients_to_scrape, 1):
+                    try:
+                        ingredient = ing_panier.ingredient
+                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] 🔍 Recherche Carrefour de '{ingredient.nom}'...")
+
+                        # Scraper les produits Carrefour (en réutilisant le même navigateur)
+                        products = scraper.search_product(ingredient.nom)
+
+                        if not products:
+                            logger.warning(f"⚠️  Aucun produit Carrefour trouvé pour '{ingredient.nom}'")
+                            error_count += 1
+                            continue
+
+                        # Prendre le premier produit (le plus pertinent)
+                        best_product = products[0]
+
+                        # Créer ou mettre à jour le match
+                        match, created = CarrefourProductMatch.objects.update_or_create(
+                            ingredient=ingredient,
+                            store_id=store_id,
+                            defaults={
+                                'product_name': best_product.get('name', ''),
+                                'price': best_product.get('price'),
+                                'is_available': best_product.get('is_available', True),
+                                'product_url': best_product.get('url', ''),
+                                'match_score': 0.8,  # Score par défaut pour le premier résultat
+                                'last_updated': timezone.now()
+                            }
+                        )
+
                         matched_count += 1
-                        continue
+                        action = "✅ Créé" if created else "🔄 Mis à jour"
+                        logger.info(
+                            f"{action} match Carrefour pour '{ingredient.nom}': "
+                            f"{best_product.get('name')} - {best_product.get('price')}€"
+                        )
 
-                    # Scraper les produits Carrefour (en réutilisant le même navigateur)
-                    products = scraper.search_product(ingredient.nom)
-
-                    if not products:
-                        logger.warning(f"⚠️  Aucun produit Carrefour trouvé pour '{ingredient.nom}'")
+                    except Exception as e:
                         error_count += 1
+                        logger.error(f"❌ Erreur Carrefour pour '{ingredient.nom}': {e}")
                         continue
-
-                    # Prendre le premier produit (le plus pertinent)
-                    best_product = products[0]
-
-                    # Créer ou mettre à jour le match
-                    match, created = CarrefourProductMatch.objects.update_or_create(
-                        ingredient=ingredient,
-                        store_id=store_id,
-                        defaults={
-                            'product_name': best_product.get('name', ''),
-                            'price': best_product.get('price'),
-                            'is_available': best_product.get('is_available', True),
-                            'product_url': best_product.get('url', ''),
-                            'match_score': 0.8,  # Score par défaut pour le premier résultat
-                            'last_updated': timezone.now()
-                        }
-                    )
-
-                    matched_count += 1
-                    action = "✅ Créé" if created else "🔄 Mis à jour"
-                    logger.info(
-                        f"{action} match Carrefour pour '{ingredient.nom}': "
-                        f"{best_product.get('name')} - {best_product.get('price')}€"
-                    )
-
-                except Exception as e:
-                    error_count += 1
-                    logger.error(f"❌ Erreur Carrefour pour '{ingredient.nom}': {e}")
-                    continue
+        else:
+            logger.info("⚡ Tous les ingrédients étaient déjà en cache, pas besoin de scraper")
 
         # Résultats finaux
         success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
