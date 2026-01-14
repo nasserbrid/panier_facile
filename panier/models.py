@@ -494,6 +494,96 @@ class CarrefourCart(models.Model):
         return f"Panier Carrefour {self.id} - {self.user.username} (Magasin {self.store_id})"
 
 
+class AuchanProductMatch(models.Model):
+    """
+    Cache pour les produits Auchan matchés.
+    Similaire à CarrefourProductMatch mais pour Auchan Drive.
+    """
+    ingredient = models.ForeignKey(
+        Ingredient,
+        on_delete=models.CASCADE,
+        related_name='auchan_matches'
+    )
+    store_id = models.CharField(
+        max_length=20,
+        default='scraping',
+        help_text="ID du magasin Auchan (ou 'scraping' pour recherche générale)"
+    )
+    product_name = models.CharField(max_length=255)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    product_url = models.URLField(blank=True, null=True)
+    is_available = models.BooleanField(default=True)
+    match_score = models.FloatField(
+        default=0.0,
+        help_text="Score de correspondance avec l'ingrédient (0-1)"
+    )
+    image_url = models.URLField(blank=True, null=True)
+    last_updated = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['ingredient', 'store_id']),
+            models.Index(fields=['store_id', 'last_updated']),
+        ]
+        verbose_name = "Produit Auchan matché"
+        verbose_name_plural = "Produits Auchan matchés"
+
+    def __str__(self):
+        return f"{self.ingredient.nom} -> {self.product_name} ({self.price}€)"
+
+
+class AuchanCart(models.Model):
+    """
+    Panier Auchan créé depuis PanierFacile.
+    Similaire à CarrefourCart mais pour Auchan Drive.
+    """
+    STATUS_CHOICES = [
+        ('draft', 'Brouillon'),
+        ('completed', 'Complété'),
+        ('exported', 'Exporté'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='auchan_carts'
+    )
+    panier = models.ForeignKey(
+        Panier,
+        on_delete=models.CASCADE,
+        related_name='auchan_carts'
+    )
+    store_id = models.CharField(max_length=20)
+    store_name = models.CharField(max_length=255, blank=True)
+    total_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+    items_count = models.IntegerField(default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Panier Auchan"
+        verbose_name_plural = "Paniers Auchan"
+
+    def __str__(self):
+        return f"Panier Auchan {self.id} - {self.user.username} (Magasin {self.store_id})"
+
+
 class CustomerReview(models.Model):
     """
     Modèle pour stocker les avis clients.

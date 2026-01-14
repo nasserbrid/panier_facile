@@ -2132,3 +2132,192 @@ def carrefour_create_cart(request, panier_id):
     }
 
     return render(request, 'panier/carrefour_create_cart.html', context)
+
+
+# ============================================================================
+# AUCHAN DRIVE INTEGRATION
+# ============================================================================
+
+@login_required
+def auchan_match_products(request, panier_id):
+    """
+    Lance le matching asynchrone des produits Auchan pour un panier.
+
+    Flow:
+    1. Récupère le store_id depuis GET
+    2. Lance la tâche Celery match_auchan_products
+    3. Stocke le task_id en session
+    4. Redirige vers la page de progression
+
+    Args:
+        request: HttpRequest
+        panier_id: ID du panier
+
+    Returns:
+        Redirect vers auchan_matching_progress
+    """
+    from .tasks import match_auchan_products
+
+    panier = get_object_or_404(Panier, id=panier_id, user=request.user)
+    store_id = request.GET.get('store_id', 'scraping')
+
+    logger.info(f"🚀 Lancement matching Auchan pour panier #{panier_id} (magasin: {store_id})")
+
+    # Lancer la tâche Celery
+    task = match_auchan_products.delay(panier_id, store_id)
+
+    # Stocker le task_id en session
+    request.session[f'auchan_matching_task_{panier_id}'] = task.id
+
+    return redirect('auchan_matching_progress', panier_id=panier.id, store_id=store_id)
+
+
+@login_required
+def auchan_matching_progress(request, panier_id, store_id):
+    """
+    Affiche la progression du matching Auchan avec auto-refresh.
+
+    Vérifie l'état de la tâche Celery et affiche:
+    - PENDING/STARTED: Spinner + auto-refresh (3s)
+    - SUCCESS: Résultats + lien vers panier
+    - FAILURE: Message d'erreur
+
+    Args:
+        request: HttpRequest
+        panier_id: ID du panier
+        store_id: ID du magasin Auchan
+
+    Returns:
+        Render du template auchan_matching_progress.html
+    """
+    from celery.result import AsyncResult
+
+    panier = get_object_or_404(Panier, id=panier_id, user=request.user)
+
+    # Récupérer le task_id depuis la session
+    task_id = request.session.get(f'auchan_matching_task_{panier_id}')
+
+    if not task_id:
+        messages.error(request, "Aucune tâche de matching en cours")
+        return redirect('detail_panier', panier_id=panier.id)
+
+    # Vérifier l'état de la tâche
+    task_result = AsyncResult(task_id)
+    task_state = task_result.state
+    task_info = None
+
+    if task_result.ready() and task_result.successful():
+        task_info = task_result.result
+        # Nettoyer la session
+        if f'auchan_matching_task_{panier_id}' in request.session:
+            del request.session[f'auchan_matching_task_{panier_id}']
+
+    context = {
+        'panier': panier,
+        'store_id': store_id,
+        'task_id': task_id,
+        'task_state': task_state,
+        'task_info': task_info,
+    }
+
+    return render(request, 'panier/auchan_matching_progress.html', context)
+
+
+@login_required
+def auchan_create_cart(request, panier_id):
+    """
+    Affiche les produits Auchan matchés et permet de créer le panier.
+
+    Affiche:
+    - Liste des produits matchés avec prix
+    - Liste copiable pour transfert manuel
+    - Statistiques (produits trouvés, total estimé)
+
+    Args:
+        request: HttpRequest
+        panier_id: ID du panier
+
+    POST:
+        Crée un AuchanCart et redirige vers le détail
+
+    Returns:
+        Render du template auchan_create_cart.html
+    """
+    from .models import AuchanProductMatch, AuchanCart
+    from decimal import Decimal
+
+    panier = get_object_or_404(Panier, id=panier_id, user=request.user)
+    store_id = request.GET.get('store_id', 'scraping')
+
+    # Récupérer les matches
+    ingredient_paniers = panier.ingredientpanier_set.all()
+    matches = []
+    total_price = Decimal('0.00')
+    matched_count = 0
+    missing_ingredients = []
+
+    for ing_panier in ingredient_paniers:
+        ingredient = ing_panier.ingredient
+        match = AuchanProductMatch.objects.filter(
+            ingredient=ingredient,
+            store_id=store_id
+        ).first()
+
+        if match and match.product_name:
+            matches.append({
+                'ingredient': ingredient,
+                'match': match
+            })
+            matched_count += 1
+            if match.price:
+                total_price += Decimal(str(match.price))
+        else:
+            missing_ingredients.append(ingredient.nom)
+
+    # POST: Créer le panier Auchan
+    if request.method == 'POST':
+        try:
+            auchan_cart, created = AuchanCart.objects.get_or_create(
+                user=request.user,
+                panier=panier,
+                store_id=store_id,
+                defaults={
+                    'total_amount': total_price,
+                    'items_count': matched_count,
+                    'status': 'draft',
+                }
+            )
+
+            if not created:
+                auchan_cart.total_amount = total_price
+                auchan_cart.items_count = matched_count
+                auchan_cart.save()
+
+            messages.success(
+                request,
+                f"✅ Panier Auchan sauvegardé ({matched_count} produits)"
+            )
+
+            # Pour Auchan, on affiche simplement les résultats
+            messages.info(
+                request,
+                "ℹ️ Veuillez ajouter manuellement ces produits sur auchan.fr"
+            )
+
+            return redirect('detail_panier', panier_id=panier.id)
+
+        except Exception as e:
+            logger.error(f"❌ Erreur création panier Auchan: {e}")
+            messages.error(request, f"Erreur lors de la création du panier: {e}")
+
+    context = {
+        'panier': panier,
+        'matches': matches,
+        'total_price': total_price,
+        'matched_count': matched_count,
+        'total_ingredients': len(ingredient_paniers),
+        'missing_ingredients': missing_ingredients,
+        'store_id': store_id,
+    }
+
+    return render(request, 'panier/auchan_create_cart.html', context)

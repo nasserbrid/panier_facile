@@ -112,6 +112,119 @@ class OverpassAPI:
             return []
 
     @classmethod
+    def find_carrefour_stores(
+        cls,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """
+        Recherche spécifiquement les magasins Carrefour à proximité.
+
+        Args:
+            latitude: Latitude du point de recherche
+            longitude: Longitude du point de recherche
+            radius: Rayon de recherche en mètres (par défaut 5km)
+
+        Returns:
+            Liste de dictionnaires contenant les informations des magasins Carrefour
+        """
+        return cls._find_retailer_via_nominatim('Carrefour', latitude, longitude, radius)
+
+    @classmethod
+    def find_auchan_stores(
+        cls,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """
+        Recherche spécifiquement les magasins Auchan à proximité.
+
+        Args:
+            latitude: Latitude du point de recherche
+            longitude: Longitude du point de recherche
+            radius: Rayon de recherche en mètres (par défaut 5km)
+
+        Returns:
+            Liste de dictionnaires contenant les informations des magasins Auchan
+        """
+        return cls._find_retailer_via_nominatim('Auchan', latitude, longitude, radius)
+
+    @classmethod
+    def _find_retailer_via_nominatim(
+        cls,
+        retailer_name: str,
+        latitude: float,
+        longitude: float,
+        radius: int = 5000
+    ) -> List[Dict]:
+        """
+        Méthode générique pour rechercher une enseigne via Nominatim.
+
+        Args:
+            retailer_name: Nom de l'enseigne (Carrefour, Auchan, etc.)
+            latitude: Latitude du point de recherche
+            longitude: Longitude du point de recherche
+            radius: Rayon de recherche en mètres
+
+        Returns:
+            Liste de dictionnaires contenant les informations des magasins
+        """
+        try:
+            url = "https://nominatim.openstreetmap.org/search"
+            params = {
+                'format': 'json',
+                'q': retailer_name,
+                'bounded': 1,
+                'viewbox': f"{longitude - 0.05},{latitude - 0.05},{longitude + 0.05},{latitude + 0.05}",
+                'limit': 20
+            }
+            headers = {
+                'User-Agent': 'PanierFacile/1.0'
+            }
+
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+
+            stores = []
+            for item in data:
+                try:
+                    store_lat = float(item['lat'])
+                    store_lon = float(item['lon'])
+                    distance = cls._calculate_distance(latitude, longitude, store_lat, store_lon)
+
+                    # Filtrer par rayon
+                    if distance <= radius:
+                        stores.append({
+                            'id': item.get('osm_id', 0),
+                            'name': item.get('display_name', retailer_name).split(',')[0],
+                            'type': 'supermarket',
+                            'type_label': 'Supermarché',
+                            'latitude': store_lat,
+                            'longitude': store_lon,
+                            'address': item.get('display_name', ''),
+                            'distance': distance,
+                            'distance_text': cls._format_distance(distance),
+                            'phone': '',
+                            'website': '',
+                            'opening_hours': '',
+                            'osm_url': f"https://www.openstreetmap.org/{item.get('osm_type', 'node')}/{item.get('osm_id', 0)}"
+                        })
+                except (ValueError, KeyError) as e:
+                    logger.debug(f"Erreur parsing Nominatim {retailer_name}: {e}")
+                    continue
+
+            stores.sort(key=lambda x: x['distance'])
+            logger.info(f"Nominatim: Trouvé {len(stores)} magasins {retailer_name} dans un rayon de {radius/1000}km")
+            return stores
+
+        except Exception as e:
+            logger.error(f"Erreur Nominatim {retailer_name}: {e}")
+            return []
+
+    @classmethod
     def find_nearby_stores(
         cls,
         latitude: float,

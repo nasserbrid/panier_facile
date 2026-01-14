@@ -603,3 +603,143 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
                 'matched': 0,
                 'total': 0
             }
+
+
+@shared_task(bind=True, max_retries=3)
+def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
+    """
+    Tâche Celery pour matcher les ingrédients d'un panier avec les produits Auchan Drive.
+
+    Architecture:
+    - Phase 1 (sync): Vérifie le cache (24h) pour éviter les requêtes inutiles
+    - Phase 2 (async): Scrape uniquement les produits non cachés avec un seul navigateur
+    - Retry automatique en cas d'erreur (3 fois max avec backoff exponentiel)
+
+    Args:
+        panier_id: ID du panier à traiter
+        store_id: ID du magasin Auchan cible (ou 'scraping' pour recherche générale)
+
+    Returns:
+        Dictionnaire avec les statistiques de matching
+    """
+    from .models import Panier, AuchanProductMatch
+    from .auchan_scraper import AuchanScraper
+
+    try:
+        logger.info(f"🚀 Démarrage matching Auchan pour panier #{panier_id} (magasin: {store_id})")
+
+        # Récupérer le panier
+        panier = Panier.objects.get(id=panier_id)
+        ingredient_paniers = panier.ingredientpanier_set.all()
+        total_ingredients = ingredient_paniers.count()
+
+        if total_ingredients == 0:
+            logger.warning(f"⚠️  Panier {panier_id} vide, aucun ingrédient à matcher")
+            return {'status': 'success', 'matched': 0, 'total': 0}
+
+        matched_count = 0
+        error_count = 0
+
+        # ⚡ PHASE 1: Vérifier le cache AVANT de démarrer le navigateur
+        cache_duration = timedelta(hours=24)
+        ingredients_to_scrape = []
+
+        for ing_panier in ingredient_paniers:
+            ingredient = ing_panier.ingredient
+            existing_match = AuchanProductMatch.objects.filter(
+                ingredient=ingredient,
+                store_id=store_id,
+                last_updated__gte=timezone.now() - cache_duration
+            ).first()
+
+            if existing_match and existing_match.product_name:
+                logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+                matched_count += 1
+            else:
+                ingredients_to_scrape.append(ing_panier)
+
+        # ⚡ PHASE 2: Scraper uniquement les ingrédients non cachés
+        if ingredients_to_scrape:
+            logger.info(f"🌐 Démarrage du navigateur Playwright Auchan pour {len(ingredients_to_scrape)} ingrédients...")
+            with AuchanScraper(headless=True, timeout=20000) as scraper:
+                for index, ing_panier in enumerate(ingredients_to_scrape, 1):
+                    try:
+                        ingredient = ing_panier.ingredient
+                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] 🔍 Recherche Auchan de '{ingredient.nom}'...")
+
+                        # Scraper les produits Auchan
+                        products = scraper.search_product(ingredient.nom)
+
+                        if not products:
+                            logger.warning(f"⚠️  Aucun produit Auchan trouvé pour '{ingredient.nom}'")
+                            error_count += 1
+                            continue
+
+                        # Prendre le premier produit (le plus pertinent)
+                        best_product = products[0]
+
+                        # Créer ou mettre à jour le match
+                        match, created = AuchanProductMatch.objects.update_or_create(
+                            ingredient=ingredient,
+                            store_id=store_id,
+                            defaults={
+                                'product_name': best_product.get('product_name', ''),
+                                'price': best_product.get('price'),
+                                'is_available': best_product.get('is_available', True),
+                                'product_url': best_product.get('product_url', ''),
+                                'image_url': best_product.get('image_url', ''),
+                                'match_score': 0.8,
+                                'last_updated': timezone.now()
+                            }
+                        )
+
+                        matched_count += 1
+                        action = "✅ Créé" if created else "🔄 Mis à jour"
+                        logger.info(
+                            f"{action} match Auchan pour '{ingredient.nom}': "
+                            f"{best_product.get('product_name')} - {best_product.get('price')}€"
+                        )
+
+                    except Exception as e:
+                        error_count += 1
+                        logger.error(f"❌ Erreur Auchan pour '{ingredient.nom}': {e}")
+                        continue
+        else:
+            logger.info("⚡ Tous les ingrédients étaient déjà en cache")
+
+        # Résultats finaux
+        success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
+
+        logger.info(
+            f"✨ Matching Auchan terminé pour panier #{panier_id}: "
+            f"{matched_count}/{total_ingredients} matchés ({success_rate:.1f}%), "
+            f"{error_count} erreurs"
+        )
+
+        return {
+            'status': 'success',
+            'panier_id': panier_id,
+            'matched': matched_count,
+            'total': total_ingredients,
+            'errors': error_count,
+            'success_rate': success_rate
+        }
+
+    except Panier.DoesNotExist:
+        logger.error(f"❌ Panier {panier_id} non trouvé")
+        return {
+            'status': 'error',
+            'message': f'Panier {panier_id} non trouvé'
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Erreur globale Auchan pour panier {panier_id}: {e}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        else:
+            return {
+                'status': 'error',
+                'message': str(e),
+                'matched': 0,
+                'total': 0
+            }

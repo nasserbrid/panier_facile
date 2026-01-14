@@ -14,6 +14,7 @@ from typing import Dict, Type, Optional
 from .base_scraper import BaseDriveScraper
 from .carrefour_scraper import CarrefourScraper
 from .intermarche_scraper import IntermarcheScraper
+from .auchan_scraper import AuchanScraper
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +34,11 @@ class DriveScraperFactory:
     _scrapers: Dict[str, Type[BaseDriveScraper]] = {
         'carrefour': CarrefourScraper,
         'intermarche': IntermarcheScraper,
+        'auchan': AuchanScraper,
         # Prêt pour les futures enseignes:
         # 'leclerc': LeclercScraper,
         # 'lidl': LidlScraper,
         # 'superu': SuperUScraper,
-        # 'auchan': AuchanScraper,
         # 'cora': CoraScraper,
     }
 
@@ -48,8 +49,8 @@ class DriveScraperFactory:
             'display_name': 'Carrefour Drive',
             'icon': 'fa-shopping-cart',
             'color': 'primary',
-            'status': 'active',
-            'description': 'Recherche automatique de vos produits',
+            'status': 'blocked',  # Bloqué par anti-bot
+            'description': 'Actuellement bloqué par anti-bot',
         },
         'intermarche': {
             'name': 'Intermarché',
@@ -58,6 +59,14 @@ class DriveScraperFactory:
             'color': 'success',
             'status': 'blocked',  # Bloqué par DataDome
             'description': 'Actuellement bloqué par anti-bot DataDome',
+        },
+        'auchan': {
+            'name': 'Auchan',
+            'display_name': 'Auchan Drive',
+            'icon': 'fa-shopping-basket',
+            'color': 'info',
+            'status': 'active',
+            'description': 'Recherche automatique de vos produits',
         },
         # Prêt pour les futures enseignes:
         # 'leclerc': {

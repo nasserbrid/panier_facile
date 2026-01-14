@@ -80,6 +80,11 @@ urlpatterns = [
     path('<int:panier_id>/carrefour/progress/<str:store_id>/', views.carrefour_matching_progress, name='carrefour_matching_progress'),
     path('<int:panier_id>/carrefour/create/', views.carrefour_create_cart, name='carrefour_create_cart'),
 
+    # Intégration Auchan
+    path('<int:panier_id>/auchan/match/', views.auchan_match_products, name='auchan_match_products'),
+    path('<int:panier_id>/auchan/progress/<str:store_id>/', views.auchan_matching_progress, name='auchan_matching_progress'),
+    path('<int:panier_id>/auchan/create/', views.auchan_create_cart, name='auchan_create_cart'),
+
     # Géolocalisation
     path('save-location/', views.save_temp_location, name='save_temp_location'),
 

@@ -41,7 +41,7 @@
                     <p class="mb-3">Sélectionnez l'enseigne de drive pour votre panier :</p>
                     <div class="row">
                         <!-- Option Intermarché -->
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <div class="card h-100 border-success">
                                 <div class="card-body text-center">
                                     <i class="fas fa-store fa-3x text-success mb-3"></i>
@@ -57,17 +57,33 @@
                         </div>
 
                         <!-- Option Carrefour -->
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <div class="card h-100 border-primary">
                                 <div class="card-body text-center">
                                     <i class="fas fa-shopping-cart fa-3x text-primary mb-3"></i>
                                     <h5 class="card-title">Carrefour Drive</h5>
                                     <p class="card-text text-muted small">
+                                        ⚠️ Actuellement bloqué par anti-bot
+                                    </p>
+                                    <button class="btn btn-outline-primary w-100" disabled>
+                                        <i class="fas fa-ban"></i> Temporairement indisponible
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Option Auchan -->
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100 border-info">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-shopping-basket fa-3x text-info mb-3"></i>
+                                    <h5 class="card-title">Auchan Drive</h5>
+                                    <p class="card-text text-muted small">
                                         ✅ Recherche automatique de vos produits
                                     </p>
-                                    <button class="btn btn-primary w-100 btn-choose-carrefour"
+                                    <button class="btn btn-info w-100 btn-choose-auchan"
                                             data-panier-id="{{ panier.id }}">
-                                        <i class="fas fa-check"></i> Utiliser Carrefour
+                                        <i class="fas fa-check"></i> Utiliser Auchan
                                     </button>
                                 </div>
                             </div>
@@ -286,22 +302,7 @@
 
 <!-- JavaScript externe -->
 <script src="{% static 'js/select_store.js' %}"></script>
-
-<!-- Script pour Carrefour Drive -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Gérer le bouton Carrefour
-    const carrefourBtn = document.querySelector('.btn-choose-carrefour');
-
-    if (carrefourBtn) {
-        carrefourBtn.addEventListener('click', function() {
-            const panierId = this.dataset.panierId;
-
-            // Rediriger vers le matching Carrefour
-            window.location.href = `/panier/${panierId}/carrefour/match/?store_id=scraping`;
-        });
-    }
-});
-</script>
+<script src="{% static 'js/carrefour.js' %}"></script>
+<script src="{% static 'js/auchan.js' %}"></script>
 
 {% endblock %}

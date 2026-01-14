@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Panier Carrefour - PanierFacile{% endblock %}
+{% block title %}Panier Auchan - PanierFacile{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -12,15 +12,15 @@
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="{% url 'liste_paniers' %}">Mes paniers</a></li>
                     <li class="breadcrumb-item"><a href="{% url 'detail_panier' panier.id %}">Panier {{ panier.id }}</a></li>
-                    <li class="breadcrumb-item active">Produits Carrefour</li>
+                    <li class="breadcrumb-item active">Produits Auchan</li>
                 </ol>
             </nav>
 
             <!-- Header -->
             <div class="card shadow-lg mb-4">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-info text-white">
                     <h2 class="mb-0">
-                        <i class="fas fa-shopping-cart"></i> Votre panier Carrefour
+                        <i class="fas fa-shopping-basket"></i> Votre panier Auchan
                     </h2>
                 </div>
                 <div class="card-body">
@@ -37,7 +37,7 @@
                         <div class="col-md-4">
                             <div class="card bg-light text-center">
                                 <div class="card-body">
-                                    <h3 class="text-primary mb-0">{{ total_ingredients }}</h3>
+                                    <h3 class="text-info mb-0">{{ total_ingredients }}</h3>
                                     <small class="text-muted">ingrédients total</small>
                                 </div>
                             </div>
@@ -45,7 +45,7 @@
                         <div class="col-md-4">
                             <div class="card bg-light text-center">
                                 <div class="card-body">
-                                    <h3 class="text-info mb-0">{{ total_price|floatformat:2 }} €</h3>
+                                    <h3 class="text-primary mb-0">{{ total_price|floatformat:2 }} €</h3>
                                     <small class="text-muted">total estimé</small>
                                 </div>
                             </div>
@@ -66,7 +66,7 @@
                                     </p>
                                 </div>
                                 <div class="col-md-3 text-center">
-                                    <span class="badge bg-primary">{{ match.match.price }} €</span>
+                                    <span class="badge bg-info">{{ match.match.price }} €</span>
                                     {% if match.match.is_available %}
                                     <span class="badge bg-success">Disponible</span>
                                     {% else %}
@@ -75,7 +75,7 @@
                                 </div>
                                 <div class="col-md-3 text-end">
                                     {% if match.match.product_url %}
-                                    <a href="{{ match.match.product_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <a href="{{ match.match.product_url }}" target="_blank" class="btn btn-sm btn-outline-info">
                                         <i class="fas fa-external-link-alt"></i> Voir
                                     </a>
                                     {% endif %}
@@ -103,16 +103,16 @@
                         <h5><i class="fas fa-info-circle"></i> Comment procéder ?</h5>
                         <ol class="mb-0">
                             <li>Notez ou copiez les noms des produits ci-dessus</li>
-                            <li>Rendez-vous sur <a href="https://www.carrefour.fr" target="_blank" class="alert-link">carrefour.fr</a></li>
-                            <li>Recherchez et ajoutez chaque produit à votre panier Carrefour</li>
+                            <li>Rendez-vous sur <a href="https://www.auchan.fr" target="_blank" class="alert-link">auchan.fr</a></li>
+                            <li>Recherchez et ajoutez chaque produit à votre panier Auchan</li>
                             <li>Validez votre commande drive sur leur site</li>
                         </ol>
                     </div>
 
                     <!-- Boutons d'action -->
                     <div class="d-grid gap-2">
-                        <a href="https://www.carrefour.fr" target="_blank" class="btn btn-primary btn-lg">
-                            <i class="fas fa-external-link-alt"></i> Aller sur Carrefour.fr
+                        <a href="https://www.auchan.fr" target="_blank" class="btn btn-info btn-lg">
+                            <i class="fas fa-external-link-alt"></i> Aller sur Auchan.fr
                         </a>
                         <a href="{% url 'detail_panier' panier.id %}" class="btn btn-outline-secondary">
                             <i class="fas fa-arrow-left"></i> Retour à mon panier
@@ -120,7 +120,7 @@
                         <form method="post" class="d-inline">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success w-100">
-                                <i class="fas fa-save"></i> Enregistrer ce panier Carrefour
+                                <i class="fas fa-save"></i> Enregistrer ce panier Auchan
                             </button>
                         </form>
                     </div>
@@ -135,7 +135,7 @@
                 <div class="card-body">
                     <textarea class="form-control" rows="10" id="productList" readonly>{% for match in matches %}{{ match.match.product_name }}
 {% endfor %}</textarea>
-                    <button class="btn btn-outline-primary mt-2 w-100" onclick="copyProductList()">
+                    <button class="btn btn-outline-info mt-2 w-100" onclick="copyProductList()">
                         <i class="fas fa-copy"></i> Copier la liste
                     </button>
                 </div>
@@ -146,5 +146,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/carrefour.js' %}"></script>
+<script src="{% static 'js/auchan.js' %}"></script>
 {% endblock %}
