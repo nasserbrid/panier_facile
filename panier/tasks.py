@@ -630,7 +630,7 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
 
         # Récupérer le panier
         panier = Panier.objects.get(id=panier_id)
-        ingredient_paniers = panier.ingredientpanier_set.all()
+        ingredient_paniers = panier.ingredient_paniers.all()
         total_ingredients = ingredient_paniers.count()
 
         if total_ingredients == 0:

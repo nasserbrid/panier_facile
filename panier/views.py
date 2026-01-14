@@ -2250,7 +2250,7 @@ def auchan_create_cart(request, panier_id):
     store_id = request.GET.get('store_id', 'scraping')
 
     # Récupérer les matches
-    ingredient_paniers = panier.ingredientpanier_set.all()
+    ingredient_paniers = panier.ingredient_paniers.all()
     matches = []
     total_price = Decimal('0.00')
     matched_count = 0
