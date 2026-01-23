@@ -57,9 +57,9 @@
         <a href="{% url 'ajouter_course_au_panier' panier.id %}" class="btn btn-success">
           <i class="fas fa-plus-circle me-1"></i> Ajouter des courses
         </a>
-        {% comment %} <a href="{% url 'select_store_for_drive' panier.id %}" class="btn btn-primary">
+        <a href="{% url 'select_store_for_drive' panier.id %}" class="btn btn-primary">
           <i class="fas fa-store me-1"></i> Faire un Drive
-        </a> {% endcomment %}
+        </a>
         <a href="{% url 'modifier_panier' panier.id %}" class="btn btn-warning">
           <i class="fas fa-edit me-1"></i> Modifier
         </a>
