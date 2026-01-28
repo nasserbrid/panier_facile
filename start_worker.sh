@@ -3,4 +3,4 @@
 # Utilisé par Coolify pour démarrer le service Celery Worker
 
 echo "Starting Celery Worker..."
-celery -A core worker --loglevel=info --concurrency=2
+celery -A config worker --loglevel=info --concurrency=2

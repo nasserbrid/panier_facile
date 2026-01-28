@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Resultats comparaison - Panier #{{ panier.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'liste_paniers' %}">Mes paniers</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'detail_panier' panier.id %}">Panier #{{ panier.id }}</a></li>
+            <li class="breadcrumb-item active">Resultats comparaison</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">Comparaison des prix</h1>
+
+    <!-- Cartes resume -->
+    <div class="row mb-4">
+        <!-- Carrefour -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 {% if comparison.cheapest_supermarket == 'carrefour' %}border-success{% endif %}">
+                {% if comparison.cheapest_supermarket == 'carrefour' %}
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-trophy me-2"></i>Moins cher!
+                </div>
+                {% endif %}
+                <div class="card-body text-center">
+                    <h4 class="text-primary mb-3">
+                        <i class="fas fa-shopping-cart me-2"></i>Carrefour
+                    </h4>
+                    {% if comparison.carrefour_total %}
+                        <h2 class="display-4 mb-2">{{ comparison.carrefour_total|floatformat:2 }} EUR</h2>
+                        <p class="text-muted">
+                            {{ comparison.carrefour_found }}/{{ comparison.total_ingredients }} produits trouves
+                        </p>
+                    {% else %}
+                        <p class="text-muted">Aucun produit trouve</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Auchan -->
+        <div class="col-md-6 mb-3">
+            <div class="card h-100 {% if comparison.cheapest_supermarket == 'auchan' %}border-success{% endif %}">
+                {% if comparison.cheapest_supermarket == 'auchan' %}
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-trophy me-2"></i>Moins cher!
+                </div>
+                {% endif %}
+                <div class="card-body text-center">
+                    <h4 class="text-danger mb-3">
+                        <i class="fas fa-shopping-cart me-2"></i>Auchan
+                    </h4>
+                    {% if comparison.auchan_total %}
+                        <h2 class="display-4 mb-2">{{ comparison.auchan_total|floatformat:2 }} EUR</h2>
+                        <p class="text-muted">
+                            {{ comparison.auchan_found }}/{{ comparison.total_ingredients }} produits trouves
+                        </p>
+                    {% else %}
+                        <p class="text-muted">Aucun produit trouve</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Economie potentielle -->
+    {% if savings %}
+    <div class="alert alert-info text-center mb-4">
+        <i class="fas fa-piggy-bank me-2"></i>
+        Economie potentielle: <strong>{{ savings|floatformat:2 }} EUR</strong>
+        en choisissant {{ comparison.cheapest_supermarket|title }}
+    </div>
+    {% endif %}
+
+    <!-- Tableau comparatif -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-table me-2"></i>Detail par ingredient</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Ingredient</th>
+                            <th class="text-center">Carrefour</th>
+                            <th class="text-center">Auchan</th>
+                            <th class="text-center">Moins cher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in comparison_data %}
+                        <tr>
+                            <td>
+                                <strong>{{ item.ingredient.nom }}</strong>
+                            </td>
+                            <td class="text-center {% if item.cheapest == 'carrefour' %}table-success{% endif %}">
+                                {% if item.carrefour.price %}
+                                    <span class="fw-bold">{{ item.carrefour.price|floatformat:2 }} EUR</span>
+                                    <br>
+                                    <small class="text-muted">{{ item.carrefour.name|truncatechars:30 }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center {% if item.cheapest == 'auchan' %}table-success{% endif %}">
+                                {% if item.auchan.price %}
+                                    <span class="fw-bold">{{ item.auchan.price|floatformat:2 }} EUR</span>
+                                    <br>
+                                    <small class="text-muted">{{ item.auchan.name|truncatechars:30 }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if item.cheapest == 'carrefour' %}
+                                    <span class="badge bg-primary">Carrefour</span>
+                                {% elif item.cheapest == 'auchan' %}
+                                    <span class="badge bg-danger">Auchan</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produits non trouves -->
+    {% if missing_carrefour or missing_auchan %}
+    <div class="row mt-4">
+        {% if missing_carrefour %}
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Non trouves chez Carrefour ({{ missing_carrefour|length }})
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in missing_carrefour %}
+                        <li class="list-group-item py-1 small">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if missing_auchan %}
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Non trouves chez Auchan ({{ missing_auchan|length }})
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for item in missing_auchan %}
+                        <li class="list-group-item py-1 small">{{ item }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-between mt-4">
+        <a href="{% url 'detail_panier' panier.id %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Retour au panier
+        </a>
+        <a href="{% url 'compare_prices' panier.id %}" class="btn btn-primary">
+            <i class="fas fa-sync-alt me-2"></i>Nouvelle comparaison
+        </a>
+    </div>
+</div>
+{% endblock %}

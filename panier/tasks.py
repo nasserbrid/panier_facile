@@ -2,7 +2,7 @@
 Tâches Celery pour l'application panier.
 
 Ce module contient les tâches asynchrones, notamment l'envoi
-de notifications pour les paniers anciens.
+de notifications pour les paniers anciens et la comparaison de prix.
 """
 from celery import shared_task
 from django.utils import timezone
@@ -133,302 +133,8 @@ def test_celery():
         from panier.tasks import test_celery
         test_celery.delay()
     """
-    logger.info("✅ Celery fonctionne correctement!")
+    logger.info("Celery fonctionne correctement!")
     return "Celery is working!"
-
-
-@shared_task(bind=True, max_retries=3, name='panier.tasks.update_intermarche_prices')
-def update_intermarche_prices(self):
-    """
-    Tâche Celery pour mettre à jour les prix Intermarché
-    Scrape les produits pour tous les ingrédients
-
-    Exécutée quotidiennement via Celery Beat
-    """
-    from .models import Ingredient, IntermarcheProductMatch
-    from .intermarche_scraper import search_intermarche_products
-
-    logger.info("Début de la mise à jour des prix Intermarché")
-
-    try:
-        # Récupérer tous les ingrédients
-        ingredients = Ingredient.objects.all()
-        total = ingredients.count()
-
-        logger.info(f"Mise à jour des prix pour {total} ingrédients")
-
-        updated_count = 0
-        created_count = 0
-        error_count = 0
-
-        for index, ingredient in enumerate(ingredients, 1):
-            try:
-                logger.info(f"[{index}/{total}] Recherche de '{ingredient.nom}'...")
-
-                # Rechercher les produits
-                products = search_intermarche_products(ingredient.nom)
-
-                if not products:
-                    logger.warning(f"Aucun produit trouvé pour '{ingredient.nom}'")
-                    continue
-
-                # Prendre le premier produit (le plus pertinent)
-                best_product = products[0]
-
-                # Mettre à jour ou créer le match
-                match, created = IntermarcheProductMatch.objects.update_or_create(
-                    ingredient=ingredient,
-                    defaults={
-                        'product_name': best_product['name'],
-                        'price': best_product.get('price'),
-                        'is_available': best_product.get('is_available', True),
-                        'product_url': best_product.get('url'),
-                        'last_updated': timezone.now()
-                    }
-                )
-
-                if created:
-                    created_count += 1
-                    logger.info(f"✓ Créé match pour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
-                else:
-                    updated_count += 1
-                    logger.info(f"✓ Mis à jour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
-
-            except Exception as e:
-                error_count += 1
-                logger.error(f"✗ Erreur pour '{ingredient.nom}': {e}")
-                continue
-
-        logger.info(f"Mise à jour terminée: {created_count} créés, {updated_count} mis à jour, {error_count} erreurs")
-
-        return {
-            'status': 'success',
-            'total': total,
-            'created': created_count,
-            'updated': updated_count,
-            'errors': error_count
-        }
-
-    except Exception as e:
-        logger.error(f"Erreur lors de la mise à jour des prix: {e}")
-        # Retry avec backoff exponentiel
-        raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
-
-
-@shared_task(name='panier.tasks.update_single_ingredient_price')
-def update_single_ingredient_price(ingredient_id: int):
-    """
-    Tâche pour mettre à jour le prix d'un seul ingrédient
-
-    Args:
-        ingredient_id: ID de l'ingrédient à mettre à jour
-    """
-    from .models import Ingredient, IntermarcheProductMatch
-    from .intermarche_scraper import search_intermarche_products
-
-    try:
-        ingredient = Ingredient.objects.get(id=ingredient_id)
-        logger.info(f"Mise à jour du prix pour '{ingredient.nom}'")
-
-        products = search_intermarche_products(ingredient.nom)
-
-        if not products:
-            logger.warning(f"Aucun produit trouvé pour '{ingredient.nom}'")
-            return {'status': 'no_products_found'}
-
-        best_product = products[0]
-
-        match, created = IntermarcheProductMatch.objects.update_or_create(
-            ingredient=ingredient,
-            defaults={
-                'product_name': best_product['name'],
-                'price': best_product.get('price'),
-                'is_available': best_product.get('is_available', True),
-                'product_url': best_product.get('url'),
-                'last_updated': timezone.now()
-            }
-        )
-
-        action = 'created' if created else 'updated'
-        logger.info(f"Prix {action} pour '{ingredient.nom}': {best_product['name']} - {best_product.get('price')}€")
-
-        return {
-            'status': 'success',
-            'action': action,
-            'product': best_product
-        }
-
-    except Ingredient.DoesNotExist:
-        logger.error(f"Ingrédient {ingredient_id} non trouvé")
-        return {'status': 'error', 'message': 'Ingredient not found'}
-
-    except Exception as e:
-        logger.error(f"Erreur lors de la mise à jour de l'ingrédient {ingredient_id}: {e}")
-        return {'status': 'error', 'message': str(e)}
-
-
-@shared_task(bind=True, max_retries=2, name='panier.tasks.match_panier_with_intermarche')
-def match_panier_with_intermarche(self, panier_id: int, store_id: str = 'scraping'):
-    """
-    Tâche Celery asynchrone pour matcher les ingrédients d'un panier avec Intermarché
-
-    Cette tâche permet de scraper les produits en arrière-plan sans bloquer l'utilisateur.
-    Le scraping peut prendre plusieurs minutes (2-4s par ingrédient), donc l'exécution
-    asynchrone améliore grandement l'UX.
-
-    Args:
-        panier_id: ID du panier à matcher
-        store_id: ID du magasin Intermarché (ou 'scraping' pour scraping générique)
-
-    Returns:
-        dict: Résultats du matching avec statistiques
-    """
-    from .models import Panier, Ingredient, IngredientPanier, IntermarcheProductMatch
-    from .intermarche_scraper import search_intermarche_products
-
-    try:
-        # Récupérer le panier
-        panier = Panier.objects.get(id=panier_id)
-        logger.info(f"🚀 Début du matching asynchrone pour le panier #{panier_id}")
-
-        # Récupérer les ingrédients du panier depuis les courses
-        courses_with_ingredients = []
-        for course in panier.courses.all():
-            if course.ingredient and course.ingredient.strip():
-                courses_with_ingredients.append(course)
-
-        if not courses_with_ingredients:
-            logger.warning(f"❌ Panier {panier_id} ne contient aucun ingrédient")
-            return {
-                'status': 'error',
-                'message': 'Panier ne contient aucun ingrédient',
-                'matched': 0,
-                'total': 0
-            }
-
-        # Convertir les courses en objets Ingredient et IngredientPanier
-        ingredient_paniers = []
-        for course in courses_with_ingredients:
-            ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
-
-            for ingredient_text in ingredient_lines:
-                ingredient, _ = Ingredient.objects.get_or_create(
-                    nom=ingredient_text,
-                    defaults={'quantite': '1', 'unite': ''}
-                )
-
-                ing_panier, _ = IngredientPanier.objects.get_or_create(
-                    panier=panier,
-                    ingredient=ingredient,
-                    defaults={'quantite': 1}
-                )
-                ingredient_paniers.append(ing_panier)
-
-        total_ingredients = len(ingredient_paniers)
-        logger.info(f"📦 {total_ingredients} ingrédients à matcher pour le panier #{panier_id}")
-
-        # Matcher chaque ingrédient
-        matched_count = 0
-        error_count = 0
-
-        # 🚀 OPTIMISATION: Ouvrir le navigateur UNE FOIS pour tous les ingrédients
-        from .intermarche_scraper import IntermarcheScraper
-
-        logger.info("🌐 Démarrage du navigateur Playwright (réutilisé pour tous les produits)...")
-        with IntermarcheScraper(headless=True, timeout=20000) as scraper:
-            for index, ing_panier in enumerate(ingredient_paniers, 1):
-                try:
-                    ingredient = ing_panier.ingredient
-                    logger.info(f"[{index}/{total_ingredients}] 🔍 Recherche de '{ingredient.nom}'...")
-
-                    # ⚡ CACHE: Vérifier si on a déjà un match récent (< 24h)
-                    from datetime import timedelta
-                    cache_duration = timedelta(hours=24)
-                    existing_match = IntermarcheProductMatch.objects.filter(
-                        ingredient=ingredient,
-                        store_id=store_id,
-                        last_updated__gte=timezone.now() - cache_duration
-                    ).first()
-
-                    if existing_match and existing_match.product_name:
-                        logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
-                        matched_count += 1
-                        continue
-
-                    # Scraper les produits Intermarché (en réutilisant le même navigateur)
-                    products = scraper.search_product(ingredient.nom)
-
-                    if not products:
-                        logger.warning(f"⚠️  Aucun produit trouvé pour '{ingredient.nom}'")
-                        error_count += 1
-                        continue
-
-                    # Prendre le premier produit (le plus pertinent)
-                    best_product = products[0]
-
-                    # Créer ou mettre à jour le match
-                    match, created = IntermarcheProductMatch.objects.update_or_create(
-                        ingredient=ingredient,
-                        store_id=store_id,
-                        defaults={
-                            'product_name': best_product.get('name', ''),
-                            'price': best_product.get('price'),
-                            'is_available': best_product.get('is_available', True),
-                            'product_url': best_product.get('url', ''),
-                            'match_score': 0.8,  # Score par défaut pour le premier résultat
-                            'last_updated': timezone.now()
-                        }
-                    )
-
-                    matched_count += 1
-                    action = "✅ Créé" if created else "🔄 Mis à jour"
-                    logger.info(
-                        f"{action} match pour '{ingredient.nom}': "
-                        f"{best_product.get('name')} - {best_product.get('price')}€"
-                    )
-
-                except Exception as e:
-                    error_count += 1
-                    logger.error(f"❌ Erreur pour '{ingredient.nom}': {e}")
-                    continue
-
-        # Résultats finaux
-        success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
-
-        logger.info(
-            f"✨ Matching terminé pour panier #{panier_id}: "
-            f"{matched_count}/{total_ingredients} matchés ({success_rate:.1f}%), "
-            f"{error_count} erreurs"
-        )
-
-        return {
-            'status': 'success',
-            'panier_id': panier_id,
-            'matched': matched_count,
-            'total': total_ingredients,
-            'errors': error_count,
-            'success_rate': success_rate
-        }
-
-    except Panier.DoesNotExist:
-        logger.error(f"❌ Panier {panier_id} non trouvé")
-        return {
-            'status': 'error',
-            'message': f'Panier {panier_id} non trouvé'
-        }
-
-    except Exception as e:
-        logger.error(f"❌ Erreur globale pour panier {panier_id}: {e}")
-        # Retry avec backoff exponentiel
-        if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
-        else:
-            return {
-                'status': 'error',
-                'message': str(e),
-                'matched': 0,
-                'total': 0
-            }
 
 
 @shared_task(
@@ -453,11 +159,11 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
     Returns:
         dict: Statistiques de matching (matched, total, errors)
     """
-    from .models import Panier, Ingredient, IngredientPanier, CarrefourProductMatch
+    from .models import Ingredient, IngredientPanier
+    from supermarkets.models import CarrefourProductMatch
     from .carrefour_scraper import CarrefourScraper
-    from datetime import timedelta
 
-    logger.info(f"🚀 Démarrage matching Carrefour pour panier #{panier_id}")
+    logger.info(f"Démarrage matching Carrefour pour panier #{panier_id}")
 
     try:
         # Récupérer le panier
@@ -467,7 +173,7 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
         courses_with_ingredients = panier.courses.filter(ingredient__isnull=False).exclude(ingredient='')
 
         if not courses_with_ingredients:
-            logger.warning(f"❌ Panier {panier_id} ne contient aucun ingrédient")
+            logger.warning(f"Panier {panier_id} ne contient aucun ingrédient")
             return {
                 'status': 'error',
                 'message': 'Panier ne contient aucun ingrédient',
@@ -494,13 +200,13 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
                 ingredient_paniers.append(ing_panier)
 
         total_ingredients = len(ingredient_paniers)
-        logger.info(f"📦 {total_ingredients} ingrédients à matcher pour le panier #{panier_id}")
+        logger.info(f"{total_ingredients} ingrédients à matcher pour le panier #{panier_id}")
 
         # Matcher chaque ingrédient
         matched_count = 0
         error_count = 0
 
-        # ⚡ PHASE 1: Vérifier le cache AVANT de démarrer le navigateur (évite conflit async/sync)
+        # PHASE 1: Vérifier le cache AVANT de démarrer le navigateur
         cache_duration = timedelta(hours=24)
         ingredients_to_scrape = []
 
@@ -513,25 +219,25 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
             ).first()
 
             if existing_match and existing_match.product_name:
-                logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+                logger.info(f"Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}EUR")
                 matched_count += 1
             else:
                 ingredients_to_scrape.append(ing_panier)
 
-        # ⚡ PHASE 2: Scraper uniquement les ingrédients non cachés
+        # PHASE 2: Scraper uniquement les ingrédients non cachés
         if ingredients_to_scrape:
-            logger.info(f"🌐 Démarrage du navigateur Playwright Carrefour pour {len(ingredients_to_scrape)} ingrédients...")
+            logger.info(f"Démarrage du navigateur Playwright Carrefour pour {len(ingredients_to_scrape)} ingrédients...")
             with CarrefourScraper(headless=True, timeout=20000) as scraper:
                 for index, ing_panier in enumerate(ingredients_to_scrape, 1):
                     try:
                         ingredient = ing_panier.ingredient
-                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] 🔍 Recherche Carrefour de '{ingredient.nom}'...")
+                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] Recherche Carrefour de '{ingredient.nom}'...")
 
                         # Scraper les produits Carrefour (en réutilisant le même navigateur)
                         products = scraper.search_product(ingredient.nom)
 
                         if not products:
-                            logger.warning(f"⚠️  Aucun produit Carrefour trouvé pour '{ingredient.nom}'")
+                            logger.warning(f"Aucun produit Carrefour trouvé pour '{ingredient.nom}'")
                             error_count += 1
                             continue
 
@@ -547,30 +253,30 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
                                 'price': best_product.get('price'),
                                 'is_available': best_product.get('is_available', True),
                                 'product_url': best_product.get('url', ''),
-                                'match_score': 0.8,  # Score par défaut pour le premier résultat
+                                'match_score': 0.8,
                                 'last_updated': timezone.now()
                             }
                         )
 
                         matched_count += 1
-                        action = "✅ Créé" if created else "🔄 Mis à jour"
+                        action = "Créé" if created else "Mis à jour"
                         logger.info(
                             f"{action} match Carrefour pour '{ingredient.nom}': "
-                            f"{best_product.get('name')} - {best_product.get('price')}€"
+                            f"{best_product.get('name')} - {best_product.get('price')}EUR"
                         )
 
                     except Exception as e:
                         error_count += 1
-                        logger.error(f"❌ Erreur Carrefour pour '{ingredient.nom}': {e}")
+                        logger.error(f"Erreur Carrefour pour '{ingredient.nom}': {e}")
                         continue
         else:
-            logger.info("⚡ Tous les ingrédients étaient déjà en cache, pas besoin de scraper")
+            logger.info("Tous les ingrédients étaient déjà en cache, pas besoin de scraper")
 
         # Résultats finaux
         success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
 
         logger.info(
-            f"✨ Matching Carrefour terminé pour panier #{panier_id}: "
+            f"Matching Carrefour terminé pour panier #{panier_id}: "
             f"{matched_count}/{total_ingredients} matchés ({success_rate:.1f}%), "
             f"{error_count} erreurs"
         )
@@ -585,14 +291,14 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
         }
 
     except Panier.DoesNotExist:
-        logger.error(f"❌ Panier {panier_id} non trouvé")
+        logger.error(f"Panier {panier_id} non trouvé")
         return {
             'status': 'error',
             'message': f'Panier {panier_id} non trouvé'
         }
 
     except Exception as e:
-        logger.error(f"❌ Erreur globale Carrefour pour panier {panier_id}: {e}")
+        logger.error(f"Erreur globale Carrefour pour panier {panier_id}: {e}")
         # Retry avec backoff exponentiel
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
@@ -605,7 +311,252 @@ def match_carrefour_products(self, panier_id, store_id='scraping'):
             }
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=2, name='panier.tasks.compare_supermarket_prices')
+def compare_supermarket_prices(self, panier_id: int, user_id: int, latitude: float, longitude: float):
+    """
+    Tâche Celery pour comparer les prix d'un panier sur Carrefour et Auchan.
+
+    Flow:
+    1. Récupère les ingrédients du panier
+    2. Lance le matching Carrefour et Auchan (cache 24h)
+    3. Calcule les totaux par supermarché
+    4. Crée un PriceComparison avec les résultats
+
+    Args:
+        panier_id: ID du panier à comparer
+        user_id: ID de l'utilisateur
+        latitude: Latitude de l'utilisateur
+        longitude: Longitude de l'utilisateur
+
+    Returns:
+        dict avec status, comparison_id et statistiques
+    """
+    from supermarkets.models import PriceComparison, CarrefourProductMatch, AuchanProductMatch
+    from .models import Ingredient, IngredientPanier
+    from .carrefour_scraper import CarrefourScraper
+    from .auchan_scraper import AuchanScraper
+    from decimal import Decimal
+
+    try:
+        logger.info(f"Démarrage comparaison de prix pour panier #{panier_id}")
+
+        # Récupérer le panier et l'utilisateur
+        panier = Panier.objects.get(id=panier_id)
+        user = User.objects.get(id=user_id)
+
+        # Récupérer/créer les ingrédients du panier
+        courses_with_ingredients = panier.courses.filter(ingredient__isnull=False).exclude(ingredient='')
+
+        if not courses_with_ingredients:
+            logger.warning(f"Panier {panier_id} ne contient aucun ingrédient")
+            return {
+                'status': 'error',
+                'message': 'Panier ne contient aucun ingrédient'
+            }
+
+        # Convertir les courses en IngredientPanier
+        ingredient_paniers = []
+        for course in courses_with_ingredients:
+            ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
+            for ingredient_text in ingredient_lines:
+                ingredient, _ = Ingredient.objects.get_or_create(
+                    nom=ingredient_text,
+                    defaults={'quantite': '1', 'unite': ''}
+                )
+                ing_panier, _ = IngredientPanier.objects.get_or_create(
+                    panier=panier,
+                    ingredient=ingredient,
+                    defaults={'quantite': 1}
+                )
+                ingredient_paniers.append(ing_panier)
+
+        total_ingredients = len(ingredient_paniers)
+        logger.info(f"{total_ingredients} ingrédients à comparer")
+
+        # Progress update
+        self.update_state(state='PROGRESS', meta={
+            'current': 0,
+            'total': total_ingredients * 2,
+            'supermarket': 'initialisation',
+            'message': 'Préparation de la comparaison...'
+        })
+
+        # Phase 1: Carrefour
+        carrefour_total = Decimal('0.00')
+        carrefour_found = 0
+        cache_duration = timedelta(hours=24)
+        store_id = 'scraping'
+
+        # Vérifier le cache Carrefour
+        carrefour_to_scrape = []
+        for ing_panier in ingredient_paniers:
+            ingredient = ing_panier.ingredient
+            existing_match = CarrefourProductMatch.objects.filter(
+                ingredient=ingredient,
+                store_id=store_id,
+                last_updated__gte=timezone.now() - cache_duration
+            ).first()
+
+            if existing_match and existing_match.product_name and existing_match.price:
+                carrefour_total += Decimal(str(existing_match.price))
+                carrefour_found += 1
+            else:
+                carrefour_to_scrape.append(ing_panier)
+
+        # Scraper Carrefour si nécessaire
+        if carrefour_to_scrape:
+            logger.info(f"Scraping {len(carrefour_to_scrape)} produits Carrefour...")
+            self.update_state(state='PROGRESS', meta={
+                'current': carrefour_found,
+                'total': total_ingredients * 2,
+                'supermarket': 'carrefour',
+                'message': f'Recherche Carrefour ({len(carrefour_to_scrape)} produits)...'
+            })
+
+            try:
+                with CarrefourScraper(headless=True, timeout=20000) as scraper:
+                    for idx, ing_panier in enumerate(carrefour_to_scrape):
+                        try:
+                            ingredient = ing_panier.ingredient
+                            products = scraper.search_product(ingredient.nom)
+
+                            if products:
+                                best = products[0]
+                                match, _ = CarrefourProductMatch.objects.update_or_create(
+                                    ingredient=ingredient,
+                                    store_id=store_id,
+                                    defaults={
+                                        'product_name': best.get('name', ''),
+                                        'price': best.get('price'),
+                                        'is_available': best.get('is_available', True),
+                                        'product_url': best.get('url', ''),
+                                        'match_score': 0.8,
+                                        'last_updated': timezone.now()
+                                    }
+                                )
+                                if match.price:
+                                    carrefour_total += Decimal(str(match.price))
+                                    carrefour_found += 1
+
+                            self.update_state(state='PROGRESS', meta={
+                                'current': carrefour_found + idx,
+                                'total': total_ingredients * 2,
+                                'supermarket': 'carrefour',
+                                'message': f'Carrefour: {ingredient.nom}'
+                            })
+                        except Exception as e:
+                            logger.error(f"Erreur Carrefour pour {ingredient.nom}: {e}")
+            except Exception as e:
+                logger.error(f"Erreur scraper Carrefour: {e}")
+
+        # Phase 2: Auchan
+        auchan_total = Decimal('0.00')
+        auchan_found = 0
+
+        # Vérifier le cache Auchan
+        auchan_to_scrape = []
+        for ing_panier in ingredient_paniers:
+            ingredient = ing_panier.ingredient
+            existing_match = AuchanProductMatch.objects.filter(
+                ingredient=ingredient,
+                store_id=store_id,
+                last_updated__gte=timezone.now() - cache_duration
+            ).first()
+
+            if existing_match and existing_match.product_name and existing_match.price:
+                auchan_total += Decimal(str(existing_match.price))
+                auchan_found += 1
+            else:
+                auchan_to_scrape.append(ing_panier)
+
+        # Scraper Auchan si nécessaire
+        if auchan_to_scrape:
+            logger.info(f"Scraping {len(auchan_to_scrape)} produits Auchan...")
+            self.update_state(state='PROGRESS', meta={
+                'current': total_ingredients + auchan_found,
+                'total': total_ingredients * 2,
+                'supermarket': 'auchan',
+                'message': f'Recherche Auchan ({len(auchan_to_scrape)} produits)...'
+            })
+
+            try:
+                with AuchanScraper(headless=True, timeout=20000) as scraper:
+                    for idx, ing_panier in enumerate(auchan_to_scrape):
+                        try:
+                            ingredient = ing_panier.ingredient
+                            products = scraper.search_product(ingredient.nom)
+
+                            if products:
+                                best = products[0]
+                                match, _ = AuchanProductMatch.objects.update_or_create(
+                                    ingredient=ingredient,
+                                    store_id=store_id,
+                                    defaults={
+                                        'product_name': best.get('product_name', ''),
+                                        'price': best.get('price'),
+                                        'is_available': best.get('is_available', True),
+                                        'product_url': best.get('product_url', ''),
+                                        'image_url': best.get('image_url', ''),
+                                        'match_score': 0.8,
+                                        'last_updated': timezone.now()
+                                    }
+                                )
+                                if match.price:
+                                    auchan_total += Decimal(str(match.price))
+                                    auchan_found += 1
+
+                            self.update_state(state='PROGRESS', meta={
+                                'current': total_ingredients + auchan_found + idx,
+                                'total': total_ingredients * 2,
+                                'supermarket': 'auchan',
+                                'message': f'Auchan: {ingredient.nom}'
+                            })
+                        except Exception as e:
+                            logger.error(f"Erreur Auchan pour {ingredient.nom}: {e}")
+            except Exception as e:
+                logger.error(f"Erreur scraper Auchan: {e}")
+
+        # Créer la comparaison
+        comparison = PriceComparison.objects.create(
+            user=user,
+            panier=panier,
+            latitude=latitude,
+            longitude=longitude,
+            carrefour_total=carrefour_total if carrefour_found > 0 else None,
+            auchan_total=auchan_total if auchan_found > 0 else None,
+            carrefour_found=carrefour_found,
+            auchan_found=auchan_found,
+            total_ingredients=total_ingredients,
+        )
+
+        logger.info(
+            f"Comparaison terminée: Carrefour={carrefour_total}EUR ({carrefour_found} produits), "
+            f"Auchan={auchan_total}EUR ({auchan_found} produits), "
+            f"Moins cher: {comparison.cheapest_supermarket}"
+        )
+
+        return {
+            'status': 'success',
+            'comparison_id': comparison.id,
+            'carrefour_total': float(carrefour_total),
+            'auchan_total': float(auchan_total),
+            'carrefour_found': carrefour_found,
+            'auchan_found': auchan_found,
+            'cheapest': comparison.cheapest_supermarket,
+        }
+
+    except Panier.DoesNotExist:
+        logger.error(f"Panier {panier_id} non trouvé")
+        return {'status': 'error', 'message': f'Panier {panier_id} non trouvé'}
+
+    except Exception as e:
+        logger.error(f"Erreur comparaison panier {panier_id}: {e}")
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+        return {'status': 'error', 'message': str(e)}
+
+
+@shared_task(bind=True, max_retries=3, name='panier.tasks.match_auchan_products')
 def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
     """
     Tâche Celery pour matcher les ingrédients d'un panier avec les produits Auchan Drive.
@@ -622,11 +573,11 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
     Returns:
         Dictionnaire avec les statistiques de matching
     """
-    from .models import Panier, AuchanProductMatch
+    from supermarkets.models import AuchanProductMatch
     from .auchan_scraper import AuchanScraper
 
     try:
-        logger.info(f"🚀 Démarrage matching Auchan pour panier #{panier_id} (magasin: {store_id})")
+        logger.info(f"Démarrage matching Auchan pour panier #{panier_id} (magasin: {store_id})")
 
         # Récupérer le panier
         panier = Panier.objects.get(id=panier_id)
@@ -634,13 +585,13 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
         total_ingredients = ingredient_paniers.count()
 
         if total_ingredients == 0:
-            logger.warning(f"⚠️  Panier {panier_id} vide, aucun ingrédient à matcher")
+            logger.warning(f"Panier {panier_id} vide, aucun ingrédient à matcher")
             return {'status': 'success', 'matched': 0, 'total': 0}
 
         matched_count = 0
         error_count = 0
 
-        # ⚡ PHASE 1: Vérifier le cache AVANT de démarrer le navigateur
+        # PHASE 1: Vérifier le cache AVANT de démarrer le navigateur
         cache_duration = timedelta(hours=24)
         ingredients_to_scrape = []
 
@@ -653,25 +604,25 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
             ).first()
 
             if existing_match and existing_match.product_name:
-                logger.info(f"💾 Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}€")
+                logger.info(f"Cache trouvé pour '{ingredient.nom}': {existing_match.product_name} - {existing_match.price}EUR")
                 matched_count += 1
             else:
                 ingredients_to_scrape.append(ing_panier)
 
-        # ⚡ PHASE 2: Scraper uniquement les ingrédients non cachés
+        # PHASE 2: Scraper uniquement les ingrédients non cachés
         if ingredients_to_scrape:
-            logger.info(f"🌐 Démarrage du navigateur Playwright Auchan pour {len(ingredients_to_scrape)} ingrédients...")
+            logger.info(f"Démarrage du navigateur Playwright Auchan pour {len(ingredients_to_scrape)} ingrédients...")
             with AuchanScraper(headless=True, timeout=20000) as scraper:
                 for index, ing_panier in enumerate(ingredients_to_scrape, 1):
                     try:
                         ingredient = ing_panier.ingredient
-                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] 🔍 Recherche Auchan de '{ingredient.nom}'...")
+                        logger.info(f"[{index}/{len(ingredients_to_scrape)}] Recherche Auchan de '{ingredient.nom}'...")
 
                         # Scraper les produits Auchan
                         products = scraper.search_product(ingredient.nom)
 
                         if not products:
-                            logger.warning(f"⚠️  Aucun produit Auchan trouvé pour '{ingredient.nom}'")
+                            logger.warning(f"Aucun produit Auchan trouvé pour '{ingredient.nom}'")
                             error_count += 1
                             continue
 
@@ -694,24 +645,24 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
                         )
 
                         matched_count += 1
-                        action = "✅ Créé" if created else "🔄 Mis à jour"
+                        action = "Créé" if created else "Mis à jour"
                         logger.info(
                             f"{action} match Auchan pour '{ingredient.nom}': "
-                            f"{best_product.get('product_name')} - {best_product.get('price')}€"
+                            f"{best_product.get('product_name')} - {best_product.get('price')}EUR"
                         )
 
                     except Exception as e:
                         error_count += 1
-                        logger.error(f"❌ Erreur Auchan pour '{ingredient.nom}': {e}")
+                        logger.error(f"Erreur Auchan pour '{ingredient.nom}': {e}")
                         continue
         else:
-            logger.info("⚡ Tous les ingrédients étaient déjà en cache")
+            logger.info("Tous les ingrédients étaient déjà en cache")
 
         # Résultats finaux
         success_rate = (matched_count / total_ingredients * 100) if total_ingredients > 0 else 0
 
         logger.info(
-            f"✨ Matching Auchan terminé pour panier #{panier_id}: "
+            f"Matching Auchan terminé pour panier #{panier_id}: "
             f"{matched_count}/{total_ingredients} matchés ({success_rate:.1f}%), "
             f"{error_count} erreurs"
         )
@@ -726,14 +677,14 @@ def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
         }
 
     except Panier.DoesNotExist:
-        logger.error(f"❌ Panier {panier_id} non trouvé")
+        logger.error(f"Panier {panier_id} non trouvé")
         return {
             'status': 'error',
             'message': f'Panier {panier_id} non trouvé'
         }
 
     except Exception as e:
-        logger.error(f"❌ Erreur globale Auchan pour panier {panier_id}: {e}")
+        logger.error(f"Erreur globale Auchan pour panier {panier_id}: {e}")
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
         else:

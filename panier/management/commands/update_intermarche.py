@@ -79,7 +79,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.SUCCESS(f"Tâche lancée en arrière-plan (ID: {task.id})")
                 )
-                self.stdout.write("Utilisez 'celery -A core inspect active' pour voir les tâches en cours")
+                self.stdout.write("Utilisez 'celery -A config inspect active' pour voir les tâches en cours")
             else:
                 self.stdout.write(
                     self.style.WARNING("⚠️  Cela peut prendre plusieurs minutes...")

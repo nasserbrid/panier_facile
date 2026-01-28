@@ -6,3 +6,6 @@ __pycache__/
 db.sqlite3
 staticfiles/
 docs/
+
+# Fichiers temporaires Claude Code
+tmpclaude-*

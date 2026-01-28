@@ -68,25 +68,14 @@ urlpatterns = [
     # Gestion du système RAG (réservé au staff)
     path('chatbot/reset/', views.reset_rag_system, name='reset_rag'),
 
-    # Intégration Intermarché
-    path('<int:panier_id>/select-store/', views.select_store_for_drive, name='select_store_for_drive'),
-    path('<int:panier_id>/intermarche/export/', views.export_to_intermarche, name='export_to_intermarche'),
-    path('<int:panier_id>/intermarche/match/', views.intermarche_match_products, name='intermarche_match_products'),
-    path('<int:panier_id>/intermarche/progress/<str:store_id>/', views.intermarche_matching_progress, name='intermarche_matching_progress'),
-    path('<int:panier_id>/intermarche/create/', views.intermarche_create_cart, name='intermarche_create_cart'),
-
-    # Intégration Carrefour
-    path('<int:panier_id>/carrefour/match/', views.carrefour_match_products, name='carrefour_match_products'),
-    path('<int:panier_id>/carrefour/progress/<str:store_id>/', views.carrefour_matching_progress, name='carrefour_matching_progress'),
-    path('<int:panier_id>/carrefour/create/', views.carrefour_create_cart, name='carrefour_create_cart'),
-
-    # Intégration Auchan
-    path('<int:panier_id>/auchan/match/', views.auchan_match_products, name='auchan_match_products'),
-    path('<int:panier_id>/auchan/progress/<str:store_id>/', views.auchan_matching_progress, name='auchan_matching_progress'),
-    path('<int:panier_id>/auchan/create/', views.auchan_create_cart, name='auchan_create_cart'),
-
     # Géolocalisation
     path('save-location/', views.save_temp_location, name='save_temp_location'),
+
+    # Comparaison de prix
+    path('<int:panier_id>/comparer/', views.compare_prices, name='compare_prices'),
+    path('<int:panier_id>/comparer/progress/<str:task_id>/', views.comparison_progress, name='comparison_progress'),
+    path('<int:panier_id>/comparer/resultats/<int:comparison_id>/', views.comparison_results, name='comparison_results'),
+    path('api/comparison-status/<str:task_id>/', views.comparison_status_api, name='comparison_status_api'),
 
     # Contact et Avis
     path('contact/', views.contact, name='contact'),

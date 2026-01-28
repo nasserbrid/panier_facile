@@ -3,14 +3,7 @@ Scraper Auchan Drive avec interception d'API.
 
 Cette version utilise l'interception des appels réseau pour récupérer
 les données JSON directement depuis l'API interne d'Auchan.
-
-Avantages:
-- Résistant aux changements CSS/HTML
-- Données plus riches (prix au kilo, EAN, images HD)
-- Plus rapide (pas besoin d'attendre le rendu complet)
-- Contourne mieux les anti-bots
 """
-
 import logging
 import re
 from typing import List, Dict, Optional
@@ -25,22 +18,18 @@ try:
     STEALTH_AVAILABLE = True
 except ImportError:
     STEALTH_AVAILABLE = False
-    logger.warning("playwright-stealth non installé. Le scraper sera plus détectable.")
+    logger.warning("playwright-stealth non installé.")
 
 
-class AuchanScraper:
+class AuchanDriveScraper:
     """
     Scraper Auchan utilisant l'interception d'API.
-
-    Au lieu de parser le HTML, on écoute les réponses réseau
-    et on capture le JSON retourné par l'API interne.
     """
 
     RETAILER_NAME = "Auchan"
     BASE_URL = "https://www.auchan.fr"
     SEARCH_URL = f"{BASE_URL}/recherche"
 
-    # Patterns d'URL pour détecter les réponses API contenant des produits
     API_PATTERNS = [
         r'/api/v\d+/search',
         r'/api/products',
@@ -51,13 +40,6 @@ class AuchanScraper:
     ]
 
     def __init__(self, headless: bool = True, timeout: int = 30000):
-        """
-        Initialise le scraper Auchan.
-
-        Args:
-            headless: Si True, le navigateur s'exécute sans interface
-            timeout: Temps d'attente max en millisecondes
-        """
         self.headless = headless
         self.timeout = timeout
         self.found_products: List[Dict] = []
@@ -67,12 +49,10 @@ class AuchanScraper:
         self.page = None
 
     def __enter__(self):
-        """Context manager - démarre le navigateur."""
         self.start_browser()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager - ferme le navigateur."""
         self.close_browser()
 
     def start_browser(self):
@@ -101,12 +81,9 @@ class AuchanScraper:
 
         self.page = self.context.new_page()
 
-        # Appliquer stealth si disponible
         if STEALTH_AVAILABLE:
             stealth_sync(self.page)
-            logger.info("Playwright-stealth activé")
 
-        # Masquer webdriver
         self.page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
             Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
@@ -127,20 +104,12 @@ class AuchanScraper:
         logger.info("Navigateur Auchan fermé")
 
     def _handle_response(self, response: Response):
-        """
-        Callback pour intercepter les réponses réseau.
-
-        Examine chaque réponse et capture les données produits si trouvées.
-        """
+        """Intercepte les réponses réseau."""
         url = response.url
 
-        # Vérifier si c'est une réponse API potentielle
         is_api_response = any(re.search(pattern, url, re.IGNORECASE) for pattern in self.API_PATTERNS)
 
-        if not is_api_response:
-            return
-
-        if response.status != 200:
+        if not is_api_response or response.status != 200:
             return
 
         try:
@@ -153,36 +122,25 @@ class AuchanScraper:
 
             if products:
                 self.found_products.extend(products)
-                logger.info(f"Intercepté {len(products)} produits via API: {url[:80]}...")
+                logger.info(f"Intercepté {len(products)} produits Auchan")
 
         except Exception as e:
-            logger.debug(f"Erreur parsing réponse {url[:50]}: {e}")
+            logger.debug(f"Erreur parsing réponse: {e}")
 
     def _extract_products_from_json(self, data: dict) -> List[Dict]:
-        """
-        Extrait les produits d'une réponse JSON.
-
-        Auchan peut avoir plusieurs structures de données,
-        cette méthode gère les cas les plus courants.
-        """
+        """Extrait les produits d'une réponse JSON."""
         products = []
-
-        # Essayer différentes structures possibles
         product_lists = []
 
-        # Structure 1: data.products
         if isinstance(data, dict) and 'products' in data:
             product_lists.append(data['products'])
 
-        # Structure 2: hits (Algolia)
         if isinstance(data, dict) and 'hits' in data:
             product_lists.append(data['hits'])
 
-        # Structure 3: data.data (liste directe)
         if isinstance(data, dict) and isinstance(data.get('data'), list):
             product_lists.append(data['data'])
 
-        # Structure 4: results.products
         if isinstance(data, dict):
             results = data.get('results', data.get('result', {}))
             if isinstance(results, dict) and 'products' in results:
@@ -190,17 +148,14 @@ class AuchanScraper:
             elif isinstance(results, list):
                 product_lists.append(results)
 
-        # Structure 5: items
         if isinstance(data, dict) and 'items' in data:
             product_lists.append(data['items'])
 
-        # Structure 6: content.products
         if isinstance(data, dict):
             content = data.get('content', {})
             if isinstance(content, dict) and 'products' in content:
                 product_lists.append(content['products'])
 
-        # Parcourir toutes les listes trouvées
         for product_list in product_lists:
             if not isinstance(product_list, list):
                 continue
@@ -213,22 +168,12 @@ class AuchanScraper:
         return products
 
     def _parse_product_item(self, item: dict) -> Optional[Dict]:
-        """
-        Parse un item produit individuel.
-
-        Args:
-            item: Dictionnaire représentant un produit
-
-        Returns:
-            Dictionnaire normalisé ou None
-        """
+        """Parse un item produit individuel."""
         if not isinstance(item, dict):
             return None
 
-        # Les données peuvent être dans différents endroits
         attrs = item.get('attributes', item)
 
-        # Nom du produit
         name = (
             attrs.get('name') or
             attrs.get('title') or
@@ -241,7 +186,6 @@ class AuchanScraper:
         if not name:
             return None
 
-        # Prix
         price = None
         price_data = attrs.get('price', attrs.get('prix', {}))
         if isinstance(price_data, dict):
@@ -256,12 +200,10 @@ class AuchanScraper:
         else:
             price = attrs.get('price') or attrs.get('prix') or attrs.get('unitPrice')
 
-        # URL du produit
         product_url = attrs.get('url') or attrs.get('productUrl') or attrs.get('slug') or item.get('url')
         if product_url and not product_url.startswith('http'):
             product_url = f"{self.BASE_URL}{product_url}" if product_url.startswith('/') else f"{self.BASE_URL}/{product_url}"
 
-        # Image
         image_url = None
         image_data = attrs.get('image', attrs.get('images', attrs.get('media', [])))
         if isinstance(image_data, dict):
@@ -275,14 +217,12 @@ class AuchanScraper:
         elif isinstance(image_data, str):
             image_url = image_data
 
-        # Disponibilité
         availability = attrs.get('availability', attrs.get('disponibilite', {}))
         if isinstance(availability, dict):
             is_available = availability.get('is_available', availability.get('available', True))
         else:
             is_available = attrs.get('available', attrs.get('inStock', attrs.get('disponible', True)))
 
-        # Marque
         brand = attrs.get('brand') or attrs.get('brandName') or attrs.get('marque') or ''
 
         return {
@@ -319,32 +259,17 @@ class AuchanScraper:
                 continue
 
     def select_store(self, postal_code: str = None, store_name: str = None) -> bool:
-        """
-        Sélectionne un magasin Auchan Drive pour obtenir les prix locaux.
-
-        Cette méthode navigue vers la page de sélection de magasin,
-        entre le code postal et sélectionne le premier Drive disponible.
-
-        Args:
-            postal_code: Code postal pour la recherche de magasin
-            store_name: Nom du magasin à sélectionner (optionnel)
-
-        Returns:
-            True si un magasin a été sélectionné, False sinon
-        """
+        """Sélectionne un magasin Auchan Drive."""
         if not postal_code:
-            logger.info("Pas de code postal fourni, recherche sans magasin spécifique")
             return False
 
         try:
-            logger.info(f"Sélection du magasin Auchan pour le code postal {postal_code}")
+            logger.info(f"Sélection du magasin Auchan pour {postal_code}")
 
-            # Aller sur la page d'accueil pour accéder au sélecteur de magasin
             self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=self.timeout)
             self._accept_cookies()
             self.page.wait_for_timeout(2000)
 
-            # Chercher le bouton/lien de sélection de magasin
             store_selector_buttons = [
                 '[data-testid="store-selector"]',
                 'button:has-text("Choisir mon magasin")',
@@ -352,7 +277,6 @@ class AuchanScraper:
                 'a:has-text("Choisir mon magasin")',
                 '[class*="store-selector"]',
                 '[class*="StoreSelector"]',
-                'button[aria-label*="magasin"]',
             ]
 
             store_btn = None
@@ -369,14 +293,11 @@ class AuchanScraper:
                 store_btn.click()
                 self.page.wait_for_timeout(2000)
 
-                # Chercher le champ de saisie du code postal
                 postal_input_selectors = [
                     'input[placeholder*="code postal"]',
                     'input[placeholder*="Code postal"]',
                     'input[name*="postal"]',
                     'input[name*="zipcode"]',
-                    'input[type="text"][class*="search"]',
-                    'input[aria-label*="code postal"]',
                 ]
 
                 postal_input = None
@@ -392,18 +313,14 @@ class AuchanScraper:
                 if postal_input:
                     postal_input.fill(postal_code)
                     self.page.wait_for_timeout(1000)
-
-                    # Appuyer sur Entrée ou chercher un bouton de recherche
                     postal_input.press("Enter")
                     self.page.wait_for_timeout(3000)
 
-                    # Sélectionner le premier magasin Drive disponible
                     drive_selectors = [
                         'button:has-text("Drive")',
                         '[class*="drive"]',
                         'button:has-text("Choisir")',
                         'button:has-text("Sélectionner")',
-                        '[data-testid="store-select-button"]',
                     ]
 
                     for selector in drive_selectors:
@@ -411,72 +328,51 @@ class AuchanScraper:
                             drive_btn = self.page.query_selector(selector)
                             if drive_btn and drive_btn.is_visible():
                                 drive_btn.click()
-                                logger.info(f"Magasin Auchan Drive sélectionné pour {postal_code}")
+                                logger.info(f"Magasin Auchan Drive sélectionné")
                                 self.page.wait_for_timeout(2000)
                                 return True
                         except Exception:
                             continue
 
-            logger.warning(f"Impossible de sélectionner un magasin Auchan pour {postal_code}")
             return False
 
         except Exception as e:
-            logger.error(f"Erreur lors de la sélection du magasin Auchan: {e}")
+            logger.error(f"Erreur sélection magasin Auchan: {e}")
             return False
 
     def search_product(self, query: str) -> List[Dict]:
-        """
-        Recherche des produits sur Auchan.
+        """Recherche des produits sur Auchan."""
+        self.found_products = []
 
-        Args:
-            query: Terme de recherche
-
-        Returns:
-            Liste de produits trouvés
-        """
-        self.found_products = []  # Reset
-
-        # Activer l'interception des réponses
         self.page.on("response", self._handle_response)
 
         try:
-            # Construire l'URL de recherche
             encoded_query = quote_plus(query)
             search_url = f"{self.SEARCH_URL}?text={encoded_query}"
             logger.info(f"Recherche Auchan: {query}")
 
-            # Naviguer vers la page
             self.page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout)
-
-            # Accepter les cookies
             self._accept_cookies()
-
-            # Attendre que les données arrivent
             self.page.wait_for_timeout(3000)
 
-            # Scroll pour déclencher le chargement lazy
             self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
             self.page.wait_for_timeout(2000)
 
-            # Si on n'a pas trouvé via API, essayer le fallback HTML
             if not self.found_products:
-                logger.info("Pas de données API, tentative fallback HTML...")
+                logger.info("Fallback HTML Auchan...")
                 self.found_products = self._fallback_html_parsing()
 
-            logger.info(f"{len(self.found_products)} produits trouvés pour '{query}'")
+            logger.info(f"{len(self.found_products)} produits trouvés")
             return self.found_products
 
         except Exception as e:
-            logger.error(f"Erreur recherche Auchan '{query}': {e}")
+            logger.error(f"Erreur recherche Auchan: {e}")
             return []
         finally:
-            # Désactiver l'écoute pour éviter les doublons
             self.page.remove_listener("response", self._handle_response)
 
     def _fallback_html_parsing(self) -> List[Dict]:
-        """
-        Fallback: Parse le HTML si l'interception API échoue.
-        """
+        """Fallback: Parse le HTML si l'interception API échoue."""
         products = []
 
         selectors = [
@@ -492,7 +388,7 @@ class AuchanScraper:
             try:
                 elements = self.page.query_selector_all(selector)
                 if elements:
-                    for el in elements[:10]:  # Limiter à 10 produits
+                    for el in elements[:10]:
                         product = self._parse_html_element(el)
                         if product:
                             products.append(product)
@@ -503,9 +399,8 @@ class AuchanScraper:
         return products
 
     def _parse_html_element(self, element) -> Optional[Dict]:
-        """Parse un élément HTML produit (fallback)."""
+        """Parse un élément HTML produit."""
         try:
-            # Nom
             name = None
             for selector in ['h2', 'h3', '[data-test-id="product-name"]', '.product-name', '.product-title']:
                 try:
@@ -520,7 +415,6 @@ class AuchanScraper:
             if not name:
                 return None
 
-            # Prix
             price = None
             for selector in ['[data-test-id="product-price"]', '.product-price', '[class*="price"]', '.price']:
                 try:
@@ -533,7 +427,6 @@ class AuchanScraper:
                 except Exception:
                     continue
 
-            # URL
             url = None
             try:
                 link = element.query_selector('a')
@@ -544,7 +437,6 @@ class AuchanScraper:
             except Exception:
                 pass
 
-            # Image
             image_url = None
             try:
                 img = element.query_selector('img')
@@ -574,9 +466,7 @@ class AuchanScraper:
             return None
 
         try:
-            # Nettoyer: "12,99 €" -> "12.99"
             cleaned = price_text.replace('€', '').replace(',', '.').strip()
-            # Extraire le premier nombre
             match = re.search(r'(\d+\.?\d*)', cleaned)
             if match:
                 return float(match.group(1))
@@ -587,15 +477,7 @@ class AuchanScraper:
 
 
 def search_auchan_products(ingredient_name: str) -> List[Dict]:
-    """
-    Fonction utilitaire pour rechercher des produits Auchan.
-
-    Args:
-        ingredient_name: Nom de l'ingrédient à rechercher
-
-    Returns:
-        Liste de produits trouvés
-    """
-    with AuchanScraper(headless=True) as scraper:
+    """Fonction utilitaire pour rechercher des produits Auchan."""
+    with AuchanDriveScraper(headless=True) as scraper:
         products = scraper.search_product(ingredient_name)
     return products
