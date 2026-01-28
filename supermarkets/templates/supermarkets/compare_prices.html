@@ -53,7 +53,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-6">
-                            <h6><img src="{% static 'images/carrefour-logo.png' %}" alt="Carrefour" height="20" onerror="this.style.display='none'"> Carrefour</h6>
+                            <h6><i class="fas fa-shopping-cart text-primary me-1"></i> Carrefour</h6>
                             {% if nearby_stores.carrefour %}
                                 <ul class="list-unstyled small">
                                     {% for store in nearby_stores.carrefour %}
@@ -65,7 +65,7 @@
                             {% endif %}
                         </div>
                         <div class="col-6">
-                            <h6><img src="{% static 'images/auchan-logo.png' %}" alt="Auchan" height="20" onerror="this.style.display='none'"> Auchan</h6>
+                            <h6><i class="fas fa-shopping-cart text-danger me-1"></i> Auchan</h6>
                             {% if nearby_stores.auchan %}
                                 <ul class="list-unstyled small">
                                     {% for store in nearby_stores.auchan %}
