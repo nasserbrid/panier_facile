@@ -1,5 +1,5 @@
 # Generated migration for supermarkets app
-# Removes old Drive-related models and adds PriceComparison
+# Only creates PriceComparison - Cart tables never existed in DB
 
 from django.conf import settings
 from django.db import migrations, models
@@ -15,47 +15,10 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Remove old indexes first
-        migrations.RemoveIndex(
-            model_name='intermarcheproductmatch',
-            name='panier_inte_ingredi_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='intermarcheproductmatch',
-            name='panier_inte_store_i_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='intermarchecart',
-            name='panier_inte_user_id_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='intermarchecart',
-            name='panier_inte_store_i_cart_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='carrefourcart',
-            name='panier_carr_user_id_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='carrefourcart',
-            name='panier_carr_store_i_cart_idx',
-        ),
-
-        # Delete old models
-        migrations.DeleteModel(
-            name='IntermarcheProductMatch',
-        ),
-        migrations.DeleteModel(
-            name='IntermarcheCart',
-        ),
-        migrations.DeleteModel(
-            name='CarrefourCart',
-        ),
-        migrations.DeleteModel(
-            name='AuchanCart',
-        ),
-
-        # Create PriceComparison
+        # Create PriceComparison only
+        # Note: Cart tables (AuchanCart, CarrefourCart, IntermarcheCart)
+        # were in migration 0001 but never actually created in DB
+        # So we don't try to delete them here
         migrations.CreateModel(
             name='PriceComparison',
             fields=[
