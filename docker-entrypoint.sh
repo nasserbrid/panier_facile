@@ -7,9 +7,9 @@ set -e
 case "${APP_TYPE:-web}" in
   web)
     echo "Starting Django Web Server with Gunicorn..."
-    # Fake migrations pour apps dont les tables existent déjà
-    python manage.py migrate contact --fake-initial || true
-    python manage.py migrate supermarkets --fake-initial || true
+    # Fake les migrations initiales (tables existent déjà en base)
+    python manage.py migrate contact 0001_initial --fake || true
+    python manage.py migrate supermarkets 0001_initial --fake || true
     python manage.py migrate
     exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers=2 --threads=4 --timeout=120 --access-logfile - --error-logfile -
     ;;

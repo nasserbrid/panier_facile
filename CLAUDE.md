@@ -5,11 +5,10 @@ Ce fichier contient le contexte complet du projet pour maintenir la continuite e
 ## Vue d'ensemble
 
 **PanierFacile** est une application Django permettant aux utilisateurs de :
-- Creer des paniers de courses a partir de recettes
+- Creer des paniers de courses en famille 
 - Comparer les prix entre supermarches (Carrefour, Auchan)
-- Utiliser un chatbot RAG pour des conseils culinaires
 
-**URL Production** : https://panierfacile.music-music.fr/
+**URL Production** : https://panier-facile.fr/
 **Deploiement** : Coolify (Docker)
 **Base de donnees** : PostgreSQL
 **Cache/Broker** : Redis
@@ -85,7 +84,7 @@ panier_facile/
 - Templates Drive deplaces vers `supermarkets/templates/`
 
 ### Phase 7 : Comparaison de prix (actuel)
-- **Suppression du Drive** : Creation de paniers sur sites externes retiree (DataDome)
+- **Suppression du Drive** : Creation de paniers sur sites externes retire (DataDome)
 - **Suppression d'Intermarche** : Retire completement (DataDome incontournable)
 - **Nouvelle fonctionnalite** : Comparaison de prix entre Carrefour et Auchan
 
