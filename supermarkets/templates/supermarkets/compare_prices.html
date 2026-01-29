@@ -91,6 +91,32 @@
                 <div class="card-body">
                     <p><strong>{{ ingredients_count }}</strong> ingredients a comparer</p>
 
+                    {% if cache_coverage %}
+                    <div class="mb-3">
+                        <small class="text-muted">Disponibilite du cache :</small>
+                        <div class="row mt-1">
+                            <div class="col-6">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-primary" role="progressbar"
+                                         style="width: {{ cache_coverage.carrefour }}%">
+                                        {{ cache_coverage.carrefour }}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">Carrefour</small>
+                            </div>
+                            <div class="col-6">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-danger" role="progressbar"
+                                         style="width: {{ cache_coverage.auchan }}%">
+                                        {{ cache_coverage.auchan }}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">Auchan</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <ul class="list-group list-group-flush mb-3" style="max-height: 200px; overflow-y: auto;">
                         {% for course in panier.courses.all %}
                             {% if course.ingredient %}
@@ -107,12 +133,13 @@
                         <form method="post">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-primary btn-lg w-100">
-                                <i class="fas fa-balance-scale me-2"></i>
-                                Comparer les prix
+                                <i class="fas fa-bolt me-2"></i>
+                                Comparer les prix instantanement
                             </button>
                         </form>
                         <p class="small text-muted mt-2 text-center">
-                            La comparaison peut prendre quelques minutes
+                            <i class="fas fa-info-circle me-1"></i>
+                            Resultats instantanes - les prix manquants seront recherches en arriere-plan
                         </p>
                     {% else %}
                         <button class="btn btn-secondary btn-lg w-100" disabled>

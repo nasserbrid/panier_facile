@@ -556,6 +556,184 @@ def compare_supermarket_prices(self, panier_id: int, user_id: int, latitude: flo
         return {'status': 'error', 'message': str(e)}
 
 
+@shared_task(bind=True, max_retries=2, name='panier.tasks.scrape_ingredient_prices')
+def scrape_ingredient_prices(self, ingredient_names: list, priority: str = 'normal'):
+    """
+    Tâche Celery pour scraper les prix d'ingrédients spécifiques (Cache Proactif).
+
+    Cette tâche est déclenchée:
+    - Par un signal Django quand une Course est créée/modifiée
+    - Par Celery Beat quotidiennement pour rafraîchir les ingrédients populaires
+
+    Args:
+        ingredient_names: Liste des noms d'ingrédients à scraper
+        priority: 'high' (signal) ou 'normal' (scheduled)
+
+    Returns:
+        dict: Statistiques de scraping
+    """
+    from supermarkets.models import CarrefourProductMatch, AuchanProductMatch
+    from .models import Ingredient
+    from .carrefour_scraper import CarrefourScraper
+    from .auchan_scraper import AuchanScraper
+
+    if not ingredient_names:
+        return {'status': 'success', 'scraped': 0, 'message': 'Aucun ingrédient à scraper'}
+
+    logger.info(f"[Cache Proactif] Démarrage scraping {len(ingredient_names)} ingrédients (priorité: {priority})")
+
+    cache_duration = timedelta(hours=24)
+    store_id = 'scraping'
+    stats = {
+        'total': len(ingredient_names),
+        'carrefour_scraped': 0,
+        'auchan_scraped': 0,
+        'already_cached': 0,
+        'errors': 0
+    }
+
+    # Filtrer les ingrédients déjà en cache (moins de 24h)
+    ingredients_to_scrape = []
+    for name in ingredient_names:
+        ingredient, _ = Ingredient.objects.get_or_create(
+            nom=name.strip(),
+            defaults={'quantite': '1', 'unite': ''}
+        )
+
+        carrefour_cached = CarrefourProductMatch.objects.filter(
+            ingredient=ingredient,
+            store_id=store_id,
+            last_updated__gte=timezone.now() - cache_duration
+        ).exists()
+
+        auchan_cached = AuchanProductMatch.objects.filter(
+            ingredient=ingredient,
+            store_id=store_id,
+            last_updated__gte=timezone.now() - cache_duration
+        ).exists()
+
+        if carrefour_cached and auchan_cached:
+            stats['already_cached'] += 1
+            logger.debug(f"[Cache Proactif] '{name}' déjà en cache, skip")
+        else:
+            ingredients_to_scrape.append({
+                'name': name,
+                'ingredient': ingredient,
+                'need_carrefour': not carrefour_cached,
+                'need_auchan': not auchan_cached
+            })
+
+    if not ingredients_to_scrape:
+        logger.info(f"[Cache Proactif] Tous les {stats['total']} ingrédients sont déjà en cache")
+        return {'status': 'success', **stats}
+
+    logger.info(f"[Cache Proactif] {len(ingredients_to_scrape)} ingrédients à scraper")
+
+    # Scraping Carrefour
+    carrefour_to_scrape = [i for i in ingredients_to_scrape if i['need_carrefour']]
+    if carrefour_to_scrape:
+        logger.info(f"[Cache Proactif] Scraping Carrefour ({len(carrefour_to_scrape)} produits)...")
+        try:
+            with CarrefourScraper(headless=True, timeout=20000) as scraper:
+                for item in carrefour_to_scrape:
+                    try:
+                        products = scraper.search_product(item['name'])
+                        if products:
+                            best = products[0]
+                            CarrefourProductMatch.objects.update_or_create(
+                                ingredient=item['ingredient'],
+                                store_id=store_id,
+                                defaults={
+                                    'product_name': best.get('name', ''),
+                                    'price': best.get('price'),
+                                    'is_available': best.get('is_available', True),
+                                    'product_url': best.get('url', ''),
+                                    'match_score': 0.8,
+                                    'last_updated': timezone.now()
+                                }
+                            )
+                            stats['carrefour_scraped'] += 1
+                            logger.debug(f"[Cache Proactif] Carrefour '{item['name']}': {best.get('price')}€")
+                    except Exception as e:
+                        logger.error(f"[Cache Proactif] Erreur Carrefour '{item['name']}': {e}")
+                        stats['errors'] += 1
+        except Exception as e:
+            logger.error(f"[Cache Proactif] Erreur scraper Carrefour: {e}")
+
+    # Scraping Auchan
+    auchan_to_scrape = [i for i in ingredients_to_scrape if i['need_auchan']]
+    if auchan_to_scrape:
+        logger.info(f"[Cache Proactif] Scraping Auchan ({len(auchan_to_scrape)} produits)...")
+        try:
+            with AuchanScraper(headless=True, timeout=20000) as scraper:
+                for item in auchan_to_scrape:
+                    try:
+                        products = scraper.search_product(item['name'])
+                        if products:
+                            best = products[0]
+                            AuchanProductMatch.objects.update_or_create(
+                                ingredient=item['ingredient'],
+                                store_id=store_id,
+                                defaults={
+                                    'product_name': best.get('product_name', ''),
+                                    'price': best.get('price'),
+                                    'is_available': best.get('is_available', True),
+                                    'product_url': best.get('product_url', ''),
+                                    'image_url': best.get('image_url', ''),
+                                    'match_score': 0.8,
+                                    'last_updated': timezone.now()
+                                }
+                            )
+                            stats['auchan_scraped'] += 1
+                            logger.debug(f"[Cache Proactif] Auchan '{item['name']}': {best.get('price')}€")
+                    except Exception as e:
+                        logger.error(f"[Cache Proactif] Erreur Auchan '{item['name']}': {e}")
+                        stats['errors'] += 1
+        except Exception as e:
+            logger.error(f"[Cache Proactif] Erreur scraper Auchan: {e}")
+
+    logger.info(
+        f"[Cache Proactif] Terminé: {stats['carrefour_scraped']} Carrefour, "
+        f"{stats['auchan_scraped']} Auchan, {stats['already_cached']} en cache, "
+        f"{stats['errors']} erreurs"
+    )
+
+    return {'status': 'success', **stats}
+
+
+@shared_task(name='panier.tasks.refresh_popular_ingredients')
+def refresh_popular_ingredients():
+    """
+    Tâche planifiée quotidienne pour rafraîchir le cache des ingrédients populaires.
+
+    Sélectionne les ingrédients les plus utilisés dans les paniers récents
+    et lance leur scraping proactif.
+    """
+    from .models import IngredientPanier
+    from django.db.models import Count
+
+    logger.info("[Cache Proactif] Démarrage rafraîchissement des ingrédients populaires")
+
+    # Récupérer les 50 ingrédients les plus utilisés
+    popular_ingredients = (
+        IngredientPanier.objects
+        .values('ingredient__nom')
+        .annotate(usage_count=Count('id'))
+        .order_by('-usage_count')[:50]
+    )
+
+    ingredient_names = [item['ingredient__nom'] for item in popular_ingredients]
+
+    if ingredient_names:
+        logger.info(f"[Cache Proactif] Rafraîchissement de {len(ingredient_names)} ingrédients populaires")
+        # Lancer le scraping en background
+        scrape_ingredient_prices.delay(ingredient_names, priority='scheduled')
+    else:
+        logger.info("[Cache Proactif] Aucun ingrédient populaire à rafraîchir")
+
+    return {'status': 'success', 'ingredients_queued': len(ingredient_names)}
+
+
 @shared_task(bind=True, max_retries=3, name='panier.tasks.match_auchan_products')
 def match_auchan_products(self, panier_id: int, store_id: str = 'scraping'):
     """

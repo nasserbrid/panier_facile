@@ -15,6 +15,15 @@
 
     <h1 class="mb-4">Comparaison des prix</h1>
 
+    {% if is_instant and missing_count > 0 %}
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-sync fa-spin me-2"></i>
+        <strong>{{ missing_count }} ingredient{{ missing_count|pluralize }}</strong> non encore en cache.
+        La recherche des prix manquants est en cours en arriere-plan.
+        <a href="{% url 'compare_prices' panier.id %}" class="alert-link">Relancer la comparaison</a> dans quelques minutes pour des resultats complets.
+    </div>
+    {% endif %}
+
     <!-- Cartes resume -->
     <div class="row mb-4">
         <!-- Carrefour -->

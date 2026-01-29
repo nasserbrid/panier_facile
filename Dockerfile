@@ -8,11 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV RUN_MAIN=true
 
-# Définir le dossier de travail
+# Je définis le dossier de travail
 WORKDIR /app
 
 # -----------------------------
-# Étape 2 : Installer les dépendances système
+# Étape 2 : J'installe les dépendances système
 # -----------------------------
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -51,7 +51,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
-# Étape 3 : Installer les dépendances Python
+# Étape 3 : J'installe les dépendances Python
 # -----------------------------
 COPY requirements.txt .
 # Installer pip et les dépendances avec nettoyage agressif pour économiser la RAM
@@ -61,7 +61,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     find /usr/local/lib/python3.12 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
 # -----------------------------
-# Étape 3.5 : Installer les navigateurs Playwright
+# Étape 3.5 : J'installe les navigateurs Playwright
 # -----------------------------
 # Installer Chromium pour Playwright (nécessaire pour le scraping Intermarché)
 # Les dépendances système sont déjà installées à l'étape 2
@@ -70,28 +70,28 @@ RUN echo "=== Installing Playwright Chromium ===" && \
     echo "=== Playwright installation complete ==="
 
 # -----------------------------
-# Étape 4 : Copier le code source
+# Étape 4 : Je copie le code source
 # -----------------------------
 COPY . .
 
 # -----------------------------
-# Étape 5 : Collecter les fichiers statiques
+# Étape 5 : Je collecte les fichiers statiques
 # -----------------------------
-# Utiliser SQLite temporairement pour collectstatic (pas besoin de vraie DB)
+# J'utilise SQLite temporairement pour collectstatic (pas besoin de vraie DB)
 ENV DATABASE_URL=sqlite:///tmp/db.sqlite3
 RUN echo "=== Running collectstatic ===" && \
     python manage.py collectstatic --noinput --verbosity 2 && \
     echo "=== Collectstatic complete - $(ls -1 staticfiles/ | wc -l) files collected ==="
 
 # -----------------------------
-# Étape 6 : Exposer le port
+# Étape 6 : J'expose le port
 # -----------------------------
 EXPOSE 8000
 
 # -----------------------------
 # Étape 7 : Script de démarrage conditionnel
 # -----------------------------
-# Créer un script d'entrypoint qui choisit la commande selon APP_TYPE
+# Je crée un script d'entrypoint qui choisit la commande selon APP_TYPE
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
