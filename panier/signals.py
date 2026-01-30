@@ -31,12 +31,19 @@ def trigger_ingredient_scraping(sender, instance, created, **kwargs):
         logger.debug(f"Course {instance.id} sans ingrédient, skip scraping")
         return
 
-    # Parser les ingrédients (un par ligne)
-    ingredient_lines = [
-        line.strip()
-        for line in instance.ingredient.split('\n')
-        if line.strip()
-    ]
+    # Parser les ingrédients (par ligne ET par virgule pour des recherches plus précises)
+    ingredient_lines = []
+    for line in instance.ingredient.split('\n'):
+        line = line.strip()
+        if line:
+            # Si la ligne contient des virgules, séparer en plusieurs ingrédients
+            if ',' in line:
+                for item in line.split(','):
+                    item = item.strip()
+                    if item and len(item) > 2:  # Ignorer les items trop courts
+                        ingredient_lines.append(item)
+            else:
+                ingredient_lines.append(line)
 
     if not ingredient_lines:
         return

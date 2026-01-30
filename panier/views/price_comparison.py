@@ -85,10 +85,20 @@ def compare_prices(request, panier_id):
             messages.error(request, "Veuillez d'abord renseigner votre localisation.")
             return redirect('compare_prices', panier_id=panier.id)
 
-        # Extraire et créer les ingrédients
+        # Extraire et créer les ingrédients (par ligne ET par virgule)
         ingredient_paniers = []
         for course in panier.courses.filter(ingredient__isnull=False).exclude(ingredient=''):
-            ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
+            ingredient_lines = []
+            for line in course.ingredient.split('\n'):
+                line = line.strip()
+                if line:
+                    if ',' in line:
+                        for item in line.split(','):
+                            item = item.strip()
+                            if item and len(item) > 2:
+                                ingredient_lines.append(item)
+                    else:
+                        ingredient_lines.append(line)
             for ingredient_text in ingredient_lines:
                 ingredient, _ = Ingredient.objects.get_or_create(
                     nom=ingredient_text,
@@ -276,8 +286,16 @@ def _get_cache_coverage(panier):
 
     ingredient_names = []
     for course in panier.courses.filter(ingredient__isnull=False).exclude(ingredient=''):
-        ingredient_lines = [line.strip() for line in course.ingredient.split('\n') if line.strip()]
-        ingredient_names.extend(ingredient_lines)
+        for line in course.ingredient.split('\n'):
+            line = line.strip()
+            if line:
+                if ',' in line:
+                    for item in line.split(','):
+                        item = item.strip()
+                        if item and len(item) > 2:
+                            ingredient_names.append(item)
+                else:
+                    ingredient_names.append(line)
 
     total = len(ingredient_names)
     if total == 0:
