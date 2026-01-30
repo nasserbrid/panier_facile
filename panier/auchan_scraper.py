@@ -72,6 +72,7 @@ class AuchanScraper:
         self.browser = None
         self.context = None
         self.page = None
+        self._session_established = False
 
     def __enter__(self):
         """Context manager - démarre le navigateur."""
@@ -387,6 +388,78 @@ class AuchanScraper:
             except Exception:
                 continue
 
+    def _handle_location_popup(self):
+        """Gère le popup de localisation si présent."""
+        location_selectors = [
+            'button:has-text("Plus tard")',
+            'button:has-text("Ignorer")',
+            'button:has-text("Non merci")',
+            'button:has-text("Fermer")',
+            'button:has-text("Continuer sans magasin")',
+            '[data-testid="close-modal"]',
+            '[aria-label="Fermer"]',
+            '.modal-close',
+            'button.close',
+        ]
+
+        for selector in location_selectors:
+            try:
+                button = self.page.query_selector(selector)
+                if button and button.is_visible():
+                    button.click()
+                    logger.info("Popup localisation Auchan fermé")
+                    self.page.wait_for_timeout(500)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _establish_session(self):
+        """
+        Établit une session de navigation naturelle.
+
+        Flow naturel pour éviter la détection anti-bot:
+        1. Visiter la page d'accueil
+        2. Accepter les cookies
+        3. Gérer le popup de localisation
+        4. Session prête pour les recherches
+        """
+        if self._session_established:
+            return
+
+        logger.info("Établissement de la session Auchan...")
+
+        try:
+            # Étape 1: Page d'accueil
+            logger.info("  1/3 - Visite page d'accueil...")
+            self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=self.timeout)
+            random_delay(1500, 2500)
+
+            # Étape 2: Cookies
+            logger.info("  2/3 - Gestion cookies...")
+            self._accept_cookies()
+            random_delay(800, 1200)
+
+            # Simuler un scroll sur la homepage (comportement humain)
+            self.page.evaluate("window.scrollTo(0, 300)")
+            random_delay(500, 800)
+
+            # Étape 3: Gérer le popup de localisation
+            logger.info("  3/3 - Gestion popup localisation...")
+            self._handle_location_popup()
+            random_delay(500, 1000)
+
+            # Simuler un autre scroll
+            self.page.evaluate("window.scrollTo(0, 200)")
+            random_delay(400, 700)
+
+            self._session_established = True
+            logger.info("Session Auchan établie avec succès")
+
+        except Exception as e:
+            logger.warning(f"Erreur établissement session: {e}")
+            # On continue quand même, peut-être que la recherche marchera
+
     def select_store(self, postal_code: str = None, store_name: str = None) -> bool:
         """
         Sélectionne un magasin Auchan Drive pour obtenir les prix locaux.
@@ -505,22 +578,25 @@ class AuchanScraper:
         """
         self.found_products = []  # Reset
 
+        # Établir la session si pas encore fait (flow naturel anti-détection)
+        self._establish_session()
+
         # Activer l'interception des réponses
         self.page.on("response", self._handle_response)
 
         try:
             # Délai aléatoire entre les recherches (comportement humain)
-            random_delay(300, 800)
+            random_delay(800, 1500)
 
             # Construire l'URL de recherche
             encoded_query = quote_plus(query)
             search_url = f"{self.SEARCH_URL}?text={encoded_query}"
             logger.info(f"Recherche Auchan: {query}")
 
-            # Naviguer vers la page
+            # Naviguer vers la page de recherche
             self.page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout)
 
-            # Accepter les cookies
+            # Vérifier à nouveau les cookies (au cas où)
             self._accept_cookies()
 
             # Attendre que les données arrivent (délai variable)

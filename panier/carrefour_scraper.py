@@ -69,6 +69,7 @@ class CarrefourScraper:
         self.browser = None
         self.context = None
         self.page = None
+        self._session_established = False
 
     def __enter__(self):
         """Context manager - démarre le navigateur."""
@@ -369,6 +370,127 @@ class CarrefourScraper:
             except Exception:
                 continue
 
+    def _handle_location_popup(self):
+        """Gère le popup de localisation si présent."""
+        location_selectors = [
+            'button:has-text("Plus tard")',
+            'button:has-text("Ignorer")',
+            'button:has-text("Non merci")',
+            'button:has-text("Fermer")',
+            '[data-testid="close-modal"]',
+            '[aria-label="Fermer"]',
+            '.modal-close',
+            'button.close',
+        ]
+
+        for selector in location_selectors:
+            try:
+                button = self.page.query_selector(selector)
+                if button and button.is_visible():
+                    button.click()
+                    logger.info("Popup localisation fermé")
+                    self.page.wait_for_timeout(500)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _establish_session(self):
+        """
+        Établit une session de navigation naturelle.
+
+        Flow naturel pour éviter la détection DataDome:
+        1. Visiter la page d'accueil
+        2. Accepter les cookies
+        3. Visiter le catalogue
+        4. Gérer le popup de localisation
+        5. Session prête pour les recherches
+        """
+        if self._session_established:
+            return
+
+        logger.info("Établissement de la session Carrefour...")
+
+        try:
+            # Étape 1: Page d'accueil
+            logger.info("  1/4 - Visite page d'accueil...")
+            self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=self.timeout)
+            random_delay(1500, 2500)
+
+            # Étape 2: Cookies
+            logger.info("  2/4 - Gestion cookies...")
+            self._accept_cookies()
+            random_delay(800, 1200)
+
+            # Simuler un scroll sur la homepage (comportement humain)
+            self.page.evaluate("window.scrollTo(0, 300)")
+            random_delay(500, 800)
+
+            # Étape 3: Page catalogue
+            logger.info("  3/4 - Visite catalogue...")
+            self.page.goto(f"{self.BASE_URL}/catalogue", wait_until="domcontentloaded", timeout=self.timeout)
+            random_delay(1200, 2000)
+
+            # Étape 4: Gérer le popup de localisation
+            logger.info("  4/4 - Gestion popup localisation...")
+            self._handle_location_popup()
+            random_delay(500, 1000)
+
+            # Simuler un scroll
+            self.page.evaluate("window.scrollTo(0, 200)")
+            random_delay(400, 700)
+
+            self._session_established = True
+            logger.info("Session Carrefour établie avec succès")
+
+        except Exception as e:
+            logger.warning(f"Erreur établissement session: {e}")
+            # On continue quand même, peut-être que la recherche marchera
+
+    def _use_search_bar(self, query: str) -> bool:
+        """
+        Utilise la barre de recherche de manière naturelle.
+
+        Args:
+            query: Terme à rechercher
+
+        Returns:
+            True si la recherche a été effectuée, False sinon
+        """
+        # Sélecteurs pour la barre de recherche Carrefour
+        search_selectors = [
+            'input[name="q"]',
+            'input.c-base-input__input',
+        ]
+
+        for selector in search_selectors:
+            try:
+                search_input = self.page.query_selector(selector)
+                if search_input and search_input.is_visible():
+                    # Cliquer sur le champ
+                    search_input.click()
+                    random_delay(200, 400)
+
+                    # Effacer le contenu existant
+                    search_input.fill('')
+                    random_delay(100, 200)
+
+                    # Taper le texte caractère par caractère (plus naturel)
+                    for char in query:
+                        search_input.type(char, delay=random.randint(50, 150))
+
+                    random_delay(300, 600)
+
+                    # Appuyer sur Entrée
+                    search_input.press('Enter')
+                    logger.info(f"Recherche via barre de recherche: {query}")
+                    return True
+            except Exception as e:
+                logger.debug(f"Sélecteur {selector} échoué: {e}")
+                continue
+
+        return False
+
     def search_product(self, query: str) -> List[Dict]:
         """
         Recherche des produits sur Carrefour.
@@ -381,21 +503,26 @@ class CarrefourScraper:
         """
         self.found_products = []  # Reset
 
+        # Établir la session si pas encore fait (flow naturel anti-DataDome)
+        self._establish_session()
+
         # Activer l'interception des réponses
         self.page.on("response", self._handle_response)
 
         try:
             # Délai aléatoire entre les recherches (comportement humain)
-            random_delay(300, 800)
+            random_delay(800, 1500)
 
-            # Construire l'URL de recherche
-            search_url = f"{self.SEARCH_URL}?q={query.replace(' ', '+')}"
             logger.info(f"Recherche Carrefour: {query}")
 
-            # Naviguer vers la page
-            self.page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout)
+            # Utiliser la barre de recherche (comportement naturel)
+            if not self._use_search_bar(query):
+                # Fallback: navigation directe vers l'URL de recherche
+                logger.warning("Barre de recherche non trouvée, navigation directe...")
+                search_url = f"{self.SEARCH_URL}?q={query.replace(' ', '+')}"
+                self.page.goto(search_url, wait_until="domcontentloaded", timeout=self.timeout)
 
-            # Accepter les cookies
+            # Accepter les cookies si popup réapparaît
             self._accept_cookies()
 
             # Attendre que les données arrivent (délai variable)
