@@ -12,11 +12,18 @@ Avantages:
 """
 
 import logging
+import random
 import re
+import time
 from typing import List, Dict, Optional
 from playwright.sync_api import sync_playwright, Response
 
 logger = logging.getLogger(__name__)
+
+
+def random_delay(min_ms: int = 500, max_ms: int = 1500) -> None:
+    """Pause aléatoire pour simuler un comportement humain."""
+    time.sleep(random.randint(min_ms, max_ms) / 1000)
 
 # Import conditionnel de playwright-stealth
 try:
@@ -73,27 +80,51 @@ class CarrefourScraper:
         self.close_browser()
 
     def start_browser(self):
-        """Démarre Playwright avec les options anti-détection."""
+        """Démarre Playwright avec les options anti-détection avancées."""
         self.playwright = sync_playwright().start()
+
+        # Arguments Chrome anti-détection avancés
+        chrome_args = [
+            '--disable-blink-features=AutomationControlled',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-infobars',
+            '--disable-extensions',
+            '--disable-gpu',
+            '--disable-setuid-sandbox',
+            f'--window-position={random.randint(0, 100)},{random.randint(0, 100)}',
+        ]
 
         self.browser = self.playwright.chromium.launch(
             headless=self.headless,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox',
-            ]
+            args=chrome_args
         )
+
+        # User-Agent récent (Chrome 131 - Janvier 2026)
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        ]
 
         self.context = self.browser.new_context(
             viewport={'width': 1920, 'height': 1080},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            ),
+            user_agent=random.choice(user_agents),
             locale='fr-FR',
             timezone_id='Europe/Paris',
+            extra_http_headers={
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+            },
         )
 
         self.page = self.context.new_page()
@@ -103,13 +134,51 @@ class CarrefourScraper:
             stealth_sync(self.page)
             logger.info("Playwright-stealth activé")
 
-        # Masquer webdriver
+        # Scripts anti-détection avancés
         self.page.add_init_script("""
+            // Masquer webdriver
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+            delete navigator.__proto__.webdriver;
+
+            // Simuler plugins réalistes
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => {
+                    const plugins = [
+                        {name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer'},
+                        {name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai'},
+                        {name: 'Native Client', filename: 'internal-nacl-plugin'},
+                    ];
+                    plugins.item = (i) => plugins[i];
+                    plugins.namedItem = (n) => plugins.find(p => p.name === n);
+                    plugins.refresh = () => {};
+                    return plugins;
+                }
+            });
+
+            // Languages réalistes
+            Object.defineProperty(navigator, 'languages', {get: () => ['fr-FR', 'fr', 'en-US', 'en']});
+
+            // Hardware réaliste
+            Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+            Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+
+            // Chrome runtime
+            window.chrome = { runtime: {}, loadTimes: function() {}, csi: function() {}, app: {} };
+
+            // Permissions API
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => (
+                parameters.name === 'notifications' ?
+                    Promise.resolve({ state: Notification.permission }) :
+                    originalQuery(parameters)
+            );
+
+            // Écran réaliste
+            Object.defineProperty(screen, 'availWidth', {get: () => 1920});
+            Object.defineProperty(screen, 'availHeight', {get: () => 1040});
         """)
 
-        logger.info("Navigateur Carrefour démarré")
+        logger.info("Navigateur Carrefour démarré (anti-détection avancée)")
 
     def close_browser(self):
         """Ferme proprement le navigateur."""
@@ -316,6 +385,9 @@ class CarrefourScraper:
         self.page.on("response", self._handle_response)
 
         try:
+            # Délai aléatoire entre les recherches (comportement humain)
+            random_delay(300, 800)
+
             # Construire l'URL de recherche
             search_url = f"{self.SEARCH_URL}?q={query.replace(' ', '+')}"
             logger.info(f"Recherche Carrefour: {query}")
@@ -326,12 +398,14 @@ class CarrefourScraper:
             # Accepter les cookies
             self._accept_cookies()
 
-            # Attendre que les données arrivent
-            self.page.wait_for_timeout(3000)
+            # Attendre que les données arrivent (délai variable)
+            self.page.wait_for_timeout(random.randint(2500, 4000))
 
-            # Scroll pour déclencher le chargement lazy
+            # Scroll progressif pour simuler un comportement humain
+            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 3)")
+            random_delay(500, 1000)
             self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
-            self.page.wait_for_timeout(2000)
+            self.page.wait_for_timeout(random.randint(1500, 2500))
 
             # Si on n'a pas trouvé via API, essayer le fallback HTML
             if not self.found_products:
@@ -351,14 +425,20 @@ class CarrefourScraper:
     def _fallback_html_parsing(self) -> List[Dict]:
         """
         Fallback: Parse le HTML si l'interception API échoue.
+        Sélecteurs mis à jour pour Carrefour 2026.
         """
         products = []
 
+        # Sélecteurs mis à jour pour le site Carrefour actuel
         selectors = [
+            '[data-testid="product-card"]',
             'article[data-testid="product"]',
+            'li[data-testid="product-item"]',
             '.product-card',
             '[class*="ProductCard"]',
+            '[class*="product-grid-item"]',
             'article.product',
+            'div[data-product-id]',
         ]
 
         for selector in selectors:
