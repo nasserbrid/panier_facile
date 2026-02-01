@@ -12,13 +12,18 @@ Avantages:
 """
 
 import logging
+import os
 import random
 import re
 import time
+from datetime import datetime
 from typing import List, Dict, Optional
 from playwright.sync_api import sync_playwright, Response
 
 logger = logging.getLogger(__name__)
+
+# Dossier pour les captures de debug (en cas de 0 produits)
+DEBUG_DIR = "/tmp/scraper_debug"
 
 
 def random_delay(min_ms: int = 500, max_ms: int = 1500) -> None:
@@ -192,6 +197,56 @@ class CarrefourScraper:
         if self.playwright:
             self.playwright.stop()
         logger.info("Navigateur Carrefour fermé")
+
+    def _is_blocked_by_datadome(self) -> bool:
+        """Détecte si la page est bloquée par DataDome."""
+        try:
+            # Indicateurs de blocage DataDome
+            page_content = self.page.content().lower()
+            blocked_indicators = [
+                'datadome',
+                'captcha',
+                'robot',
+                'accès refusé',
+                'access denied',
+                'please verify',
+                'vérification',
+                'checking your browser',
+                'just a moment',
+            ]
+            for indicator in blocked_indicators:
+                if indicator in page_content:
+                    logger.warning(f"Blocage DataDome détecté: '{indicator}' trouvé dans la page")
+                    return True
+            return False
+        except Exception as e:
+            logger.debug(f"Erreur vérification DataDome: {e}")
+            return False
+
+    def _save_debug_info(self, query: str, reason: str = "0_products"):
+        """Sauvegarde screenshot et HTML pour debug quand 0 produits trouvés."""
+        try:
+            os.makedirs(DEBUG_DIR, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_query = re.sub(r'[^\w\-]', '_', query)[:30]
+
+            # Screenshot
+            screenshot_path = f"{DEBUG_DIR}/carrefour_{reason}_{safe_query}_{timestamp}.png"
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"Screenshot sauvegardé: {screenshot_path}")
+
+            # HTML content
+            html_path = f"{DEBUG_DIR}/carrefour_{reason}_{safe_query}_{timestamp}.html"
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(self.page.content())
+            logger.info(f"HTML sauvegardé: {html_path}")
+
+            # Info supplémentaires
+            logger.info(f"Debug - URL actuelle: {self.page.url}")
+            logger.info(f"Debug - Titre page: {self.page.title()}")
+
+        except Exception as e:
+            logger.warning(f"Erreur sauvegarde debug: {e}")
 
     def _handle_response(self, response: Response):
         """
@@ -402,9 +457,8 @@ class CarrefourScraper:
         Flow naturel pour éviter la détection DataDome:
         1. Visiter la page d'accueil
         2. Accepter les cookies
-        3. Visiter le catalogue
-        4. Gérer le popup de localisation
-        5. Session prête pour les recherches
+        3. Gérer le popup de localisation
+        4. Rester sur homepage pour utiliser la barre de recherche
         """
         if self._session_established:
             return
@@ -413,12 +467,18 @@ class CarrefourScraper:
 
         try:
             # Étape 1: Page d'accueil
-            logger.info("  1/4 - Visite page d'accueil...")
+            logger.info("  1/3 - Visite page d'accueil...")
             self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=self.timeout)
             random_delay(1500, 2500)
 
+            # Vérifier si bloqué par DataDome dès la homepage
+            if self._is_blocked_by_datadome():
+                logger.error("BLOQUÉ par DataDome dès la page d'accueil!")
+                self._save_debug_info("homepage", "datadome_blocked")
+                return
+
             # Étape 2: Cookies
-            logger.info("  2/4 - Gestion cookies...")
+            logger.info("  2/3 - Gestion cookies...")
             self._accept_cookies()
             random_delay(800, 1200)
 
@@ -426,26 +486,22 @@ class CarrefourScraper:
             self.page.evaluate("window.scrollTo(0, 300)")
             random_delay(500, 800)
 
-            # Étape 3: Page catalogue
-            logger.info("  3/4 - Visite catalogue...")
-            self.page.goto(f"{self.BASE_URL}/catalogue", wait_until="domcontentloaded", timeout=self.timeout)
-            random_delay(1200, 2000)
-
-            # Étape 4: Gérer le popup de localisation
-            logger.info("  4/4 - Gestion popup localisation...")
+            # Étape 3: Gérer le popup de localisation
+            logger.info("  3/3 - Gestion popup localisation...")
             self._handle_location_popup()
             random_delay(500, 1000)
 
-            # Simuler un scroll
-            self.page.evaluate("window.scrollTo(0, 200)")
+            # Remonter en haut pour accéder à la barre de recherche
+            self.page.evaluate("window.scrollTo(0, 0)")
             random_delay(400, 700)
 
             self._session_established = True
             logger.info("Session Carrefour établie avec succès")
+            logger.info(f"  URL actuelle: {self.page.url}")
 
         except Exception as e:
             logger.warning(f"Erreur établissement session: {e}")
-            # On continue quand même, peut-être que la recherche marchera
+            self._save_debug_info("session_error", "session_failed")
 
     def _use_search_bar(self, query: str) -> bool:
         """
@@ -461,34 +517,48 @@ class CarrefourScraper:
         search_selectors = [
             'input[name="q"]',
             'input.c-base-input__input',
+            'input[type="search"]',
+            'input[placeholder*="recherch"]',
+            'input[placeholder*="Recherch"]',
+            '#search-input',
+            '[data-testid="search-input"]',
         ]
+
+        logger.info(f"Recherche de la barre de recherche sur {self.page.url}...")
 
         for selector in search_selectors:
             try:
                 search_input = self.page.query_selector(selector)
-                if search_input and search_input.is_visible():
-                    # Cliquer sur le champ
-                    search_input.click()
-                    random_delay(200, 400)
+                if search_input:
+                    is_visible = search_input.is_visible()
+                    logger.info(f"  Sélecteur '{selector}': trouvé, visible={is_visible}")
+                    if is_visible:
+                        # Cliquer sur le champ
+                        search_input.click()
+                        random_delay(200, 400)
 
-                    # Effacer le contenu existant
-                    search_input.fill('')
-                    random_delay(100, 200)
+                        # Effacer le contenu existant
+                        search_input.fill('')
+                        random_delay(100, 200)
 
-                    # Taper le texte caractère par caractère (plus naturel)
-                    for char in query:
-                        search_input.type(char, delay=random.randint(50, 150))
+                        # Taper le texte caractère par caractère (plus naturel)
+                        for char in query:
+                            search_input.type(char, delay=random.randint(50, 150))
 
-                    random_delay(300, 600)
+                        random_delay(300, 600)
 
-                    # Appuyer sur Entrée
-                    search_input.press('Enter')
-                    logger.info(f"Recherche via barre de recherche: {query}")
-                    return True
+                        # Appuyer sur Entrée
+                        search_input.press('Enter')
+                        logger.info(f"Recherche via barre de recherche: {query}")
+                        return True
+                else:
+                    logger.debug(f"  Sélecteur '{selector}': non trouvé")
             except Exception as e:
-                logger.debug(f"Sélecteur {selector} échoué: {e}")
+                logger.debug(f"  Sélecteur '{selector}' échoué: {e}")
                 continue
 
+        # Si aucune barre trouvée, logger le contenu de la page pour debug
+        logger.warning("Aucune barre de recherche visible trouvée!")
         return False
 
     def search_product(self, query: str) -> List[Dict]:
@@ -538,6 +608,14 @@ class CarrefourScraper:
             if not self.found_products:
                 logger.info("Pas de données API, tentative fallback HTML...")
                 self.found_products = self._fallback_html_parsing()
+
+            # Debug si 0 produits trouvés
+            if not self.found_products:
+                logger.warning(f"0 produits trouvés pour '{query}' - sauvegarde debug...")
+                if self._is_blocked_by_datadome():
+                    self._save_debug_info(query, "datadome_blocked")
+                else:
+                    self._save_debug_info(query, "no_products")
 
             logger.info(f"{len(self.found_products)} produits trouvés pour '{query}'")
             return self.found_products

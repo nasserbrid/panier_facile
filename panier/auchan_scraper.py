@@ -12,14 +12,19 @@ Avantages:
 """
 
 import logging
+import os
 import random
 import re
 import time
+from datetime import datetime
 from typing import List, Dict, Optional
 from urllib.parse import quote_plus
 from playwright.sync_api import sync_playwright, Response
 
 logger = logging.getLogger(__name__)
+
+# Dossier pour les captures de debug (en cas de 0 produits)
+DEBUG_DIR = "/tmp/scraper_debug"
 
 
 def random_delay(min_ms: int = 500, max_ms: int = 1500) -> None:
@@ -195,6 +200,55 @@ class AuchanScraper:
         if self.playwright:
             self.playwright.stop()
         logger.info("Navigateur Auchan fermé")
+
+    def _is_blocked_by_datadome(self) -> bool:
+        """Détecte si la page est bloquée par DataDome."""
+        try:
+            page_content = self.page.content().lower()
+            blocked_indicators = [
+                'datadome',
+                'captcha',
+                'robot',
+                'accès refusé',
+                'access denied',
+                'please verify',
+                'vérification',
+                'checking your browser',
+                'just a moment',
+            ]
+            for indicator in blocked_indicators:
+                if indicator in page_content:
+                    logger.warning(f"Blocage DataDome détecté: '{indicator}' trouvé dans la page")
+                    return True
+            return False
+        except Exception as e:
+            logger.debug(f"Erreur vérification DataDome: {e}")
+            return False
+
+    def _save_debug_info(self, query: str, reason: str = "0_products"):
+        """Sauvegarde screenshot et HTML pour debug quand 0 produits trouvés."""
+        try:
+            os.makedirs(DEBUG_DIR, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_query = re.sub(r'[^\w\-]', '_', query)[:30]
+
+            # Screenshot
+            screenshot_path = f"{DEBUG_DIR}/auchan_{reason}_{safe_query}_{timestamp}.png"
+            self.page.screenshot(path=screenshot_path)
+            logger.info(f"Screenshot sauvegardé: {screenshot_path}")
+
+            # HTML content
+            html_path = f"{DEBUG_DIR}/auchan_{reason}_{safe_query}_{timestamp}.html"
+            with open(html_path, 'w', encoding='utf-8') as f:
+                f.write(self.page.content())
+            logger.info(f"HTML sauvegardé: {html_path}")
+
+            # Info supplémentaires
+            logger.info(f"Debug - URL actuelle: {self.page.url}")
+            logger.info(f"Debug - Titre page: {self.page.title()}")
+
+        except Exception as e:
+            logger.warning(f"Erreur sauvegarde debug: {e}")
 
     def _handle_response(self, response: Response):
         """
@@ -435,6 +489,12 @@ class AuchanScraper:
             self.page.goto(self.BASE_URL, wait_until="domcontentloaded", timeout=self.timeout)
             random_delay(1500, 2500)
 
+            # Vérifier si bloqué par DataDome dès la homepage
+            if self._is_blocked_by_datadome():
+                logger.error("BLOQUÉ par DataDome dès la page d'accueil Auchan!")
+                self._save_debug_info("homepage", "datadome_blocked")
+                return
+
             # Étape 2: Cookies
             logger.info("  2/3 - Gestion cookies...")
             self._accept_cookies()
@@ -449,16 +509,19 @@ class AuchanScraper:
             self._handle_location_popup()
             random_delay(500, 1000)
 
-            # Simuler un autre scroll
+            # Simuler un autre scroll puis remonter
             self.page.evaluate("window.scrollTo(0, 200)")
             random_delay(400, 700)
+            self.page.evaluate("window.scrollTo(0, 0)")
+            random_delay(300, 500)
 
             self._session_established = True
             logger.info("Session Auchan établie avec succès")
+            logger.info(f"  URL actuelle: {self.page.url}")
 
         except Exception as e:
             logger.warning(f"Erreur établissement session: {e}")
-            # On continue quand même, peut-être que la recherche marchera
+            self._save_debug_info("session_error", "session_failed")
 
     def select_store(self, postal_code: str = None, store_name: str = None) -> bool:
         """
@@ -612,6 +675,14 @@ class AuchanScraper:
             if not self.found_products:
                 logger.info("Pas de données API, tentative fallback HTML...")
                 self.found_products = self._fallback_html_parsing()
+
+            # Debug si 0 produits trouvés
+            if not self.found_products:
+                logger.warning(f"0 produits trouvés pour '{query}' - sauvegarde debug...")
+                if self._is_blocked_by_datadome():
+                    self._save_debug_info(query, "datadome_blocked")
+                else:
+                    self._save_debug_info(query, "no_products")
 
             logger.info(f"{len(self.found_products)} produits trouvés pour '{query}'")
             return self.found_products
