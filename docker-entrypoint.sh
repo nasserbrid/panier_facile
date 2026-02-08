@@ -7,13 +7,14 @@ set -e
 case "${APP_TYPE:-web}" in
   web)
     echo "Starting Django Web Server with Gunicorn..."
-    # Fake les migrations initiales (tables existent déjà en base)
+    # Fake TOUTES les migrations supermarkets (tables gérées manuellement ci-dessous)
     python manage.py migrate contact 0001_initial --fake || true
     python manage.py migrate supermarkets 0001_initial --fake || true
     python manage.py migrate supermarkets 0002_remove_old_add_pricecomparison --fake || true
+    python manage.py migrate supermarkets 0003_replace_auchan_with_aldi --fake || true
     python manage.py migrate
 
-    # Créer les tables ProductMatch si elles n'existent pas (migration fakée mais tables absentes)
+    # Gérer les tables et colonnes manuellement (migrations fakées)
     python manage.py shell -c "
 from django.db import connection
 cursor = connection.cursor()
@@ -51,7 +52,41 @@ CREATE TABLE IF NOT EXISTS supermarkets_aldiproductmatch (
 );
 \"\"\")
 
-print('Tables ProductMatch vérifiées/créées.')
+# Créer supermarkets_pricecomparison si absente
+cursor.execute(\"\"\"
+CREATE TABLE IF NOT EXISTS supermarkets_pricecomparison (
+    id BIGSERIAL PRIMARY KEY,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    carrefour_total DECIMAL(10, 2),
+    aldi_total DECIMAL(10, 2),
+    carrefour_found INTEGER DEFAULT 0,
+    aldi_found INTEGER DEFAULT 0,
+    total_ingredients INTEGER DEFAULT 0,
+    cheapest_supermarket VARCHAR(20) DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    user_id BIGINT NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+    panier_id BIGINT NOT NULL REFERENCES panier_panier(id) ON DELETE CASCADE
+);
+\"\"\")
+
+# Supprimer les anciennes tables si elles existent
+cursor.execute(\"DROP TABLE IF EXISTS panier_intermarcheproductmatch CASCADE;\")
+cursor.execute(\"DROP TABLE IF EXISTS panier_auchanproductmatch CASCADE;\")
+
+# Renommer colonnes auchan -> aldi dans PriceComparison (si pas encore fait)
+cursor.execute(\"\"\"
+DO \$\$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='supermarkets_pricecomparison' AND column_name='auchan_total') THEN
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_total TO aldi_total;
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_found TO aldi_found;
+    END IF;
+END \$\$;
+\"\"\")
+
+print('Tables et colonnes vérifiées/mises à jour.')
 " || true
     exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers=2 --threads=4 --timeout=120 --access-logfile - --error-logfile -
     ;;
