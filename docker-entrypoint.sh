@@ -19,6 +19,22 @@ case "${APP_TYPE:-web}" in
 from django.db import connection
 cursor = connection.cursor()
 
+# Créer panier_customerreview si absente (migration contact fakée)
+cursor.execute(\"\"\"
+CREATE TABLE IF NOT EXISTS panier_customerreview (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) DEFAULT '',
+    email VARCHAR(254) DEFAULT '',
+    rating INTEGER NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    review TEXT NOT NULL,
+    would_recommend BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_approved BOOLEAN DEFAULT FALSE,
+    is_featured BOOLEAN DEFAULT FALSE
+);
+\"\"\")
+
 # Créer panier_carrefourproductmatch si absente
 cursor.execute(\"\"\"
 CREATE TABLE IF NOT EXISTS panier_carrefourproductmatch (
