@@ -34,7 +34,7 @@ def compare_prices(request, panier_id):
     GET: Affiche la page avec géolocalisation
     POST: Lit le cache, crée la comparaison et affiche les résultats immédiatement
     """
-    from supermarkets.models import PriceComparison, CarrefourProductMatch, AuchanProductMatch
+    from supermarkets.models import PriceComparison, CarrefourProductMatch, AldiProductMatch
 
     panier = get_object_or_404(Panier, id=panier_id)
 
@@ -123,8 +123,8 @@ def compare_prices(request, panier_id):
 
         carrefour_total = Decimal('0.00')
         carrefour_found = 0
-        auchan_total = Decimal('0.00')
-        auchan_found = 0
+        aldi_total = Decimal('0.00')
+        aldi_found = 0
         missing_ingredients = []
 
         comparison_data = []
@@ -139,38 +139,38 @@ def compare_prices(request, panier_id):
                 last_updated__gte=timezone.now() - cache_duration
             ).first()
 
-            # Chercher dans le cache Auchan
-            auchan_match = AuchanProductMatch.objects.filter(
+            # Chercher dans le cache Aldi
+            aldi_match = AldiProductMatch.objects.filter(
                 ingredient=ingredient,
                 store_id=store_id,
                 last_updated__gte=timezone.now() - cache_duration
             ).first()
 
             carrefour_price = None
-            auchan_price = None
+            aldi_price = None
 
             if carrefour_match and carrefour_match.price:
                 carrefour_price = Decimal(str(carrefour_match.price))
                 carrefour_total += carrefour_price
                 carrefour_found += 1
 
-            if auchan_match and auchan_match.price:
-                auchan_price = Decimal(str(auchan_match.price))
-                auchan_total += auchan_price
-                auchan_found += 1
+            if aldi_match and aldi_match.price:
+                aldi_price = Decimal(str(aldi_match.price))
+                aldi_total += aldi_price
+                aldi_found += 1
 
             # Tracker les ingrédients manquants
-            if not carrefour_match or not auchan_match:
+            if not carrefour_match or not aldi_match:
                 missing_ingredients.append(ingredient.nom)
 
             # Déterminer le moins cher
             cheapest = None
-            if carrefour_price and auchan_price:
-                cheapest = 'carrefour' if carrefour_price <= auchan_price else 'auchan'
+            if carrefour_price and aldi_price:
+                cheapest = 'carrefour' if carrefour_price <= aldi_price else 'aldi'
             elif carrefour_price:
                 cheapest = 'carrefour'
-            elif auchan_price:
-                cheapest = 'auchan'
+            elif aldi_price:
+                cheapest = 'aldi'
 
             comparison_data.append({
                 'ingredient': ingredient,
@@ -179,10 +179,10 @@ def compare_prices(request, panier_id):
                     'price': carrefour_price,
                     'name': carrefour_match.product_name if carrefour_match else None,
                 },
-                'auchan': {
-                    'match': auchan_match,
-                    'price': auchan_price,
-                    'name': auchan_match.product_name if auchan_match else None,
+                'aldi': {
+                    'match': aldi_match,
+                    'price': aldi_price,
+                    'name': aldi_match.product_name if aldi_match else None,
                 },
                 'cheapest': cheapest,
             })
@@ -203,21 +203,21 @@ def compare_prices(request, panier_id):
             latitude=user_location['latitude'],
             longitude=user_location['longitude'],
             carrefour_total=carrefour_total if carrefour_found > 0 else None,
-            auchan_total=auchan_total if auchan_found > 0 else None,
+            aldi_total=aldi_total if aldi_found > 0 else None,
             carrefour_found=carrefour_found,
-            auchan_found=auchan_found,
+            aldi_found=aldi_found,
             total_ingredients=total_ingredients,
         )
 
         logger.info(
             f"[Cache Proactif] Comparaison instantanée créée: "
             f"Carrefour={carrefour_total}EUR ({carrefour_found}/{total_ingredients}), "
-            f"Auchan={auchan_total}EUR ({auchan_found}/{total_ingredients})"
+            f"Aldi={aldi_total}EUR ({aldi_found}/{total_ingredients})"
         )
 
         # Calculer les produits manquants par supermarché
         missing_carrefour = [d['ingredient'].nom for d in comparison_data if not d['carrefour']['match']]
-        missing_auchan = [d['ingredient'].nom for d in comparison_data if not d['auchan']['match']]
+        missing_aldi = [d['ingredient'].nom for d in comparison_data if not d['aldi']['match']]
 
         # Afficher directement les résultats
         context = {
@@ -225,7 +225,7 @@ def compare_prices(request, panier_id):
             'comparison': comparison,
             'comparison_data': comparison_data,
             'missing_carrefour': missing_carrefour,
-            'missing_auchan': missing_auchan,
+            'missing_aldi': missing_aldi,
             'savings': comparison.savings,
             'is_instant': True,  # Indique que c'est une comparaison instantanée
             'missing_count': len(missing_ingredients),
@@ -234,7 +234,7 @@ def compare_prices(request, panier_id):
         return render(request, 'supermarkets/comparison_results.html', context)
 
     # GET: Afficher la page de démarrage
-    nearby_stores = {'carrefour': [], 'auchan': []}
+    nearby_stores = {'carrefour': [], 'aldi': []}
 
     if user_location:
         try:
@@ -247,7 +247,7 @@ def compare_prices(request, panier_id):
                 radius=5000
             )[:5]
 
-            nearby_stores['auchan'] = overpass.find_auchan_stores(
+            nearby_stores['aldi'] = overpass.find_aldi_stores(
                 latitude=user_location['latitude'],
                 longitude=user_location['longitude'],
                 radius=5000
@@ -277,9 +277,9 @@ def _get_cache_coverage(panier):
     Calcule le pourcentage de couverture du cache pour un panier.
 
     Returns:
-        dict: {carrefour: %, auchan: %, total_ingredients: int}
+        dict: {carrefour: %, aldi: %, total_ingredients: int}
     """
-    from supermarkets.models import CarrefourProductMatch, AuchanProductMatch
+    from supermarkets.models import CarrefourProductMatch, AldiProductMatch
 
     cache_duration = timedelta(hours=24)
     store_id = 'scraping'
@@ -299,10 +299,10 @@ def _get_cache_coverage(panier):
 
     total = len(ingredient_names)
     if total == 0:
-        return {'carrefour': 0, 'auchan': 0, 'total_ingredients': 0}
+        return {'carrefour': 0, 'aldi': 0, 'total_ingredients': 0}
 
     carrefour_cached = 0
-    auchan_cached = 0
+    aldi_cached = 0
 
     for name in ingredient_names:
         try:
@@ -315,18 +315,18 @@ def _get_cache_coverage(panier):
             ).exists():
                 carrefour_cached += 1
 
-            if AuchanProductMatch.objects.filter(
+            if AldiProductMatch.objects.filter(
                 ingredient=ingredient,
                 store_id=store_id,
                 last_updated__gte=timezone.now() - cache_duration
             ).exists():
-                auchan_cached += 1
+                aldi_cached += 1
         except Ingredient.DoesNotExist:
             pass
 
     return {
         'carrefour': int((carrefour_cached / total) * 100) if total > 0 else 0,
-        'auchan': int((auchan_cached / total) * 100) if total > 0 else 0,
+        'aldi': int((aldi_cached / total) * 100) if total > 0 else 0,
         'total_ingredients': total,
     }
 
@@ -422,7 +422,7 @@ def comparison_results(request, panier_id, comparison_id):
     - Tableau comparatif par ingrédient
     - Produits non trouvés
     """
-    from supermarkets.models import PriceComparison, CarrefourProductMatch, AuchanProductMatch
+    from supermarkets.models import PriceComparison, CarrefourProductMatch, AldiProductMatch
 
     panier = get_object_or_404(Panier, id=panier_id)
     comparison = get_object_or_404(PriceComparison, id=comparison_id, panier=panier)
@@ -437,7 +437,7 @@ def comparison_results(request, panier_id, comparison_id):
 
     comparison_data = []
     missing_carrefour = []
-    missing_auchan = []
+    missing_aldi = []
 
     for ing_panier in ingredient_paniers:
         ingredient = ing_panier.ingredient
@@ -448,22 +448,22 @@ def comparison_results(request, panier_id, comparison_id):
             store_id='scraping'
         ).first()
 
-        auchan_match = AuchanProductMatch.objects.filter(
+        aldi_match = AldiProductMatch.objects.filter(
             ingredient=ingredient,
             store_id='scraping'
         ).first()
 
         carrefour_price = carrefour_match.price if carrefour_match and carrefour_match.price else None
-        auchan_price = auchan_match.price if auchan_match and auchan_match.price else None
+        aldi_price = aldi_match.price if aldi_match and aldi_match.price else None
 
         # Déterminer le moins cher pour cet ingrédient
         cheapest = None
-        if carrefour_price and auchan_price:
-            cheapest = 'carrefour' if carrefour_price <= auchan_price else 'auchan'
+        if carrefour_price and aldi_price:
+            cheapest = 'carrefour' if carrefour_price <= aldi_price else 'aldi'
         elif carrefour_price:
             cheapest = 'carrefour'
-        elif auchan_price:
-            cheapest = 'auchan'
+        elif aldi_price:
+            cheapest = 'aldi'
 
         comparison_data.append({
             'ingredient': ingredient,
@@ -472,25 +472,25 @@ def comparison_results(request, panier_id, comparison_id):
                 'price': carrefour_price,
                 'name': carrefour_match.product_name if carrefour_match else None,
             },
-            'auchan': {
-                'match': auchan_match,
-                'price': auchan_price,
-                'name': auchan_match.product_name if auchan_match else None,
+            'aldi': {
+                'match': aldi_match,
+                'price': aldi_price,
+                'name': aldi_match.product_name if aldi_match else None,
             },
             'cheapest': cheapest,
         })
 
         if not carrefour_match or not carrefour_match.product_name:
             missing_carrefour.append(ingredient.nom)
-        if not auchan_match or not auchan_match.product_name:
-            missing_auchan.append(ingredient.nom)
+        if not aldi_match or not aldi_match.product_name:
+            missing_aldi.append(ingredient.nom)
 
     context = {
         'panier': panier,
         'comparison': comparison,
         'comparison_data': comparison_data,
         'missing_carrefour': missing_carrefour,
-        'missing_auchan': missing_auchan,
+        'missing_aldi': missing_aldi,
         'savings': comparison.savings,
     }
 

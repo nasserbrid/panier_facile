@@ -5,11 +5,11 @@ Exporte les modèles ProductMatch pour le cache des prix
 et le modèle PriceComparison pour les comparaisons.
 """
 from .carrefour import CarrefourProductMatch
-from .auchan import AuchanProductMatch
+from .aldi import AldiProductMatch
 from .comparison import PriceComparison
 
 __all__ = [
     'CarrefourProductMatch',
-    'AuchanProductMatch',
+    'AldiProductMatch',
     'PriceComparison',
 ]

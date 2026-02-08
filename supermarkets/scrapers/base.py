@@ -1,276 +1,367 @@
 """
-Base abstraite pour tous les scrapers de Drive (Intermarché, Carrefour, Auchan, etc.)
+Base scraper avec Playwright + anti-détection.
 
-Design Pattern: Template Method + Strategy
-- Template Method: define le flow commun (start_browser, search, extract, close)
-- Strategy: chaque enseigne implémente sa propre logique de scraping
+Toute la logique commune (navigateur, stealth, cookies, debug)
+est factorisée ici. Les scrapers concrets n'implémentent que
+la partie spécifique à chaque enseigne.
 """
 
-from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
 import logging
-from playwright.sync_api import sync_playwright, Browser, Page, BrowserContext
+import os
+import random
+import re
+import time
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from playwright.sync_api import Response, sync_playwright
 
 logger = logging.getLogger(__name__)
 
+# Import conditionnel de playwright-stealth
+try:
+    from playwright_stealth import stealth_sync
+    STEALTH_AVAILABLE = True
+except ImportError:
+    STEALTH_AVAILABLE = False
+    logger.warning("playwright-stealth non installé")
 
-class BaseDriveScraper(ABC):
-    """
-    Classe abstraite de base pour tous les scrapers Drive.
+DEBUG_DIR = "/tmp/scraper_debug"
 
-    Chaque enseigne (Carrefour, Intermarché, Auchan, etc.) doit hériter
-    de cette classe et implémenter les méthodes abstraites.
-    """
 
-    # À surcharger par les classes filles
-    RETAILER_NAME = "Generic"
-    BASE_URL = ""
-    SEARCH_URL = ""
+def random_delay(min_ms: int = 500, max_ms: int = 1500) -> None:
+    time.sleep(random.randint(min_ms, max_ms) / 1000)
 
-    def __init__(self, headless: bool = True, timeout: int = 20000):
-        """
-        Initialise le scraper
 
-        Args:
-            headless: Si True, le navigateur s'exécute sans interface graphique
-            timeout: Temps d'attente max pour les éléments (millisecondes)
-        """
+class BaseScraper(ABC):
+    """Classe abstraite pour les scrapers de supermarchés."""
+
+    # À définir dans les sous-classes
+    RETAILER_NAME: str = ""
+    BASE_URL: str = ""
+    SEARCH_URL: str = ""
+    API_PATTERNS: List[str] = []
+
+    def __init__(self, headless: bool = True, timeout: int = 30000):
         self.headless = headless
         self.timeout = timeout
+        self.found_products: List[Dict] = []
         self.playwright = None
         self.browser = None
         self.context = None
         self.page = None
+        self._session_established = False
 
     def __enter__(self):
-        """Context manager: démarre le navigateur"""
-        self.start_browser()
+        self._start_browser()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager: ferme le navigateur"""
-        self.close_browser()
+        self._close_browser()
 
-    def start_browser(self):
-        """
-        Démarre Playwright avec configuration anti-détection.
-        Template method qui peut être surchargée pour des besoins spécifiques.
-        """
-        try:
-            self.playwright = sync_playwright().start()
+    # ── Navigateur ──────────────────────────────────────────────
 
-            # Lancer Chromium avec des options anti-détection
-            self.browser = self.playwright.chromium.launch(
-                headless=self.headless,
-                args=[
-                    '--disable-blink-features=AutomationControlled',
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                ]
-            )
+    def _start_browser(self):
+        self.playwright = sync_playwright().start()
 
-            # Créer un contexte avec un user agent réaliste
-            self.context = self.browser.new_context(
-                viewport={'width': 1920, 'height': 1080},
-                user_agent=self._get_user_agent(),
-                locale='fr-FR',
-                timezone_id='Europe/Paris',
-                extra_http_headers={
-                    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+        chrome_args = [
+            '--disable-blink-features=AutomationControlled',
+            '--disable-dev-shm-usage',
+            '--no-sandbox',
+            '--disable-infobars',
+            '--disable-extensions',
+            '--disable-gpu',
+            '--disable-setuid-sandbox',
+            f'--window-position={random.randint(0, 100)},{random.randint(0, 100)}',
+        ]
+
+        self.browser = self.playwright.chromium.launch(
+            headless=self.headless,
+            args=chrome_args,
+        )
+
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        ]
+
+        self.context = self.browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            user_agent=random.choice(user_agents),
+            locale='fr-FR',
+            timezone_id='Europe/Paris',
+            extra_http_headers={
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,'
+                          'image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Cache-Control': 'no-cache',
+                'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", '
+                             '"Not_A Brand";v="24"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
+            },
+        )
+
+        self.page = self.context.new_page()
+
+        if STEALTH_AVAILABLE:
+            stealth_sync(self.page)
+
+        self.page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            delete navigator.__proto__.webdriver;
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => {
+                    const p = [
+                        {name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer'},
+                        {name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai'},
+                        {name: 'Native Client', filename: 'internal-nacl-plugin'},
+                    ];
+                    p.item = i => p[i];
+                    p.namedItem = n => p.find(x => x.name === n);
+                    p.refresh = () => {};
+                    return p;
                 }
-            )
+            });
+            Object.defineProperty(navigator, 'languages', {get: () => ['fr-FR','fr','en-US','en']});
+            Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+            Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+            window.chrome = {runtime:{}, loadTimes:function(){}, csi:function(){}, app:{}};
+            const oq = window.navigator.permissions.query;
+            window.navigator.permissions.query = p =>
+                p.name === 'notifications'
+                    ? Promise.resolve({state: Notification.permission})
+                    : oq(p);
+            Object.defineProperty(screen, 'availWidth', {get: () => 1920});
+            Object.defineProperty(screen, 'availHeight', {get: () => 1040});
+        """)
 
-            # Masquer les propriétés webdriver
-            self.context.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-                delete navigator.__proto__.webdriver;
+        logger.info(f"Navigateur {self.RETAILER_NAME} démarré")
 
-                Object.defineProperty(navigator, 'plugins', {
-                    get: () => [1, 2, 3, 4, 5]
-                });
-
-                Object.defineProperty(navigator, 'languages', {
-                    get: () => ['fr-FR', 'fr', 'en-US', 'en']
-                });
-
-                window.chrome = {
-                    runtime: {}
-                };
-            """)
-
-            # Créer une page
-            self.page = self.context.new_page()
-            self.page.set_default_timeout(self.timeout)
-
-            logger.info(f"Playwright démarré pour {self.RETAILER_NAME} (mode anti-détection)")
-
-        except Exception as e:
-            logger.error(f"Erreur lors du démarrage de Playwright pour {self.RETAILER_NAME}: {e}")
-            raise
-
-    def close_browser(self):
-        """Ferme le navigateur Playwright"""
-        try:
-            if self.page:
-                self.page.close()
-            if self.context:
-                self.context.close()
-            if self.browser:
-                self.browser.close()
-            if self.playwright:
-                self.playwright.stop()
-            logger.info(f"Playwright {self.RETAILER_NAME} fermé")
-        except Exception as e:
-            logger.error(f"Erreur lors de la fermeture de Playwright {self.RETAILER_NAME}: {e}")
-
-    def _get_user_agent(self) -> str:
-        """
-        Retourne le user agent à utiliser.
-        Peut être surchargé par les classes filles si besoin.
-        """
-        return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-
-    @abstractmethod
-    def _get_search_url(self, query: str) -> str:
-        """
-        Construit l'URL de recherche pour une requête donnée.
-
-        Args:
-            query: Terme de recherche
-
-        Returns:
-            URL complète de recherche
-        """
-        pass
-
-    @abstractmethod
-    def _get_product_selectors(self) -> List[str]:
-        """
-        Retourne la liste des sélecteurs CSS possibles pour les produits.
-
-        Returns:
-            Liste de sélecteurs CSS à tester
-        """
-        pass
-
-    @abstractmethod
-    def _handle_cookie_popup(self):
-        """
-        Gère le popup de cookies spécifique à l'enseigne.
-        """
-        pass
-
-    @abstractmethod
-    def _extract_product_data(self, element) -> Optional[Dict]:
-        """
-        Extrait les données d'un élément produit.
-
-        Args:
-            element: ElementHandle Playwright représentant un produit
-
-        Returns:
-            Dictionnaire avec les données du produit ou None
-        """
-        pass
-
-    def search_product(self, query: str) -> List[Dict]:
-        """
-        Recherche un produit sur l'enseigne.
-        Template method qui orchestre le flow de recherche.
-
-        Args:
-            query: Terme de recherche (nom de l'ingrédient)
-
-        Returns:
-            Liste de dictionnaires contenant les informations produits
-        """
-        if not self.page:
-            self.start_browser()
-
-        products = []
-
-        try:
-            # Construire l'URL de recherche
-            search_url = self._get_search_url(query)
-            logger.info(f"Recherche {self.RETAILER_NAME} de '{query}' sur {search_url}")
-
-            # Naviguer vers la page de recherche
-            self.page.goto(search_url, wait_until='domcontentloaded')
-
-            # Attendre de façon aléatoire pour simuler comportement humain
-            import random
-            import time
-            random_wait = random.uniform(1.5, 3)
-            time.sleep(random_wait)
-
-            # Gérer le popup cookies si présent
-            self._handle_cookie_popup()
-            time.sleep(random.uniform(0.5, 1))
-
-            logger.info(f"URL actuelle: {self.page.url}")
-            logger.info(f"Titre: {self.page.title()}")
-
-            # Sélecteurs possibles pour les produits
-            possible_selectors = self._get_product_selectors()
-
-            product_elements = None
-            for selector in possible_selectors:
+    def _close_browser(self):
+        for obj in (self.page, self.context, self.browser):
+            if obj:
                 try:
-                    self.page.wait_for_selector(selector, timeout=8000)
-                    product_elements = self.page.query_selector_all(selector)
-                    if product_elements and len(product_elements) > 0:
-                        logger.info(f"Sélecteur '{selector}' trouvé - {len(product_elements)} produits")
-                        break
+                    obj.close()
                 except Exception:
-                    continue
+                    pass
+        if self.playwright:
+            try:
+                self.playwright.stop()
+            except Exception:
+                pass
+        logger.info(f"Navigateur {self.RETAILER_NAME} fermé")
 
-            if not product_elements:
-                logger.warning(f"Aucun produit {self.RETAILER_NAME} trouvé pour '{query}'")
-                return products
+    # ── Anti-bot / debug ────────────────────────────────────────
 
-            # Extraire les données (limiter à 10)
-            for element in product_elements[:10]:
-                try:
-                    product_data = self._extract_product_data(element)
-                    if product_data:
-                        # Ajouter la source (nom de l'enseigne)
-                        product_data['source'] = f'{self.RETAILER_NAME.lower()}_playwright'
-                        products.append(product_data)
-                except Exception as e:
-                    logger.error(f"Erreur extraction produit {self.RETAILER_NAME}: {e}")
-                    continue
+    def _is_blocked(self) -> bool:
+        try:
+            content = self.page.content().lower()
+            indicators = [
+                'datadome', 'captcha', 'robot', 'accès refusé',
+                'access denied', 'please verify', 'checking your browser',
+            ]
+            for ind in indicators:
+                if ind in content:
+                    logger.warning(f"[{self.RETAILER_NAME}] Blocage détecté: '{ind}'")
+                    return True
+            return False
+        except Exception:
+            return False
 
-            logger.info(f"{len(products)} produits {self.RETAILER_NAME} extraits pour '{query}'")
+    def _save_debug(self, query: str, reason: str = "no_products"):
+        try:
+            os.makedirs(DEBUG_DIR, exist_ok=True)
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            tag = re.sub(r'[^\w\-]', '_', query)[:30]
+            prefix = f"{DEBUG_DIR}/{self.RETAILER_NAME.lower()}_{reason}_{tag}_{ts}"
+
+            self.page.screenshot(path=f"{prefix}.png")
+            with open(f"{prefix}.html", 'w', encoding='utf-8') as f:
+                f.write(self.page.content())
+
+            logger.info(f"Debug sauvegardé: {prefix} | URL: {self.page.url}")
+        except Exception as e:
+            logger.warning(f"Erreur sauvegarde debug: {e}")
+
+    # ── Popups communs ──────────────────────────────────────────
+
+    def _accept_cookies(self):
+        selectors = [
+            '#didomi-notice-agree-button',
+            'button[id*="accept"]',
+            '#onetrust-accept-btn-handler',
+            'button:has-text("Accepter")',
+            'button:has-text("Tout accepter")',
+        ]
+        for sel in selectors:
+            try:
+                btn = self.page.query_selector(sel)
+                if btn and btn.is_visible():
+                    btn.click()
+                    logger.info(f"[{self.RETAILER_NAME}] Cookies acceptés")
+                    self.page.wait_for_timeout(1000)
+                    return
+            except Exception:
+                continue
+
+    def _dismiss_popups(self):
+        selectors = [
+            'button:has-text("Plus tard")',
+            'button:has-text("Non merci")',
+            'button:has-text("Fermer")',
+            '[data-testid="close-modal"]',
+            '[aria-label="Fermer"]',
+            'button.close',
+        ]
+        for sel in selectors:
+            try:
+                btn = self.page.query_selector(sel)
+                if btn and btn.is_visible():
+                    btn.click()
+                    logger.info(f"[{self.RETAILER_NAME}] Popup fermé")
+                    self.page.wait_for_timeout(500)
+                    return
+            except Exception:
+                continue
+
+    # ── Session ─────────────────────────────────────────────────
+
+    def _establish_session(self):
+        if self._session_established:
+            return
+
+        logger.info(f"[{self.RETAILER_NAME}] Établissement session...")
+
+        try:
+            self.page.goto(self.BASE_URL, wait_until="domcontentloaded",
+                           timeout=self.timeout)
+            random_delay(1500, 2500)
+
+            if self._is_blocked():
+                logger.error(f"[{self.RETAILER_NAME}] Bloqué dès la homepage!")
+                self._save_debug("homepage", "blocked")
+                return
+
+            self._accept_cookies()
+            random_delay(800, 1200)
+
+            self.page.evaluate("window.scrollTo(0, 300)")
+            random_delay(500, 800)
+
+            self._dismiss_popups()
+            random_delay(500, 1000)
+
+            self.page.evaluate("window.scrollTo(0, 0)")
+            random_delay(400, 700)
+
+            self._session_established = True
+            logger.info(f"[{self.RETAILER_NAME}] Session établie - {self.page.url}")
 
         except Exception as e:
-            logger.error(f"Erreur recherche {self.RETAILER_NAME} '{query}': {e}")
+            logger.warning(f"[{self.RETAILER_NAME}] Erreur session: {e}")
+            self._save_debug("session", "error")
 
-        return products
+    # ── Interception API ────────────────────────────────────────
 
-    def _parse_price(self, price_text: str) -> Optional[float]:
-        """
-        Parse une chaîne de prix en float.
-        Logique commune à toutes les enseignes (peut être surchargée).
-
-        Args:
-            price_text: Texte du prix (ex: "3,99 €", "3.99€")
-
-        Returns:
-            Prix en float ou None
-        """
+    def _handle_response(self, response: Response):
+        url = response.url
+        if not any(re.search(p, url, re.IGNORECASE) for p in self.API_PATTERNS):
+            return
+        if response.status != 200:
+            return
         try:
-            import re
-            # Supprimer €, espaces, etc.
-            clean_price = price_text.replace('€', '').replace(' ', '').strip()
-            # Remplacer virgule par point
-            clean_price = clean_price.replace(',', '.')
-            # Extraire seulement les chiffres et le point
-            match = re.search(r'(\d+\.?\d*)', clean_price)
-            if match:
-                return float(match.group(1))
+            if 'application/json' not in response.headers.get('content-type', ''):
+                return
+            data = response.json()
+            products = self._extract_products_from_json(data)
+            if products:
+                self.found_products.extend(products)
+                logger.info(f"[{self.RETAILER_NAME}] Intercepté {len(products)} "
+                            f"produits via {url[:80]}")
+        except Exception as e:
+            logger.debug(f"[{self.RETAILER_NAME}] Erreur parsing réponse: {e}")
+
+    # ── Parse prix ──────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_price(text: str) -> Optional[float]:
+        if not text:
             return None
-        except (ValueError, AttributeError):
-            logger.warning(f"Impossible de parser le prix {self.RETAILER_NAME}: {price_text}")
+        try:
+            cleaned = text.replace('€', '').replace(',', '.').strip()
+            m = re.search(r'(\d+\.?\d*)', cleaned)
+            return float(m.group(1)) if m else None
+        except Exception:
             return None
+
+    # ── Interface publique ──────────────────────────────────────
+
+    def search(self, query: str) -> List[Dict]:
+        """
+        Recherche un produit et retourne les résultats.
+
+        Chaque résultat est un dict avec les clés unifiées :
+            product_name, price, product_url, image_url, brand, is_available
+        """
+        self.found_products = []
+        self._establish_session()
+
+        self.page.on("response", self._handle_response)
+        try:
+            random_delay(800, 1500)
+            logger.info(f"[{self.RETAILER_NAME}] Recherche: {query}")
+
+            self._perform_search(query)
+
+            self._accept_cookies()
+            self.page.wait_for_timeout(random.randint(2500, 4000))
+
+            # Scroll humain
+            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 3)")
+            random_delay(500, 1000)
+            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+            self.page.wait_for_timeout(random.randint(1500, 2500))
+
+            # Fallback HTML si pas de données API
+            if not self.found_products:
+                logger.info(f"[{self.RETAILER_NAME}] Pas de données API, fallback HTML...")
+                self.found_products = self._fallback_html_parsing()
+
+            if not self.found_products:
+                reason = "blocked" if self._is_blocked() else "no_products"
+                self._save_debug(query, reason)
+
+            logger.info(f"[{self.RETAILER_NAME}] {len(self.found_products)} produits "
+                        f"trouvés pour '{query}'")
+            return self.found_products
+
+        except Exception as e:
+            logger.error(f"[{self.RETAILER_NAME}] Erreur recherche '{query}': {e}")
+            return []
+        finally:
+            self.page.remove_listener("response", self._handle_response)
+
+    # ── Méthodes abstraites ─────────────────────────────────────
+
+    @abstractmethod
+    def _perform_search(self, query: str) -> None:
+        """Exécute la recherche (navigation URL ou barre de recherche)."""
+
+    @abstractmethod
+    def _extract_products_from_json(self, data: dict) -> List[Dict]:
+        """Extrait les produits d'une réponse API JSON."""
+
+    @abstractmethod
+    def _fallback_html_parsing(self) -> List[Dict]:
+        """Parse le HTML quand l'interception API échoue."""

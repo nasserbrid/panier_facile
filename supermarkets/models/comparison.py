@@ -39,12 +39,12 @@ class PriceComparison(models.Model):
         blank=True,
         help_text="Total estimé chez Carrefour"
     )
-    auchan_total = models.DecimalField(
+    aldi_total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Total estimé chez Auchan"
+        help_text="Total estimé chez Aldi"
     )
 
     # Compteurs de produits trouvés
@@ -52,9 +52,9 @@ class PriceComparison(models.Model):
         default=0,
         help_text="Nombre de produits trouvés chez Carrefour"
     )
-    auchan_found = models.IntegerField(
+    aldi_found = models.IntegerField(
         default=0,
-        help_text="Nombre de produits trouvés chez Auchan"
+        help_text="Nombre de produits trouvés chez Aldi"
     )
     total_ingredients = models.IntegerField(
         default=0,
@@ -65,7 +65,7 @@ class PriceComparison(models.Model):
     cheapest_supermarket = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Nom du supermarché le moins cher (carrefour, auchan)"
+        help_text="Nom du supermarché le moins cher (carrefour, aldi)"
     )
 
     # Timestamps
@@ -88,8 +88,8 @@ class PriceComparison(models.Model):
         totals = {}
         if self.carrefour_total is not None:
             totals['carrefour'] = self.carrefour_total
-        if self.auchan_total is not None:
-            totals['auchan'] = self.auchan_total
+        if self.aldi_total is not None:
+            totals['aldi'] = self.aldi_total
 
         if totals:
             self.cheapest_supermarket = min(totals, key=totals.get)
@@ -107,8 +107,8 @@ class PriceComparison(models.Model):
         totals = []
         if self.carrefour_total is not None:
             totals.append(self.carrefour_total)
-        if self.auchan_total is not None:
-            totals.append(self.auchan_total)
+        if self.aldi_total is not None:
+            totals.append(self.aldi_total)
 
         if len(totals) >= 2:
             return max(totals) - min(totals)

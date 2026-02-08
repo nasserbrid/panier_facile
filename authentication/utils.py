@@ -132,14 +132,14 @@ class OverpassAPI:
         return cls._find_retailer_via_nominatim('Carrefour', latitude, longitude, radius)
 
     @classmethod
-    def find_auchan_stores(
+    def find_aldi_stores(
         cls,
         latitude: float,
         longitude: float,
         radius: int = 5000
     ) -> List[Dict]:
         """
-        Recherche spécifiquement les magasins Auchan à proximité.
+        Recherche spécifiquement les magasins Aldi à proximité.
 
         Args:
             latitude: Latitude du point de recherche
@@ -147,9 +147,9 @@ class OverpassAPI:
             radius: Rayon de recherche en mètres (par défaut 5km)
 
         Returns:
-            Liste de dictionnaires contenant les informations des magasins Auchan
+            Liste de dictionnaires contenant les informations des magasins Aldi
         """
-        return cls._find_retailer_via_nominatim('Auchan', latitude, longitude, radius)
+        return cls._find_retailer_via_nominatim('Aldi', latitude, longitude, radius)
 
     @classmethod
     def _find_retailer_via_nominatim(
@@ -163,7 +163,7 @@ class OverpassAPI:
         Méthode générique pour rechercher une enseigne via Nominatim.
 
         Args:
-            retailer_name: Nom de l'enseigne (Carrefour, Auchan, etc.)
+            retailer_name: Nom de l'enseigne (Carrefour, Aldi, etc.)
             latitude: Latitude du point de recherche
             longitude: Longitude du point de recherche
             radius: Rayon de recherche en mètres

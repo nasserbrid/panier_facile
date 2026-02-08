@@ -34,9 +34,9 @@ CREATE TABLE IF NOT EXISTS panier_carrefourproductmatch (
 );
 \"\"\")
 
-# Créer panier_auchanproductmatch si absente
+# Créer supermarkets_aldiproductmatch si absente
 cursor.execute(\"\"\"
-CREATE TABLE IF NOT EXISTS panier_auchanproductmatch (
+CREATE TABLE IF NOT EXISTS supermarkets_aldiproductmatch (
     id BIGSERIAL PRIMARY KEY,
     store_id VARCHAR(20) DEFAULT 'scraping',
     product_name VARCHAR(255) NOT NULL,

@@ -42,8 +42,8 @@
                         </div>
                         <div class="col-6">
                             <div class="d-flex align-items-center">
-                                <span class="spinner-grow spinner-grow-sm text-secondary me-2" id="auchanSpinner"></span>
-                                <span id="auchanStatus">Auchan en attente...</span>
+                                <span class="spinner-grow spinner-grow-sm text-secondary me-2" id="aldiSpinner"></span>
+                                <span id="aldiStatus">Aldi en attente...</span>
                             </div>
                         </div>
                     </div>
@@ -80,12 +80,12 @@ function updateProgress(data) {
             document.getElementById('carrefourStatus').textContent = 'Carrefour: recherche...';
             document.getElementById('carrefourSpinner').classList.remove('text-secondary');
             document.getElementById('carrefourSpinner').classList.add('text-primary');
-        } else if (data.progress.supermarket === 'auchan') {
+        } else if (data.progress.supermarket === 'aldi') {
             document.getElementById('carrefourStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>Carrefour termine';
             document.getElementById('carrefourSpinner').style.display = 'none';
-            document.getElementById('auchanStatus').textContent = 'Auchan: recherche...';
-            document.getElementById('auchanSpinner').classList.remove('text-secondary');
-            document.getElementById('auchanSpinner').classList.add('text-primary');
+            document.getElementById('aldiStatus').textContent = 'Aldi: recherche...';
+            document.getElementById('aldiSpinner').classList.remove('text-secondary');
+            document.getElementById('aldiSpinner').classList.add('text-primary');
         }
     }
 }

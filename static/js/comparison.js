@@ -22,8 +22,8 @@ class ComparisonProgress {
             statusMessage: document.getElementById('statusMessage'),
             carrefourStatus: document.getElementById('carrefourStatus'),
             carrefourSpinner: document.getElementById('carrefourSpinner'),
-            auchanStatus: document.getElementById('auchanStatus'),
-            auchanSpinner: document.getElementById('auchanSpinner'),
+            aldiStatus: document.getElementById('aldiStatus'),
+            aldiSpinner: document.getElementById('aldiSpinner'),
             spinner: document.querySelector('.spinner-border')
         };
     }
@@ -109,7 +109,7 @@ class ComparisonProgress {
                 this.elements.carrefourSpinner.classList.remove('text-secondary');
                 this.elements.carrefourSpinner.classList.add('text-primary');
             }
-        } else if (supermarket === 'auchan') {
+        } else if (supermarket === 'aldi') {
             // Carrefour termine
             if (this.elements.carrefourStatus) {
                 this.elements.carrefourStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>Carrefour termine';
@@ -117,13 +117,13 @@ class ComparisonProgress {
             if (this.elements.carrefourSpinner) {
                 this.elements.carrefourSpinner.style.display = 'none';
             }
-            // Auchan en cours
-            if (this.elements.auchanStatus) {
-                this.elements.auchanStatus.textContent = 'Auchan: recherche...';
+            // Aldi en cours
+            if (this.elements.aldiStatus) {
+                this.elements.aldiStatus.textContent = 'Aldi: recherche...';
             }
-            if (this.elements.auchanSpinner) {
-                this.elements.auchanSpinner.classList.remove('text-secondary');
-                this.elements.auchanSpinner.classList.add('text-primary');
+            if (this.elements.aldiSpinner) {
+                this.elements.aldiSpinner.classList.remove('text-secondary');
+                this.elements.aldiSpinner.classList.add('text-primary');
             }
         }
     }
