@@ -39,6 +39,7 @@ class LeclercProductMatch(models.Model):
         null=True,
         help_text="URL du produit sur le site E.Leclerc"
     )
+    image_url = models.URLField(blank=True, null=True)
     is_available = models.BooleanField(
         default=True,
         help_text="Disponibilité du produit"

@@ -19,6 +19,19 @@ class AldiScraper(BaseScraper):
     # Pas d'API JSON connue à intercepter.
     API_PATTERNS = []
 
+    # ── Session ──────────────────────────────────────────────────
+
+    def _establish_session(self):
+        """Skip la homepage : la navigation directe vers /recherche fonctionne.
+
+        La homepage Aldi déclenche souvent une page anti-robot,
+        mais l'URL de recherche passe sans problème.
+        """
+        if self._session_established:
+            return
+        self._session_established = True
+        logger.info(f"[{self.RETAILER_NAME}] Session initialisée (navigation directe)")
+
     # ── Recherche ───────────────────────────────────────────────
 
     def _perform_search(self, query: str) -> None:
