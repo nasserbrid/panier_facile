@@ -52,30 +52,14 @@ class LeclercScraper(BaseScraper):
         self.page.goto(url, wait_until="domcontentloaded",
                        timeout=self.timeout)
 
-        # E.Leclerc charge les produits côté client.
-        # Attendre que des éléments produits apparaissent dans le DOM.
-        # On essaie plusieurs sélecteurs courants.
-        selectors_to_try = [
-            '[data-testid*="product"]',
-            '.product-card',
-            '.product-tile',
-            '.product-item',
-            '.product-list-item',
-            'article[class*="product"]',
-            'div[class*="product-card"]',
-            'div[class*="ProductCard"]',
-            'a[href*="/fp/"]',
-        ]
-
-        for selector in selectors_to_try:
-            try:
-                self.page.wait_for_selector(selector, timeout=5000)
-                logger.info(f"[Leclerc] Produits chargés avec: {selector}")
-                return
-            except Exception:
-                continue
-
-        logger.warning(f"[Leclerc] Timeout: aucun sélecteur produit trouvé pour '{query}'")
+        # E.Leclerc utilise des liens /fp/ (fiches produit) pour chaque produit.
+        # Ce sélecteur est le seul qui fonctionne en prod — les autres
+        # causaient 40s de timeout inutile par recherche.
+        try:
+            self.page.wait_for_selector('a[href*="/fp/"]', timeout=15000)
+            logger.info(f"[Leclerc] Produits chargés pour: {query}")
+        except Exception:
+            logger.warning(f"[Leclerc] Timeout: aucun produit trouvé pour '{query}'")
 
     # ── Extraction API ─────────────────────────────────────────
 
