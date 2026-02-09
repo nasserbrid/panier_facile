@@ -1,25 +1,25 @@
 """
-Modèles pour l'intégration Carrefour.
+Modèles pour l'intégration E.Leclerc.
 """
 from django.db import models
 
 
-class CarrefourProductMatch(models.Model):
+class LeclercProductMatch(models.Model):
     """
     Modèle représentant la correspondance entre un ingrédient PanierFacile
-    et un produit Carrefour.
+    et un produit E.Leclerc.
 
     Ce modèle sert de cache pour les produits récupérés via scraping.
     """
     ingredient = models.ForeignKey(
         'panier.Ingredient',
         on_delete=models.CASCADE,
-        related_name='carrefour_matches'
+        related_name='leclerc_matches'
     )
     store_id = models.CharField(
         max_length=20,
         default='scraping',
-        help_text="Identifiant du magasin Carrefour ou 'scraping'"
+        help_text="Identifiant du magasin Leclerc ou 'scraping'"
     )
 
     # Détails du produit (cache)
@@ -37,7 +37,7 @@ class CarrefourProductMatch(models.Model):
     product_url = models.URLField(
         blank=True,
         null=True,
-        help_text="URL du produit sur le site Carrefour"
+        help_text="URL du produit sur le site E.Leclerc"
     )
     is_available = models.BooleanField(
         default=True,
@@ -59,13 +59,13 @@ class CarrefourProductMatch(models.Model):
     )
 
     class Meta:
-        db_table = 'panier_carrefourproductmatch'
+        db_table = 'supermarkets_leclercproductmatch'
         indexes = [
             models.Index(fields=['ingredient', 'store_id']),
             models.Index(fields=['store_id', 'last_updated']),
         ]
-        verbose_name = "Correspondance produit Carrefour"
-        verbose_name_plural = "Correspondances produits Carrefour"
+        verbose_name = "Correspondance produit E.Leclerc"
+        verbose_name_plural = "Correspondances produits E.Leclerc"
 
     def __str__(self):
         return f"{self.ingredient.nom} → {self.product_name} (Magasin {self.store_id})"

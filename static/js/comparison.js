@@ -20,8 +20,8 @@ class ComparisonProgress {
         this.elements = {
             progressBar: document.getElementById('progressBar'),
             statusMessage: document.getElementById('statusMessage'),
-            carrefourStatus: document.getElementById('carrefourStatus'),
-            carrefourSpinner: document.getElementById('carrefourSpinner'),
+            leclercStatus: document.getElementById('leclercStatus'),
+            leclercSpinner: document.getElementById('leclercSpinner'),
             aldiStatus: document.getElementById('aldiStatus'),
             aldiSpinner: document.getElementById('aldiSpinner'),
             spinner: document.querySelector('.spinner-border')
@@ -101,21 +101,21 @@ class ComparisonProgress {
      * Met a jour les indicateurs par supermarche
      */
     updateSupermarketStatus(supermarket) {
-        if (supermarket === 'carrefour') {
-            if (this.elements.carrefourStatus) {
-                this.elements.carrefourStatus.textContent = 'Carrefour: recherche...';
+        if (supermarket === 'leclerc') {
+            if (this.elements.leclercStatus) {
+                this.elements.leclercStatus.textContent = 'E.Leclerc: recherche...';
             }
-            if (this.elements.carrefourSpinner) {
-                this.elements.carrefourSpinner.classList.remove('text-secondary');
-                this.elements.carrefourSpinner.classList.add('text-primary');
+            if (this.elements.leclercSpinner) {
+                this.elements.leclercSpinner.classList.remove('text-secondary');
+                this.elements.leclercSpinner.classList.add('text-primary');
             }
         } else if (supermarket === 'aldi') {
-            // Carrefour termine
-            if (this.elements.carrefourStatus) {
-                this.elements.carrefourStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>Carrefour termine';
+            // Leclerc termine
+            if (this.elements.leclercStatus) {
+                this.elements.leclercStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>E.Leclerc termine';
             }
-            if (this.elements.carrefourSpinner) {
-                this.elements.carrefourSpinner.style.display = 'none';
+            if (this.elements.leclercSpinner) {
+                this.elements.leclercSpinner.style.display = 'none';
             }
             // Aldi en cours
             if (this.elements.aldiStatus) {

@@ -36,8 +36,8 @@
                     <div class="row text-start mb-4">
                         <div class="col-6">
                             <div class="d-flex align-items-center">
-                                <span class="spinner-grow spinner-grow-sm text-primary me-2" id="carrefourSpinner"></span>
-                                <span id="carrefourStatus">Carrefour en attente...</span>
+                                <span class="spinner-grow spinner-grow-sm text-primary me-2" id="leclercSpinner"></span>
+                                <span id="leclercStatus">E.Leclerc en attente...</span>
                             </div>
                         </div>
                         <div class="col-6">
@@ -76,13 +76,13 @@ function updateProgress(data) {
         statusMessage.textContent = data.progress.message || 'Recherche en cours...';
 
         // Mettre a jour les status par supermarche
-        if (data.progress.supermarket === 'carrefour') {
-            document.getElementById('carrefourStatus').textContent = 'Carrefour: recherche...';
-            document.getElementById('carrefourSpinner').classList.remove('text-secondary');
-            document.getElementById('carrefourSpinner').classList.add('text-primary');
+        if (data.progress.supermarket === 'leclerc') {
+            document.getElementById('leclercStatus').textContent = 'E.Leclerc: recherche...';
+            document.getElementById('leclercSpinner').classList.remove('text-secondary');
+            document.getElementById('leclercSpinner').classList.add('text-primary');
         } else if (data.progress.supermarket === 'aldi') {
-            document.getElementById('carrefourStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>Carrefour termine';
-            document.getElementById('carrefourSpinner').style.display = 'none';
+            document.getElementById('leclercStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>E.Leclerc termine';
+            document.getElementById('leclercSpinner').style.display = 'none';
             document.getElementById('aldiStatus').textContent = 'Aldi: recherche...';
             document.getElementById('aldiSpinner').classList.remove('text-secondary');
             document.getElementById('aldiSpinner').classList.add('text-primary');

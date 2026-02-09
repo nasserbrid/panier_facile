@@ -3,7 +3,7 @@ Tâches Celery pour l'application panier.
 
 Tâches:
 - send_old_basket_notifications : rappel email pour paniers anciens
-- compare_supermarket_prices    : comparaison Carrefour vs Aldi
+- compare_supermarket_prices    : comparaison Leclerc vs Aldi
 - scrape_ingredient_prices      : cache proactif des prix
 - refresh_popular_ingredients   : rafraîchissement quotidien du cache
 """
@@ -61,9 +61,9 @@ def _scrape_supermarket(scraper_name, ingredients, model_class, task=None,
     Scrape une liste d'ingrédients pour un supermarché donné.
 
     Args:
-        scraper_name: 'carrefour' ou 'aldi'
+        scraper_name: 'leclerc' ou 'aldi'
         ingredients: liste d'objets Ingredient
-        model_class: CarrefourProductMatch ou AldiProductMatch
+        model_class: LeclercProductMatch ou AldiProductMatch
         task: tâche Celery pour progress updates (optionnel)
         progress_offset: offset pour la barre de progression
         progress_total: total pour la barre de progression
@@ -220,11 +220,11 @@ def test_celery():
 @shared_task(
     bind=True,
     max_retries=2,
-    name='panier.tasks.match_carrefour_products'
+    name='panier.tasks.match_leclerc_products'
 )
-def match_carrefour_products(self, panier_id, store_id=STORE_ID):
-    """Matche les ingrédients d'un panier avec les produits Carrefour."""
-    from supermarkets.models import CarrefourProductMatch
+def match_leclerc_products(self, panier_id, store_id=STORE_ID):
+    """Matche les ingrédients d'un panier avec les produits E.Leclerc."""
+    from supermarkets.models import LeclercProductMatch
 
     try:
         panier = Panier.objects.get(id=panier_id)
@@ -234,11 +234,11 @@ def match_carrefour_products(self, panier_id, store_id=STORE_ID):
             return {'status': 'error', 'message': 'Aucun ingrédient', 'matched': 0, 'total': 0}
 
         ingredients = [ip.ingredient for ip in ing_paniers]
-        _, found, errors = _scrape_supermarket('carrefour', ingredients, CarrefourProductMatch)
+        _, found, errors = _scrape_supermarket('leclerc', ingredients, LeclercProductMatch)
 
         total = len(ingredients)
         rate = (found / total * 100) if total else 0
-        logger.info(f"Carrefour panier #{panier_id}: {found}/{total} ({rate:.0f}%)")
+        logger.info(f"Leclerc panier #{panier_id}: {found}/{total} ({rate:.0f}%)")
 
         return {
             'status': 'success', 'panier_id': panier_id,
@@ -249,7 +249,7 @@ def match_carrefour_products(self, panier_id, store_id=STORE_ID):
     except Panier.DoesNotExist:
         return {'status': 'error', 'message': f'Panier {panier_id} non trouvé'}
     except Exception as e:
-        logger.error(f"Erreur Carrefour panier {panier_id}: {e}")
+        logger.error(f"Erreur Leclerc panier {panier_id}: {e}")
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
         return {'status': 'error', 'message': str(e)}
@@ -262,8 +262,8 @@ def match_carrefour_products(self, panier_id, store_id=STORE_ID):
 )
 def compare_supermarket_prices(self, panier_id: int, user_id: int,
                                latitude: float, longitude: float):
-    """Compare les prix d'un panier entre Carrefour et Aldi."""
-    from supermarkets.models import PriceComparison, CarrefourProductMatch, AldiProductMatch
+    """Compare les prix d'un panier entre E.Leclerc et Aldi."""
+    from supermarkets.models import PriceComparison, LeclercProductMatch, AldiProductMatch
 
     try:
         panier = Panier.objects.get(id=panier_id)
@@ -282,9 +282,9 @@ def compare_supermarket_prices(self, panier_id: int, user_id: int,
             'message': 'Préparation de la comparaison...'
         })
 
-        # Carrefour
-        carrefour_total, carrefour_found, _ = _scrape_supermarket(
-            'carrefour', ingredients, CarrefourProductMatch,
+        # Leclerc
+        leclerc_total, leclerc_found, _ = _scrape_supermarket(
+            'leclerc', ingredients, LeclercProductMatch,
             task=self, progress_offset=0, progress_total=total * 2
         )
 
@@ -299,15 +299,15 @@ def compare_supermarket_prices(self, panier_id: int, user_id: int,
             panier=panier,
             latitude=latitude,
             longitude=longitude,
-            carrefour_total=carrefour_total if carrefour_found else None,
+            leclerc_total=leclerc_total if leclerc_found else None,
             aldi_total=aldi_total if aldi_found else None,
-            carrefour_found=carrefour_found,
+            leclerc_found=leclerc_found,
             aldi_found=aldi_found,
             total_ingredients=total,
         )
 
         logger.info(
-            f"Comparaison: Carrefour={carrefour_total}€ ({carrefour_found}), "
+            f"Comparaison: Leclerc={leclerc_total}€ ({leclerc_found}), "
             f"Aldi={aldi_total}€ ({aldi_found}), "
             f"Moins cher: {comparison.cheapest_supermarket}"
         )
@@ -315,9 +315,9 @@ def compare_supermarket_prices(self, panier_id: int, user_id: int,
         return {
             'status': 'success',
             'comparison_id': comparison.id,
-            'carrefour_total': float(carrefour_total),
+            'leclerc_total': float(leclerc_total),
             'aldi_total': float(aldi_total),
-            'carrefour_found': carrefour_found,
+            'leclerc_found': leclerc_found,
             'aldi_found': aldi_found,
             'cheapest': comparison.cheapest_supermarket,
         }
@@ -338,7 +338,7 @@ def compare_supermarket_prices(self, panier_id: int, user_id: int,
 )
 def scrape_ingredient_prices(self, ingredient_names: list, priority: str = 'normal'):
     """Cache proactif: scrape les prix pour une liste d'ingrédients."""
-    from supermarkets.models import CarrefourProductMatch, AldiProductMatch
+    from supermarkets.models import LeclercProductMatch, AldiProductMatch
     from .models import Ingredient
 
     if not ingredient_names:
@@ -356,24 +356,24 @@ def scrape_ingredient_prices(self, ingredient_names: list, priority: str = 'norm
         ingredients.append(ing)
 
     # Scraper les deux enseignes
-    _, carrefour_found, carrefour_errors = _scrape_supermarket(
-        'carrefour', ingredients, CarrefourProductMatch
+    _, leclerc_found, leclerc_errors = _scrape_supermarket(
+        'leclerc', ingredients, LeclercProductMatch
     )
     _, aldi_found, aldi_errors = _scrape_supermarket(
         'aldi', ingredients, AldiProductMatch
     )
 
     logger.info(
-        f"[Cache] Terminé: Carrefour={carrefour_found}, Aldi={aldi_found}, "
-        f"erreurs={carrefour_errors + aldi_errors}"
+        f"[Cache] Terminé: Leclerc={leclerc_found}, Aldi={aldi_found}, "
+        f"erreurs={leclerc_errors + aldi_errors}"
     )
 
     return {
         'status': 'success',
         'total': len(ingredient_names),
-        'carrefour_scraped': carrefour_found,
+        'leclerc_scraped': leclerc_found,
         'aldi_scraped': aldi_found,
-        'errors': carrefour_errors + aldi_errors,
+        'errors': leclerc_errors + aldi_errors,
     }
 
 

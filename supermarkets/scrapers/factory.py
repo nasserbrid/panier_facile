@@ -1,10 +1,10 @@
 """Factory pour instancier les scrapers par nom d'enseigne."""
 
 from .aldi import AldiScraper
-from .carrefour import CarrefourScraper
+from .leclerc import LeclercScraper
 
 _SCRAPERS = {
-    'carrefour': CarrefourScraper,
+    'leclerc': LeclercScraper,
     'aldi': AldiScraper,
 }
 
@@ -16,7 +16,7 @@ class ScraperFactory:
         """Retourne une instance du scraper pour l'enseigne donnée.
 
         Usage:
-            with ScraperFactory.get('carrefour') as scraper:
+            with ScraperFactory.get('leclerc') as scraper:
                 results = scraper.search('lait')
         """
         key = name.lower()

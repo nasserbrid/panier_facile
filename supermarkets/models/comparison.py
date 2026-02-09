@@ -32,12 +32,12 @@ class PriceComparison(models.Model):
     )
 
     # Totaux par supermarché (null si non disponible)
-    carrefour_total = models.DecimalField(
+    leclerc_total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Total estimé chez Carrefour"
+        help_text="Total estimé chez E.Leclerc"
     )
     aldi_total = models.DecimalField(
         max_digits=10,
@@ -48,9 +48,9 @@ class PriceComparison(models.Model):
     )
 
     # Compteurs de produits trouvés
-    carrefour_found = models.IntegerField(
+    leclerc_found = models.IntegerField(
         default=0,
-        help_text="Nombre de produits trouvés chez Carrefour"
+        help_text="Nombre de produits trouvés chez E.Leclerc"
     )
     aldi_found = models.IntegerField(
         default=0,
@@ -65,7 +65,7 @@ class PriceComparison(models.Model):
     cheapest_supermarket = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Nom du supermarché le moins cher (carrefour, aldi)"
+        help_text="Nom du supermarché le moins cher (leclerc, aldi)"
     )
 
     # Timestamps
@@ -86,8 +86,8 @@ class PriceComparison(models.Model):
     def calculate_cheapest(self):
         """Détermine le supermarché le moins cher et met à jour le champ."""
         totals = {}
-        if self.carrefour_total is not None:
-            totals['carrefour'] = self.carrefour_total
+        if self.leclerc_total is not None:
+            totals['leclerc'] = self.leclerc_total
         if self.aldi_total is not None:
             totals['aldi'] = self.aldi_total
 
@@ -105,8 +105,8 @@ class PriceComparison(models.Model):
     def savings(self):
         """Calcule l'économie potentielle entre le plus cher et le moins cher."""
         totals = []
-        if self.carrefour_total is not None:
-            totals.append(self.carrefour_total)
+        if self.leclerc_total is not None:
+            totals.append(self.leclerc_total)
         if self.aldi_total is not None:
             totals.append(self.aldi_total)
 

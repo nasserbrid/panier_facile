@@ -53,11 +53,11 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-6">
-                            <h6><i class="fas fa-shopping-cart text-primary me-1"></i> Carrefour</h6>
-                            {% if nearby_stores.carrefour %}
+                            <h6><i class="fas fa-shopping-cart text-primary me-1"></i> E.Leclerc</h6>
+                            {% if nearby_stores.leclerc %}
                                 <ul class="list-unstyled small">
-                                    {% for store in nearby_stores.carrefour %}
-                                        <li><i class="fas fa-map-pin text-danger me-1"></i> {{ store.name|default:"Carrefour" }} ({{ store.distance|floatformat:1 }}km)</li>
+                                    {% for store in nearby_stores.leclerc %}
+                                        <li><i class="fas fa-map-pin text-danger me-1"></i> {{ store.name|default:"E.Leclerc" }} ({{ store.distance|floatformat:1 }}km)</li>
                                     {% endfor %}
                                 </ul>
                             {% else %}
@@ -98,11 +98,11 @@
                             <div class="col-6">
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-primary" role="progressbar"
-                                         style="width: {{ cache_coverage.carrefour }}%">
-                                        {{ cache_coverage.carrefour }}%
+                                         style="width: {{ cache_coverage.leclerc }}%">
+                                        {{ cache_coverage.leclerc }}%
                                     </div>
                                 </div>
-                                <small class="text-muted">Carrefour</small>
+                                <small class="text-muted">E.Leclerc</small>
                             </div>
                             <div class="col-6">
                                 <div class="progress" style="height: 20px;">

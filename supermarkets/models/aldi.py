@@ -7,7 +7,7 @@ from django.db import models
 class AldiProductMatch(models.Model):
     """
     Cache pour les produits Aldi matchés.
-    Similaire à CarrefourProductMatch mais pour Aldi.
+    Similaire à LeclercProductMatch mais pour Aldi.
     """
     ingredient = models.ForeignKey(
         'panier.Ingredient',
