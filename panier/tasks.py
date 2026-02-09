@@ -96,57 +96,67 @@ def _scrape_supermarket(scraper_name, ingredients, model_class, task=None,
         logger.info(f"[{scraper_name}] Tous en cache ({found_count}/{len(ingredients)})")
         return total_price, found_count, error_count
 
-    # Phase 2 : scraper les manquants
+    # Phase 2 : scraper les manquants (PAS d'ORM ici — sync_playwright
+    # crée un event loop interne que Django détecte comme contexte async)
     logger.info(f"[{scraper_name}] Scraping {len(to_scrape)} produits...")
 
+    scraped_results = {}
     try:
         with ScraperFactory.get(scraper_name, headless=True, timeout=20000) as scraper:
             for idx, ingredient in enumerate(to_scrape):
                 try:
                     products = scraper.search(ingredient.nom)
-
-                    if not products:
-                        logger.warning(f"[{scraper_name}] 0 résultats pour '{ingredient.nom}'")
-                        error_count += 1
-                        continue
-
-                    best = products[0]
-                    match, created = model_class.objects.update_or_create(
-                        ingredient=ingredient,
-                        store_id=STORE_ID,
-                        defaults={
-                            'product_name': best.get('product_name', ''),
-                            'price': best.get('price'),
-                            'is_available': best.get('is_available', True),
-                            'product_url': best.get('product_url', ''),
-                            'image_url': best.get('image_url', ''),
-                            'match_score': 0.8,
-                            'last_updated': timezone.now()
-                        }
-                    )
-
-                    if match.price:
-                        total_price += Decimal(str(match.price))
-                        found_count += 1
-
-                    action = "Créé" if created else "Mis à jour"
-                    logger.info(f"[{scraper_name}] {action}: '{ingredient.nom}' → "
-                                f"{best.get('product_name')} {best.get('price')}€")
+                    scraped_results[ingredient.id] = products or []
 
                     if task and progress_total:
                         task.update_state(state='PROGRESS', meta={
-                            'current': progress_offset + found_count + idx,
+                            'current': progress_offset + idx,
                             'total': progress_total,
                             'supermarket': scraper_name,
                             'message': f'{scraper_name}: {ingredient.nom}'
                         })
 
                 except Exception as e:
-                    error_count += 1
-                    logger.error(f"[{scraper_name}] Erreur '{ingredient.nom}': {e}")
+                    scraped_results[ingredient.id] = []
+                    logger.error(f"[{scraper_name}] Erreur scraping '{ingredient.nom}': {e}")
 
     except Exception as e:
         logger.error(f"[{scraper_name}] Erreur navigateur: {e}")
+
+    # Phase 3 : sauvegarder en DB (Playwright fermé, pas de contexte async)
+    for ingredient in to_scrape:
+        products = scraped_results.get(ingredient.id, [])
+        if not products:
+            error_count += 1
+            continue
+
+        try:
+            best = products[0]
+            match, created = model_class.objects.update_or_create(
+                ingredient=ingredient,
+                store_id=STORE_ID,
+                defaults={
+                    'product_name': best.get('product_name', ''),
+                    'price': best.get('price'),
+                    'is_available': best.get('is_available', True),
+                    'product_url': best.get('product_url', ''),
+                    'image_url': best.get('image_url', ''),
+                    'match_score': 0.8,
+                    'last_updated': timezone.now()
+                }
+            )
+
+            if match.price:
+                total_price += Decimal(str(match.price))
+                found_count += 1
+
+            action = "Créé" if created else "Mis à jour"
+            logger.info(f"[{scraper_name}] {action}: '{ingredient.nom}' → "
+                        f"{best.get('product_name')} {best.get('price')}€")
+
+        except Exception as e:
+            error_count += 1
+            logger.error(f"[{scraper_name}] Erreur sauvegarde '{ingredient.nom}': {e}")
 
     return total_price, found_count, error_count
 

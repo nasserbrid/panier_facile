@@ -27,6 +27,23 @@ class LeclercScraper(BaseScraper):
         r'search.*query',
     ]
 
+    # ── Session ──────────────────────────────────────────────────
+
+    def _establish_session(self):
+        """Skip la homepage : la navigation directe vers /recherche fonctionne.
+
+        La homepage E.Leclerc déclenche souvent une page anti-robot,
+        mais l'URL de recherche passe sans problème.
+        On accepte les cookies lors de la première recherche.
+        """
+        if self._session_established:
+            return
+        # Pas de navigation vers la homepage — _perform_search navigue
+        # directement vers /recherche?q=... et les cookies sont acceptés
+        # dans BaseScraper.search() après _perform_search.
+        self._session_established = True
+        logger.info(f"[{self.RETAILER_NAME}] Session initialisée (navigation directe)")
+
     # ── Recherche ───────────────────────────────────────────────
 
     def _perform_search(self, query: str) -> None:
