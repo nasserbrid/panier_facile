@@ -1,9 +1,9 @@
 """
 Base scraper avec Playwright + anti-détection.
 
-Toute la logique commune (navigateur, stealth, cookies, debug)
-est factorisée ici. Les scrapers concrets n'implémentent que
-la partie spécifique à chaque enseigne.
+Toute la logique commune (navigateur, cookies, debug)
+est factorisée ici. Utilisé par les scrapers qui nécessitent
+un navigateur complet (ex: Aldi avec rendu JS côté client).
 """
 
 import logging
@@ -18,14 +18,6 @@ from typing import Dict, List, Optional
 from playwright.sync_api import Response, sync_playwright
 
 logger = logging.getLogger(__name__)
-
-# Import conditionnel de playwright-stealth
-try:
-    from playwright_stealth import stealth_sync
-    STEALTH_AVAILABLE = True
-except ImportError:
-    STEALTH_AVAILABLE = False
-    logger.warning("playwright-stealth non installé")
 
 DEBUG_DIR = "/tmp/scraper_debug"
 
@@ -113,9 +105,6 @@ class BaseScraper(ABC):
         )
 
         self.page = self.context.new_page()
-
-        if STEALTH_AVAILABLE:
-            stealth_sync(self.page)
 
         self.page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {get: () => undefined});

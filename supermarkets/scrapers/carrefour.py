@@ -1,230 +1,216 @@
-"""Scraper Carrefour - logique spécifique à carrefour.fr."""
+"""
+Scraper Carrefour - requêtes HTTP avec curl_cffi + parsing BeautifulSoup.
+
+Carrefour est SSR (Server-Side Rendered) : les produits sont dans le HTML,
+pas besoin d'un navigateur complet. curl_cffi imite le TLS fingerprint
+de Chrome pour contourner la détection DataDome.
+"""
 
 import logging
 import random
 import re
+import time
 from typing import Dict, List, Optional
 from urllib.parse import quote_plus
 
-from .base import BaseScraper, random_delay
+from bs4 import BeautifulSoup
+from curl_cffi import requests as curl_requests
 
 logger = logging.getLogger(__name__)
 
+BASE_URL = "https://www.carrefour.fr"
+SEARCH_URL = "https://www.carrefour.fr/s"
 
-class CarrefourScraper(BaseScraper):
+# User-agents Chrome récents
+_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+]
 
-    RETAILER_NAME = "Carrefour"
-    BASE_URL = "https://www.carrefour.fr"
-    SEARCH_URL = "https://www.carrefour.fr/s"
 
-    # Carrefour utilise du SSR : les produits sont dans le HTML.
-    # On garde l'interception API en bonus au cas où.
-    API_PATTERNS = [
-        r'/api/v\d+/search',
-        r'/api/products',
-        r'search.*products',
-        r'graphql',
-    ]
+def _random_delay(min_ms: int = 800, max_ms: int = 2000) -> None:
+    time.sleep(random.randint(min_ms, max_ms) / 1000)
 
-    # ── Recherche ───────────────────────────────────────────────
 
-    def _perform_search(self, query: str) -> None:
-        """Utilise la barre de recherche, fallback sur URL directe."""
-        if not self._use_search_bar(query):
-            logger.warning("[Carrefour] Barre introuvable, navigation directe")
-            url = f"{self.SEARCH_URL}?q={quote_plus(query)}"
-            self.page.goto(url, wait_until="domcontentloaded",
-                           timeout=self.timeout)
+class CarrefourScraper:
+    """Scraper Carrefour basé sur curl_cffi (HTTP) au lieu de Playwright."""
 
-    def _use_search_bar(self, query: str) -> bool:
-        search_selectors = [
-            'input[name="q"]',
-            'input[type="search"]',
-            'input[placeholder*="recherch" i]',
-            '#search-input',
-            '[data-testid="search-input"]',
-        ]
+    def __init__(self, **kwargs):
+        # kwargs acceptés pour compatibilité avec ScraperFactory (headless, timeout)
+        self.session: Optional[curl_requests.Session] = None
 
-        for sel in search_selectors:
+    def __enter__(self):
+        self.session = curl_requests.Session(
+            impersonate="chrome131",
+            headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;"
+                          "q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Cache-Control": "no-cache",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+            },
+        )
+        # Établir la session (cookies DataDome) en visitant la homepage
+        try:
+            resp = self.session.get(BASE_URL, timeout=15)
+            logger.info(f"[Carrefour] Session établie (status {resp.status_code})")
+            _random_delay(1000, 2000)
+        except Exception as e:
+            logger.warning(f"[Carrefour] Erreur session initiale: {e}")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            self.session.close()
+            self.session = None
+
+    def search(self, query: str) -> List[Dict]:
+        """Recherche un produit sur carrefour.fr et retourne les résultats."""
+        if not self.session:
+            logger.error("[Carrefour] Session non initialisée")
+            return []
+
+        url = f"{SEARCH_URL}?q={quote_plus(query)}"
+        logger.info(f"[Carrefour] Recherche: {query}")
+
+        for attempt in range(2):
             try:
-                inp = self.page.query_selector(sel)
-                if inp and inp.is_visible():
-                    inp.click()
-                    random_delay(200, 400)
-                    inp.fill('')
-                    random_delay(100, 200)
+                _random_delay(500, 1500)
+                resp = self.session.get(url, timeout=15)
 
-                    for char in query:
-                        inp.type(char, delay=random.randint(50, 150))
-                    random_delay(300, 600)
+                if resp.status_code != 200:
+                    logger.warning(
+                        f"[Carrefour] Status {resp.status_code} pour '{query}'"
+                    )
+                    if attempt == 0:
+                        _random_delay(2000, 4000)
+                        continue
+                    return []
 
-                    inp.press('Enter')
-                    logger.info(f"[Carrefour] Recherche via barre: {query}")
-                    return True
-            except Exception:
-                continue
+                html = resp.text
 
-        return False
+                # Vérifier si on est bloqué
+                if self._is_blocked(html):
+                    logger.warning(f"[Carrefour] Blocage détecté pour '{query}'")
+                    if attempt == 0:
+                        _random_delay(3000, 5000)
+                        continue
+                    return []
 
-    # ── Extraction API (bonus, Carrefour est SSR) ───────────────
+                products = self._parse_html(html)
+                logger.info(
+                    f"[Carrefour] {len(products)} produits trouvés pour '{query}'"
+                )
+                return products
 
-    def _extract_products_from_json(self, data: dict) -> List[Dict]:
-        products = []
-        product_lists = []
+            except Exception as e:
+                logger.error(f"[Carrefour] Erreur recherche '{query}': {e}")
+                if attempt == 0:
+                    _random_delay(2000, 4000)
+                    continue
+                return []
 
-        if isinstance(data, dict):
-            attrs = data.get('data', {}).get('attributes', {})
-            if 'products' in attrs:
-                product_lists.append(attrs['products'])
-            if 'products' in data:
-                product_lists.append(data['products'])
-            if isinstance(data.get('data'), list):
-                product_lists.append(data['data'])
-            results = data.get('results', data.get('result', {}))
-            if isinstance(results, dict) and 'products' in results:
-                product_lists.append(results['products'])
-            if 'items' in data:
-                product_lists.append(data['items'])
-
-        for lst in product_lists:
-            if not isinstance(lst, list):
-                continue
-            for item in lst:
-                p = self._parse_api_product(item)
-                if p:
-                    products.append(p)
-
-        return products
-
-    def _parse_api_product(self, item: dict) -> Optional[Dict]:
-        if not isinstance(item, dict):
-            return None
-
-        attrs = item.get('attributes', item)
-
-        name = (attrs.get('name') or attrs.get('title')
-                or attrs.get('productName') or attrs.get('label')
-                or item.get('name'))
-        if not name:
-            return None
-
-        price = None
-        price_data = attrs.get('price', {})
-        if isinstance(price_data, dict):
-            price = (price_data.get('value') or price_data.get('amount')
-                     or price_data.get('unitPrice'))
-        elif isinstance(price_data, (int, float)):
-            price = price_data
-        else:
-            price = attrs.get('price') or attrs.get('unitPrice')
-
-        product_url = attrs.get('url') or attrs.get('productUrl') or item.get('url')
-        if product_url and not product_url.startswith('http'):
-            product_url = f"{self.BASE_URL}{product_url}"
-
-        image_url = self._extract_image_from_json(attrs)
-        brand = attrs.get('brand') or attrs.get('brandName') or ''
-
-        avail = attrs.get('availability', {})
-        if isinstance(avail, dict):
-            is_available = avail.get('is_available', avail.get('available', True))
-        else:
-            is_available = attrs.get('available', attrs.get('inStock', True))
-
-        return {
-            'product_name': str(name).strip(),
-            'price': float(price) if price else None,
-            'product_url': product_url or '',
-            'image_url': image_url or '',
-            'brand': brand,
-            'is_available': bool(is_available),
-        }
+        return []
 
     @staticmethod
-    def _extract_image_from_json(attrs: dict) -> Optional[str]:
-        img = attrs.get('image', attrs.get('images', []))
-        if isinstance(img, dict):
-            return img.get('url') or img.get('src')
-        if isinstance(img, list) and img:
-            first = img[0]
-            if isinstance(first, dict):
-                return first.get('url') or first.get('src')
-            if isinstance(first, str):
-                return first
-        return None
+    def _is_blocked(html: str) -> bool:
+        lower = html.lower()
+        indicators = [
+            "datadome", "captcha", "robot", "accès refusé",
+            "access denied", "please verify", "checking your browser",
+        ]
+        for ind in indicators:
+            if ind in lower:
+                logger.warning(f"[Carrefour] Indicateur blocage: '{ind}'")
+                return True
+        return False
 
-    # ── Parsing HTML (méthode principale pour Carrefour) ────────
-
-    def _fallback_html_parsing(self) -> List[Dict]:
+    def _parse_html(self, html: str) -> List[Dict]:
+        """Parse le HTML de la page de résultats Carrefour."""
+        soup = BeautifulSoup(html, "html.parser")
         products = []
 
-        # Sélecteur réel: <article class="product-list-card-plp-grid-new">
-        elements = self.page.query_selector_all(
-            'article.product-list-card-plp-grid-new'
-        )
+        # Sélecteur réel : <article class="product-list-card-plp-grid-new">
+        cards = soup.select("article.product-list-card-plp-grid-new")
 
-        if not elements:
-            logger.warning("[Carrefour] Aucune carte produit trouvée dans le HTML")
+        if not cards:
+            logger.warning("[Carrefour] Aucune carte produit dans le HTML")
             return products
 
-        for el in elements[:10]:
-            p = self._parse_html_card(el)
+        for card in cards[:10]:
+            p = self._parse_card(card)
             if p:
                 products.append(p)
 
         return products
 
-    def _parse_html_card(self, el) -> Optional[Dict]:
+    def _parse_card(self, card) -> Optional[Dict]:
+        """Parse une carte produit BeautifulSoup."""
         try:
             # Nom : <h3 class="product-card-title__text">
-            name_el = el.query_selector('h3.product-card-title__text')
+            name_el = card.select_one("h3.product-card-title__text")
             if not name_el:
                 return None
-            name = name_el.text_content().strip()
+            name = name_el.get_text(strip=True)
             if not name:
                 return None
 
             # Prix : <div data-testid="product-price__amount--main">
-            # Contient plusieurs <p> : "1", ",49", "€" → on concatène
             price = None
-            price_el = el.query_selector('[data-testid="product-price__amount--main"]')
+            price_el = card.select_one('[data-testid="product-price__amount--main"]')
             if price_el:
-                raw = price_el.text_content()
-                # "  1   ,49   €  " → "1,49€" → "1.49"
-                cleaned = re.sub(r'\s+', '', raw)
+                raw = price_el.get_text()
+                cleaned = re.sub(r"\s+", "", raw)
                 price = self._parse_price(cleaned)
 
             # URL : <a class="product-list-card-plp-grid-new__title-container">
-            product_url = ''
-            link = el.query_selector(
-                'a.product-list-card-plp-grid-new__title-container'
+            product_url = ""
+            link = card.select_one(
+                "a.product-list-card-plp-grid-new__title-container"
             )
-            if link:
-                href = link.get_attribute('href')
-                if href:
-                    product_url = (href if href.startswith('http')
-                                   else f"{self.BASE_URL}{href}")
+            if link and link.get("href"):
+                href = link["href"]
+                product_url = href if href.startswith("http") else f"{BASE_URL}{href}"
 
             # Image : <img class="product-card-image-new__content">
-            image_url = ''
-            img = el.query_selector('img.product-card-image-new__content')
+            image_url = ""
+            img = card.select_one("img.product-card-image-new__content")
             if img:
-                image_url = img.get_attribute('src') or ''
+                image_url = img.get("src", "") or img.get("data-src", "")
 
             # Marque : <a class="c-link--tone-accent">
-            brand = ''
-            brand_el = el.query_selector('a.c-link--tone-accent')
+            brand = ""
+            brand_el = card.select_one("a.c-link--tone-accent")
             if brand_el:
-                brand = brand_el.text_content().strip()
+                brand = brand_el.get_text(strip=True)
 
             return {
-                'product_name': name,
-                'price': price,
-                'product_url': product_url,
-                'image_url': image_url,
-                'brand': brand,
-                'is_available': True,
+                "product_name": name,
+                "price": price,
+                "product_url": product_url,
+                "image_url": image_url,
+                "brand": brand,
+                "is_available": True,
             }
         except Exception as e:
-            logger.debug(f"[Carrefour] Erreur parsing carte HTML: {e}")
+            logger.debug(f"[Carrefour] Erreur parsing carte: {e}")
+            return None
+
+    @staticmethod
+    def _parse_price(text: str) -> Optional[float]:
+        if not text:
+            return None
+        try:
+            cleaned = text.replace("€", "").replace(",", ".").strip()
+            m = re.search(r"(\d+\.?\d*)", cleaned)
+            return float(m.group(1)) if m else None
+        except Exception:
             return None
