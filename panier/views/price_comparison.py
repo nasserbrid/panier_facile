@@ -34,7 +34,7 @@ def compare_prices(request, panier_id):
     GET: Affiche la page avec géolocalisation
     POST: Lit le cache, crée la comparaison et affiche les résultats immédiatement
     """
-    from supermarkets.models import PriceComparison, LeclercProductMatch, AldiProductMatch
+    from supermarkets.models import PriceComparison, LeclercProductMatch, LidlProductMatch
 
     panier = get_object_or_404(Panier, id=panier_id)
 
@@ -123,8 +123,8 @@ def compare_prices(request, panier_id):
 
         leclerc_total = Decimal('0.00')
         leclerc_found = 0
-        aldi_total = Decimal('0.00')
-        aldi_found = 0
+        lidl_total = Decimal('0.00')
+        lidl_found = 0
         missing_ingredients = []
 
         comparison_data = []
@@ -139,38 +139,38 @@ def compare_prices(request, panier_id):
                 last_updated__gte=timezone.now() - cache_duration
             ).first()
 
-            # Chercher dans le cache Aldi
-            aldi_match = AldiProductMatch.objects.filter(
+            # Chercher dans le cache Lidl
+            lidl_match = LidlProductMatch.objects.filter(
                 ingredient=ingredient,
                 store_id=store_id,
                 last_updated__gte=timezone.now() - cache_duration
             ).first()
 
             leclerc_price = None
-            aldi_price = None
+            lidl_price = None
 
             if leclerc_match and leclerc_match.price:
                 leclerc_price = Decimal(str(leclerc_match.price))
                 leclerc_total += leclerc_price
                 leclerc_found += 1
 
-            if aldi_match and aldi_match.price:
-                aldi_price = Decimal(str(aldi_match.price))
-                aldi_total += aldi_price
-                aldi_found += 1
+            if lidl_match and lidl_match.price:
+                lidl_price = Decimal(str(lidl_match.price))
+                lidl_total += lidl_price
+                lidl_found += 1
 
             # Tracker les ingrédients manquants
-            if not leclerc_match or not aldi_match:
+            if not leclerc_match or not lidl_match:
                 missing_ingredients.append(ingredient.nom)
 
             # Déterminer le moins cher
             cheapest = None
-            if leclerc_price and aldi_price:
-                cheapest = 'leclerc' if leclerc_price <= aldi_price else 'aldi'
+            if leclerc_price and lidl_price:
+                cheapest = 'leclerc' if leclerc_price <= lidl_price else 'lidl'
             elif leclerc_price:
                 cheapest = 'leclerc'
-            elif aldi_price:
-                cheapest = 'aldi'
+            elif lidl_price:
+                cheapest = 'lidl'
 
             comparison_data.append({
                 'ingredient': ingredient,
@@ -179,10 +179,10 @@ def compare_prices(request, panier_id):
                     'price': leclerc_price,
                     'name': leclerc_match.product_name if leclerc_match else None,
                 },
-                'aldi': {
-                    'match': aldi_match,
-                    'price': aldi_price,
-                    'name': aldi_match.product_name if aldi_match else None,
+                'lidl': {
+                    'match': lidl_match,
+                    'price': lidl_price,
+                    'name': lidl_match.product_name if lidl_match else None,
                 },
                 'cheapest': cheapest,
             })
@@ -203,21 +203,21 @@ def compare_prices(request, panier_id):
             latitude=user_location['latitude'],
             longitude=user_location['longitude'],
             leclerc_total=leclerc_total if leclerc_found > 0 else None,
-            aldi_total=aldi_total if aldi_found > 0 else None,
+            lidl_total=lidl_total if lidl_found > 0 else None,
             leclerc_found=leclerc_found,
-            aldi_found=aldi_found,
+            lidl_found=lidl_found,
             total_ingredients=total_ingredients,
         )
 
         logger.info(
             f"[Cache Proactif] Comparaison instantanée créée: "
             f"Leclerc={leclerc_total}EUR ({leclerc_found}/{total_ingredients}), "
-            f"Aldi={aldi_total}EUR ({aldi_found}/{total_ingredients})"
+            f"Lidl={lidl_total}EUR ({lidl_found}/{total_ingredients})"
         )
 
         # Calculer les produits manquants par supermarché
         missing_leclerc = [d['ingredient'].nom for d in comparison_data if not d['leclerc']['match']]
-        missing_aldi = [d['ingredient'].nom for d in comparison_data if not d['aldi']['match']]
+        missing_lidl = [d['ingredient'].nom for d in comparison_data if not d['lidl']['match']]
 
         # Afficher directement les résultats
         context = {
@@ -225,7 +225,7 @@ def compare_prices(request, panier_id):
             'comparison': comparison,
             'comparison_data': comparison_data,
             'missing_leclerc': missing_leclerc,
-            'missing_aldi': missing_aldi,
+            'missing_lidl': missing_lidl,
             'savings': comparison.savings,
             'is_instant': True,  # Indique que c'est une comparaison instantanée
             'missing_count': len(missing_ingredients),
@@ -234,7 +234,7 @@ def compare_prices(request, panier_id):
         return render(request, 'supermarkets/comparison_results.html', context)
 
     # GET: Afficher la page de démarrage
-    nearby_stores = {'leclerc': [], 'aldi': []}
+    nearby_stores = {'leclerc': [], 'lidl': []}
 
     if user_location:
         try:
@@ -247,7 +247,7 @@ def compare_prices(request, panier_id):
                 radius=5000
             )[:5]
 
-            nearby_stores['aldi'] = overpass.find_aldi_stores(
+            nearby_stores['lidl'] = overpass.find_lidl_stores(
                 latitude=user_location['latitude'],
                 longitude=user_location['longitude'],
                 radius=5000
@@ -277,9 +277,9 @@ def _get_cache_coverage(panier):
     Calcule le pourcentage de couverture du cache pour un panier.
 
     Returns:
-        dict: {leclerc: %, aldi: %, total_ingredients: int}
+        dict: {leclerc: %, lidl: %, total_ingredients: int}
     """
-    from supermarkets.models import LeclercProductMatch, AldiProductMatch
+    from supermarkets.models import LeclercProductMatch, LidlProductMatch
 
     cache_duration = timedelta(hours=24)
     store_id = 'scraping'
@@ -299,10 +299,10 @@ def _get_cache_coverage(panier):
 
     total = len(ingredient_names)
     if total == 0:
-        return {'leclerc': 0, 'aldi': 0, 'total_ingredients': 0}
+        return {'leclerc': 0, 'lidl': 0, 'total_ingredients': 0}
 
     leclerc_cached = 0
-    aldi_cached = 0
+    lidl_cached = 0
 
     for name in ingredient_names:
         try:
@@ -315,18 +315,18 @@ def _get_cache_coverage(panier):
             ).exists():
                 leclerc_cached += 1
 
-            if AldiProductMatch.objects.filter(
+            if LidlProductMatch.objects.filter(
                 ingredient=ingredient,
                 store_id=store_id,
                 last_updated__gte=timezone.now() - cache_duration
             ).exists():
-                aldi_cached += 1
+                lidl_cached += 1
         except Ingredient.DoesNotExist:
             pass
 
     return {
         'leclerc': int((leclerc_cached / total) * 100) if total > 0 else 0,
-        'aldi': int((aldi_cached / total) * 100) if total > 0 else 0,
+        'lidl': int((lidl_cached / total) * 100) if total > 0 else 0,
         'total_ingredients': total,
     }
 
@@ -422,7 +422,7 @@ def comparison_results(request, panier_id, comparison_id):
     - Tableau comparatif par ingrédient
     - Produits non trouvés
     """
-    from supermarkets.models import PriceComparison, LeclercProductMatch, AldiProductMatch
+    from supermarkets.models import PriceComparison, LeclercProductMatch, LidlProductMatch
 
     panier = get_object_or_404(Panier, id=panier_id)
     comparison = get_object_or_404(PriceComparison, id=comparison_id, panier=panier)
@@ -437,7 +437,7 @@ def comparison_results(request, panier_id, comparison_id):
 
     comparison_data = []
     missing_leclerc = []
-    missing_aldi = []
+    missing_lidl = []
 
     for ing_panier in ingredient_paniers:
         ingredient = ing_panier.ingredient
@@ -448,22 +448,22 @@ def comparison_results(request, panier_id, comparison_id):
             store_id='scraping'
         ).first()
 
-        aldi_match = AldiProductMatch.objects.filter(
+        lidl_match = LidlProductMatch.objects.filter(
             ingredient=ingredient,
             store_id='scraping'
         ).first()
 
         leclerc_price = leclerc_match.price if leclerc_match and leclerc_match.price else None
-        aldi_price = aldi_match.price if aldi_match and aldi_match.price else None
+        lidl_price = lidl_match.price if lidl_match and lidl_match.price else None
 
         # Déterminer le moins cher pour cet ingrédient
         cheapest = None
-        if leclerc_price and aldi_price:
-            cheapest = 'leclerc' if leclerc_price <= aldi_price else 'aldi'
+        if leclerc_price and lidl_price:
+            cheapest = 'leclerc' if leclerc_price <= lidl_price else 'lidl'
         elif leclerc_price:
             cheapest = 'leclerc'
-        elif aldi_price:
-            cheapest = 'aldi'
+        elif lidl_price:
+            cheapest = 'lidl'
 
         comparison_data.append({
             'ingredient': ingredient,
@@ -472,25 +472,25 @@ def comparison_results(request, panier_id, comparison_id):
                 'price': leclerc_price,
                 'name': leclerc_match.product_name if leclerc_match else None,
             },
-            'aldi': {
-                'match': aldi_match,
-                'price': aldi_price,
-                'name': aldi_match.product_name if aldi_match else None,
+            'lidl': {
+                'match': lidl_match,
+                'price': lidl_price,
+                'name': lidl_match.product_name if lidl_match else None,
             },
             'cheapest': cheapest,
         })
 
         if not leclerc_match or not leclerc_match.product_name:
             missing_leclerc.append(ingredient.nom)
-        if not aldi_match or not aldi_match.product_name:
-            missing_aldi.append(ingredient.nom)
+        if not lidl_match or not lidl_match.product_name:
+            missing_lidl.append(ingredient.nom)
 
     context = {
         'panier': panier,
         'comparison': comparison,
         'comparison_data': comparison_data,
         'missing_leclerc': missing_leclerc,
-        'missing_aldi': missing_aldi,
+        'missing_lidl': missing_lidl,
         'savings': comparison.savings,
     }
 

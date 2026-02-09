@@ -3,7 +3,7 @@ Base scraper avec Playwright + anti-détection.
 
 Toute la logique commune (navigateur, cookies, debug)
 est factorisée ici. Utilisé par les scrapers qui nécessitent
-un navigateur complet (ex: Aldi avec rendu JS côté client).
+un navigateur complet (ex: Lidl avec rendu JS côté client).
 """
 
 import logging
@@ -273,6 +273,18 @@ class BaseScraper(ABC):
             if 'application/json' not in response.headers.get('content-type', ''):
                 return
             data = response.json()
+            # Log un échantillon de la structure pour debug
+            if isinstance(data, dict):
+                sample_keys = list(data.keys())[:10]
+                logger.debug(f"[{self.RETAILER_NAME}] API keys: {sample_keys}")
+                # Log le premier produit brut pour comprendre la structure des prix
+                for key in ('products', 'results', 'hits', 'items', 'data'):
+                    if key in data and isinstance(data[key], list) and data[key]:
+                        first = data[key][0]
+                        if isinstance(first, dict):
+                            logger.info(f"[{self.RETAILER_NAME}] API sample "
+                                        f"({key}[0] keys): {list(first.keys())[:15]}")
+                        break
             products = self._extract_products_from_json(data)
             if products:
                 self.found_products.extend(products)
@@ -322,10 +334,27 @@ class BaseScraper(ABC):
             self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
             self.page.wait_for_timeout(random.randint(1500, 2500))
 
-            # Fallback HTML si pas de données API
-            if not self.found_products:
-                logger.info(f"[{self.RETAILER_NAME}] Pas de données API, fallback HTML...")
-                self.found_products = self._fallback_html_parsing()
+            # Garder uniquement les produits avec un prix valide
+            priced = [p for p in self.found_products if p.get('price')]
+
+            # Si l'API n'a pas retourné assez de produits avec prix,
+            # basculer sur le parsing DOM (qui affiche les vrais résultats)
+            if len(priced) < 3:
+                if self.found_products:
+                    logger.info(f"[{self.RETAILER_NAME}] API: {len(priced)} produits "
+                                f"avec prix sur {len(self.found_products)}, fallback DOM...")
+                else:
+                    logger.info(f"[{self.RETAILER_NAME}] Pas de données API, fallback DOM...")
+                html_products = self._fallback_html_parsing()
+                html_priced = [p for p in html_products if p.get('price')]
+                if html_priced:
+                    self.found_products = html_priced
+                elif priced:
+                    self.found_products = priced
+                else:
+                    self.found_products = html_products
+            else:
+                self.found_products = priced
 
             if not self.found_products:
                 reason = "blocked" if self._is_blocked() else "no_products"

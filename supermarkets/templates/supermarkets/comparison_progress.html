@@ -42,8 +42,8 @@
                         </div>
                         <div class="col-6">
                             <div class="d-flex align-items-center">
-                                <span class="spinner-grow spinner-grow-sm text-secondary me-2" id="aldiSpinner"></span>
-                                <span id="aldiStatus">Aldi en attente...</span>
+                                <span class="spinner-grow spinner-grow-sm text-secondary me-2" id="lidlSpinner"></span>
+                                <span id="lidlStatus">Lidl en attente...</span>
                             </div>
                         </div>
                     </div>
@@ -80,12 +80,12 @@ function updateProgress(data) {
             document.getElementById('leclercStatus').textContent = 'E.Leclerc: recherche...';
             document.getElementById('leclercSpinner').classList.remove('text-secondary');
             document.getElementById('leclercSpinner').classList.add('text-primary');
-        } else if (data.progress.supermarket === 'aldi') {
+        } else if (data.progress.supermarket === 'lidl') {
             document.getElementById('leclercStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>E.Leclerc termine';
             document.getElementById('leclercSpinner').style.display = 'none';
-            document.getElementById('aldiStatus').textContent = 'Aldi: recherche...';
-            document.getElementById('aldiSpinner').classList.remove('text-secondary');
-            document.getElementById('aldiSpinner').classList.add('text-primary');
+            document.getElementById('lidlStatus').textContent = 'Lidl: recherche...';
+            document.getElementById('lidlSpinner').classList.remove('text-secondary');
+            document.getElementById('lidlSpinner').classList.add('text-primary');
         }
     }
 }

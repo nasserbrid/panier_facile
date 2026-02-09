@@ -1,11 +1,11 @@
 """Factory pour instancier les scrapers par nom d'enseigne."""
 
-from .aldi import AldiScraper
 from .leclerc import LeclercScraper
+from .lidl import LidlScraper
 
 _SCRAPERS = {
     'leclerc': LeclercScraper,
-    'aldi': AldiScraper,
+    'lidl': LidlScraper,
 }
 
 

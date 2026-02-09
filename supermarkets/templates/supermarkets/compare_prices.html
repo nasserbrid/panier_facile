@@ -65,11 +65,11 @@
                             {% endif %}
                         </div>
                         <div class="col-6">
-                            <h6><i class="fas fa-shopping-cart text-danger me-1"></i> Aldi</h6>
-                            {% if nearby_stores.aldi %}
+                            <h6><i class="fas fa-shopping-cart text-danger me-1"></i> Lidl</h6>
+                            {% if nearby_stores.lidl %}
                                 <ul class="list-unstyled small">
-                                    {% for store in nearby_stores.aldi %}
-                                        <li><i class="fas fa-map-pin text-danger me-1"></i> {{ store.name|default:"Aldi" }} ({{ store.distance|floatformat:1 }}km)</li>
+                                    {% for store in nearby_stores.lidl %}
+                                        <li><i class="fas fa-map-pin text-danger me-1"></i> {{ store.name|default:"Lidl" }} ({{ store.distance|floatformat:1 }}km)</li>
                                     {% endfor %}
                                 </ul>
                             {% else %}
@@ -107,11 +107,11 @@
                             <div class="col-6">
                                 <div class="progress" style="height: 20px;">
                                     <div class="progress-bar bg-danger" role="progressbar"
-                                         style="width: {{ cache_coverage.aldi }}%">
-                                        {{ cache_coverage.aldi }}%
+                                         style="width: {{ cache_coverage.lidl }}%">
+                                        {{ cache_coverage.lidl }}%
                                     </div>
                                 </div>
-                                <small class="text-muted">Aldi</small>
+                                <small class="text-muted">Lidl</small>
                             </div>
                         </div>
                     </div>

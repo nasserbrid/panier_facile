@@ -39,12 +39,12 @@ class PriceComparison(models.Model):
         blank=True,
         help_text="Total estimé chez E.Leclerc"
     )
-    aldi_total = models.DecimalField(
+    lidl_total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="Total estimé chez Aldi"
+        help_text="Total estimé chez Lidl"
     )
 
     # Compteurs de produits trouvés
@@ -52,9 +52,9 @@ class PriceComparison(models.Model):
         default=0,
         help_text="Nombre de produits trouvés chez E.Leclerc"
     )
-    aldi_found = models.IntegerField(
+    lidl_found = models.IntegerField(
         default=0,
-        help_text="Nombre de produits trouvés chez Aldi"
+        help_text="Nombre de produits trouvés chez Lidl"
     )
     total_ingredients = models.IntegerField(
         default=0,
@@ -65,7 +65,7 @@ class PriceComparison(models.Model):
     cheapest_supermarket = models.CharField(
         max_length=20,
         blank=True,
-        help_text="Nom du supermarché le moins cher (leclerc, aldi)"
+        help_text="Nom du supermarché le moins cher (leclerc, lidl)"
     )
 
     # Timestamps
@@ -88,8 +88,8 @@ class PriceComparison(models.Model):
         totals = {}
         if self.leclerc_total is not None:
             totals['leclerc'] = self.leclerc_total
-        if self.aldi_total is not None:
-            totals['aldi'] = self.aldi_total
+        if self.lidl_total is not None:
+            totals['lidl'] = self.lidl_total
 
         if totals:
             self.cheapest_supermarket = min(totals, key=totals.get)
@@ -107,8 +107,8 @@ class PriceComparison(models.Model):
         totals = []
         if self.leclerc_total is not None:
             totals.append(self.leclerc_total)
-        if self.aldi_total is not None:
-            totals.append(self.aldi_total)
+        if self.lidl_total is not None:
+            totals.append(self.lidl_total)
 
         if len(totals) >= 2:
             return max(totals) - min(totals)

@@ -13,6 +13,7 @@ case "${APP_TYPE:-web}" in
     python manage.py migrate supermarkets 0002_remove_old_add_pricecomparison --fake || true
     python manage.py migrate supermarkets 0003_replace_auchan_with_aldi --fake || true
     python manage.py migrate supermarkets 0004_replace_carrefour_with_leclerc --fake || true
+    python manage.py migrate supermarkets 0005_replace_aldi_with_lidl --fake || true
     python manage.py migrate
 
     # Gérer les tables et colonnes manuellement (migrations fakées)
@@ -52,9 +53,9 @@ CREATE TABLE IF NOT EXISTS supermarkets_leclercproductmatch (
 );
 \"\"\")
 
-# Créer supermarkets_aldiproductmatch si absente
+# Créer supermarkets_lidlproductmatch si absente
 cursor.execute(\"\"\"
-CREATE TABLE IF NOT EXISTS supermarkets_aldiproductmatch (
+CREATE TABLE IF NOT EXISTS supermarkets_lidlproductmatch (
     id BIGSERIAL PRIMARY KEY,
     store_id VARCHAR(20) DEFAULT 'scraping',
     product_name VARCHAR(255) NOT NULL,
@@ -76,9 +77,9 @@ CREATE TABLE IF NOT EXISTS supermarkets_pricecomparison (
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL,
     leclerc_total DECIMAL(10, 2),
-    aldi_total DECIMAL(10, 2),
+    lidl_total DECIMAL(10, 2),
     leclerc_found INTEGER DEFAULT 0,
-    aldi_found INTEGER DEFAULT 0,
+    lidl_found INTEGER DEFAULT 0,
     total_ingredients INTEGER DEFAULT 0,
     cheapest_supermarket VARCHAR(20) DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -92,14 +93,26 @@ cursor.execute(\"DROP TABLE IF EXISTS panier_intermarcheproductmatch CASCADE;\")
 cursor.execute(\"DROP TABLE IF EXISTS panier_auchanproductmatch CASCADE;\")
 cursor.execute(\"DROP TABLE IF EXISTS panier_carrefourproductmatch CASCADE;\")
 
-# Renommer colonnes auchan -> aldi dans PriceComparison (si pas encore fait)
+# Renommer colonnes auchan -> lidl dans PriceComparison (si pas encore fait)
 cursor.execute(\"\"\"
 DO \$\$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns
                WHERE table_name='supermarkets_pricecomparison' AND column_name='auchan_total') THEN
-        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_total TO aldi_total;
-        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_found TO aldi_found;
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_total TO lidl_total;
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN auchan_found TO lidl_found;
+    END IF;
+END \$\$;
+\"\"\")
+
+# Renommer colonnes aldi -> lidl dans PriceComparison (si pas encore fait)
+cursor.execute(\"\"\"
+DO \$\$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name='supermarkets_pricecomparison' AND column_name='aldi_total') THEN
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN aldi_total TO lidl_total;
+        ALTER TABLE supermarkets_pricecomparison RENAME COLUMN aldi_found TO lidl_found;
     END IF;
 END \$\$;
 \"\"\")

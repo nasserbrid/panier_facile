@@ -22,8 +22,8 @@ class ComparisonProgress {
             statusMessage: document.getElementById('statusMessage'),
             leclercStatus: document.getElementById('leclercStatus'),
             leclercSpinner: document.getElementById('leclercSpinner'),
-            aldiStatus: document.getElementById('aldiStatus'),
-            aldiSpinner: document.getElementById('aldiSpinner'),
+            lidlStatus: document.getElementById('lidlStatus'),
+            lidlSpinner: document.getElementById('lidlSpinner'),
             spinner: document.querySelector('.spinner-border')
         };
     }
@@ -109,7 +109,7 @@ class ComparisonProgress {
                 this.elements.leclercSpinner.classList.remove('text-secondary');
                 this.elements.leclercSpinner.classList.add('text-primary');
             }
-        } else if (supermarket === 'aldi') {
+        } else if (supermarket === 'lidl') {
             // Leclerc termine
             if (this.elements.leclercStatus) {
                 this.elements.leclercStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>E.Leclerc termine';
@@ -117,13 +117,13 @@ class ComparisonProgress {
             if (this.elements.leclercSpinner) {
                 this.elements.leclercSpinner.style.display = 'none';
             }
-            // Aldi en cours
-            if (this.elements.aldiStatus) {
-                this.elements.aldiStatus.textContent = 'Aldi: recherche...';
+            // Lidl en cours
+            if (this.elements.lidlStatus) {
+                this.elements.lidlStatus.textContent = 'Lidl: recherche...';
             }
-            if (this.elements.aldiSpinner) {
-                this.elements.aldiSpinner.classList.remove('text-secondary');
-                this.elements.aldiSpinner.classList.add('text-primary');
+            if (this.elements.lidlSpinner) {
+                this.elements.lidlSpinner.classList.remove('text-secondary');
+                this.elements.lidlSpinner.classList.add('text-primary');
             }
         }
     }

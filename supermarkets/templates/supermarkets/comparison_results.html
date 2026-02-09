@@ -50,22 +50,22 @@
             </div>
         </div>
 
-        <!-- Aldi -->
+        <!-- Lidl -->
         <div class="col-md-6 mb-3">
-            <div class="card h-100 {% if comparison.cheapest_supermarket == 'aldi' %}border-success{% endif %}">
-                {% if comparison.cheapest_supermarket == 'aldi' %}
+            <div class="card h-100 {% if comparison.cheapest_supermarket == 'lidl' %}border-success{% endif %}">
+                {% if comparison.cheapest_supermarket == 'lidl' %}
                 <div class="card-header bg-success text-white">
                     <i class="fas fa-trophy me-2"></i>Moins cher!
                 </div>
                 {% endif %}
                 <div class="card-body text-center">
                     <h4 class="text-danger mb-3">
-                        <i class="fas fa-shopping-cart me-2"></i>Aldi
+                        <i class="fas fa-shopping-cart me-2"></i>Lidl
                     </h4>
-                    {% if comparison.aldi_total %}
-                        <h2 class="display-4 mb-2">{{ comparison.aldi_total|floatformat:2 }} EUR</h2>
+                    {% if comparison.lidl_total %}
+                        <h2 class="display-4 mb-2">{{ comparison.lidl_total|floatformat:2 }} EUR</h2>
                         <p class="text-muted">
-                            {{ comparison.aldi_found }}/{{ comparison.total_ingredients }} produits trouves
+                            {{ comparison.lidl_found }}/{{ comparison.total_ingredients }} produits trouves
                         </p>
                     {% else %}
                         <p class="text-muted">Aucun produit trouve</p>
@@ -96,7 +96,7 @@
                         <tr>
                             <th>Ingredient</th>
                             <th class="text-center">E.Leclerc</th>
-                            <th class="text-center">Aldi</th>
+                            <th class="text-center">Lidl</th>
                             <th class="text-center">Moins cher</th>
                         </tr>
                     </thead>
@@ -115,11 +115,11 @@
                                     <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
-                            <td class="text-center {% if item.cheapest == 'aldi' %}table-success{% endif %}">
-                                {% if item.aldi.price %}
-                                    <span class="fw-bold">{{ item.aldi.price|floatformat:2 }} EUR</span>
+                            <td class="text-center {% if item.cheapest == 'lidl' %}table-success{% endif %}">
+                                {% if item.lidl.price %}
+                                    <span class="fw-bold">{{ item.lidl.price|floatformat:2 }} EUR</span>
                                     <br>
-                                    <small class="text-muted">{{ item.aldi.name|truncatechars:30 }}</small>
+                                    <small class="text-muted">{{ item.lidl.name|truncatechars:30 }}</small>
                                 {% else %}
                                     <span class="text-muted">-</span>
                                 {% endif %}
@@ -127,8 +127,8 @@
                             <td class="text-center">
                                 {% if item.cheapest == 'leclerc' %}
                                     <span class="badge bg-primary">E.Leclerc</span>
-                                {% elif item.cheapest == 'aldi' %}
-                                    <span class="badge bg-danger">Aldi</span>
+                                {% elif item.cheapest == 'lidl' %}
+                                    <span class="badge bg-danger">Lidl</span>
                                 {% else %}
                                     <span class="badge bg-secondary">-</span>
                                 {% endif %}
@@ -142,7 +142,7 @@
     </div>
 
     <!-- Produits non trouves -->
-    {% if missing_leclerc or missing_aldi %}
+    {% if missing_leclerc or missing_lidl %}
     <div class="row mt-4">
         {% if missing_leclerc %}
         <div class="col-md-6">
@@ -160,15 +160,15 @@
         </div>
         {% endif %}
 
-        {% if missing_aldi %}
+        {% if missing_lidl %}
         <div class="col-md-6">
             <div class="card border-warning">
                 <div class="card-header bg-warning text-dark">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Non trouves chez Aldi ({{ missing_aldi|length }})
+                    Non trouves chez Lidl ({{ missing_lidl|length }})
                 </div>
                 <ul class="list-group list-group-flush">
-                    {% for item in missing_aldi %}
+                    {% for item in missing_lidl %}
                         <li class="list-group-item py-1 small">{{ item }}</li>
                     {% endfor %}
                 </ul>
