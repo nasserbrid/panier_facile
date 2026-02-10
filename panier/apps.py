@@ -49,10 +49,3 @@ class PanierConfig(AppConfig):
 
         except Exception as e:
             logger.error(f"Erreur lors de l'initialisation du RAG : {e}", exc_info=True)
-
-        # Enregistrer les signaux pour le Cache Proactif
-        try:
-            from . import signals  # noqa: F401
-            logger.info("Signaux Cache Proactif enregistrés.")
-        except Exception as e:
-            logger.error(f"Erreur enregistrement signaux: {e}")

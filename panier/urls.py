@@ -71,12 +71,6 @@ urlpatterns = [
     # Géolocalisation
     path('save-location/', views.save_temp_location, name='save_temp_location'),
 
-    # Comparaison de prix
-    path('<int:panier_id>/comparer/', views.compare_prices, name='compare_prices'),
-    path('<int:panier_id>/comparer/progress/<str:task_id>/', views.comparison_progress, name='comparison_progress'),
-    path('<int:panier_id>/comparer/resultats/<int:comparison_id>/', views.comparison_results, name='comparison_results'),
-    path('api/comparison-status/<str:task_id>/', views.comparison_status_api, name='comparison_status_api'),
-
     # Contact et Avis
     path('contact/', views.contact, name='contact'),
     path('avis/soumettre/', views.submit_review, name='submit_review'),

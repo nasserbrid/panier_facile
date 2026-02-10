@@ -41,14 +41,6 @@ from .contact import (
 # Géolocalisation
 from .drive import save_temp_location
 
-# Comparaison de prix
-from .price_comparison import (
-    compare_prices,
-    comparison_progress,
-    comparison_results,
-    comparison_status_api,
-)
-
 # Chatbot
 from .chatbot import (
     chatbot_ui,
@@ -93,11 +85,6 @@ __all__ = [
     'reset_rag_system',
     # Géolocalisation
     'save_temp_location',
-    # Comparaison de prix
-    'compare_prices',
-    'comparison_progress',
-    'comparison_results',
-    'comparison_status_api',
     # Contact
     'contact',
     'submit_review',

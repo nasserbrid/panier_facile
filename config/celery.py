@@ -38,14 +38,6 @@ app.conf.beat_schedule = {
             'expires': 3600,
         },
     },
-    # Cache Proactif: Rafraîchissement quotidien des ingrédients populaires
-    'refresh-popular-ingredients-daily': {
-        'task': 'panier.tasks.refresh_popular_ingredients',
-        'schedule': crontab(hour=4, minute=0),  # Tous les jours à 4h00 (heure creuse)
-        'options': {
-            'expires': 7200,  # Expire après 2h
-        },
-    },
 }
 
 # Configuration du fuseau horaire pour Celery Beat

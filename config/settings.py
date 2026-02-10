@@ -78,7 +78,6 @@ INSTALLED_APPS = [
     'panier',
     'contact',  # Messages de contact et avis clients
     'core',  # Application core pour la logique metier
-    'supermarkets',  # Gestion des enseignes (scrapers, matching produits)
     'django_celery_beat',  # Pour le scheduler Celery Beat
 ]
 
