@@ -4,9 +4,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PanierFacile</title>
+    <title>{% block title %}PanierFacile — Listes de courses en famille{% endblock %}</title>
 
-    <meta name="description" content="Gérez vos listes de courses facilement avec PanierFacile">
+    <meta name="description" content="{% block meta_description %}PanierFacile vous permet de créer et partager vos listes de courses en famille. Ne refaites plus jamais le trajet pour un article oublié.{% endblock %}">
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="PanierFacile" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://panier-facile.fr/" />
+    <meta property="og:title" content="{% block og_title %}PanierFacile — Listes de courses en famille{% endblock %}" />
+    <meta property="og:description" content="{% block og_description %}Créez et partagez vos listes de courses avec toute la famille. Ne refaites plus jamais le trajet pour un article oublié.{% endblock %}" />
+    <meta property="og:image" content="https://panier-facile.fr/{% static 'img/og-image.png' %}" />
+    <meta property="og:locale" content="fr_FR" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PanierFacile — Listes de courses en famille" />
+    <meta name="twitter:description" content="Créez et partagez vos listes de courses avec toute la famille. Ne refaites plus jamais le trajet pour un article oublié." />
+    <meta name="twitter:image" content="https://panier-facile.fr/{% static 'img/og-image.png' %}" />
 
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
