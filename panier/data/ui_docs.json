@@ -10,6 +10,15 @@
     ]
   },
   {
+    "title": "Créer un panier",
+    "steps": [
+      "Cliquer sur l'onglet 'Panier'",
+      "Cliquer sur le bouton 'Créer un panier'",
+      "Sélectionner les courses à ajouter dans le panier",
+      "Valider le formulaire pour créer le panier"
+    ]
+  },
+  {
     "title": "Voir la liste des courses",
     "steps": [
       "Cliquer sur l'onglet 'Voir mes courses'",
@@ -18,6 +27,16 @@
       "Cliquer sur 'Modifier' pour éditer une course",
       "Cliquer sur 'Supprimer' pour supprimer une course",
       "Cliquer sur 'Nouvelle course' pour créer une course"
+    ]
+  },
+  {
+    "title": "Créer une course",
+    "steps": [
+      "Cliquer sur l'onglet 'Voir mes courses'",
+      "Cliquer sur le bouton 'Nouvelle course'",
+      "Renseigner le titre de la course",
+      "Ajouter les ingrédients nécessaires",
+      "Valider le formulaire pour créer la course"
     ]
   },
   {
@@ -34,7 +53,7 @@
     "title": "Détail d'un panier",
     "steps": [
       "Depuis la liste des paniers, cliquer sur 'Détails'",
-      "Voir les courses associées",
+      "Voir les courses associées au panier",
       "Cliquer sur 'Modifier' pour changer le panier",
       "Cliquer sur 'Supprimer' pour supprimer le panier",
       "Cliquer sur 'Retour' pour revenir à la liste"
@@ -50,11 +69,23 @@
     ]
   },
   {
-    "title": "Connaître les commerces à proximité de chez moi",
+    "title": "Utiliser l'assistant PanierFacile",
     "steps": [
-      "Cliquer sur votre nom d'utilisateur en haut à droite",
-      "Cliquer sur le bouton 'Detecter ma position GPS'",
-      "Cliquer sur le bouton 'Voir les commerces proches'"
+      "Cliquer sur l'icône de chat en bas à droite de l'écran",
+      "Taper votre question ou demande dans la zone de texte",
+      "L'assistant peut créer une course (ex: 'Crée une course lait avec du lait et du beurre')",
+      "L'assistant peut créer un nouveau panier (ex: 'Crée un nouveau panier')",
+      "L'assistant peut afficher vos paniers (ex: 'Quels sont mes paniers ?')",
+      "L'assistant peut répondre aux questions sur l'application (ex: 'Comment ajouter une course ?')"
+    ]
+  },
+  {
+    "title": "Partager un panier avec sa famille",
+    "steps": [
+      "Les membres d'une même famille partagent automatiquement leurs paniers",
+      "La famille est définie par le même nom de famille (last name) sur le compte",
+      "Tous les membres de la famille voient les paniers et courses des autres",
+      "Pour rejoindre une famille, utiliser le même nom de famille à l'inscription"
     ]
   }
 ]
