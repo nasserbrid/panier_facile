@@ -29,8 +29,12 @@ RUN apt-get update && apt-get install -y \
 # -----------------------------
 COPY requirements.txt .
 # Installer pip et les dépendances avec nettoyage agressif pour économiser la RAM
+# langgraph est installé séparément pour laisser pip résoudre les conflits
+# avec langchain-core (le requirements.txt peut avoir des versions incompatibles
+# car généré depuis un environnement local cassé)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir "langgraph>=1.0" "langgraph-checkpoint" "langgraph-prebuilt" && \
     pip cache purge && \
     find /usr/local/lib/python3.12 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
