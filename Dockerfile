@@ -34,7 +34,6 @@ COPY requirements.txt .
 # car généré depuis un environnement local cassé)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir "langgraph>=1.0" "langgraph-checkpoint" "langgraph-prebuilt" && \
     pip cache purge && \
     find /usr/local/lib/python3.12 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
