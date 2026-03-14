@@ -61,9 +61,11 @@ urlpatterns = [
     path('trigger-notification/', views.trigger_notification, name='trigger_notification'),
     path('health', views.health_check, name='health'),
     
-    #RAG - Chatbot UI
-   # Chatbot RAG
+    # Chatbot RAG (ancien — questions UI uniquement)
     path('chatbot/', views.chatbot_ui, name='chatbot_ui'),
+
+    # Agent LangGraph (nouveau — actions + questions UI)
+    path('agent/', views.agent_chat, name='agent_chat'),
 
     # Gestion du système RAG (réservé au staff)
     path('chatbot/reset/', views.reset_rag_system, name='reset_rag'),

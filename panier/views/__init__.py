@@ -41,10 +41,11 @@ from .contact import (
 # Géolocalisation
 from .drive import save_temp_location
 
-# Chatbot
+# Chatbot RAG + Agent LangGraph
 from .chatbot import (
     chatbot_ui,
     reset_rag_system,
+    agent_chat,
 )
 # Health et notifications
 from .health import (
@@ -80,9 +81,10 @@ __all__ = [
     'trigger_notification',
     # Health
     'health_check',
-    # Chatbot
+    # Chatbot RAG + Agent LangGraph
     'chatbot_ui',
     'reset_rag_system',
+    'agent_chat',
     # Géolocalisation
     'save_temp_location',
     # Contact
