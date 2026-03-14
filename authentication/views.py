@@ -1,13 +1,16 @@
+from operator import le
+
 from django.shortcuts import render, redirect
-from authentication.forms import SignupForm
+from authentication.forms import ProfileCompletionForm, SignupForm
 from django.contrib.auth import login
 from django.conf import settings
 from django.contrib.auth.views import LoginView, LogoutView
+from django.views.generic import UpdateView
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 from django.contrib import messages
@@ -248,6 +251,17 @@ def nearby_stores(request):
         'shop_types': OverpassAPI.SHOP_TYPES,
         'selected_type': shop_type_filter
     })
+# ========================================
+# MISE A JOUR DE LA PAGE DE PROFIL POUR AJOUTER LE NUMERO DE TELEPHONE
+# ========================================
+class CompleteProfileView(UpdateView):
+    form_class = ProfileCompletionForm
+    template_name = "authentication/complete_profile.html"
+    success_url = reverse_lazy('home')
+
+    def get_object(self):
+        return self.request.user
+
 
 
 # ========================================

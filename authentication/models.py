@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.gis.db import models as gis_models
+from phonenumber_field.modelfields import PhoneNumberField
 
 # Create your models here.
 
@@ -38,6 +39,14 @@ class User(AbstractUser):
         null=True,
         verbose_name="Fin de la période d'essai",
         help_text="Date de fin des 3 mois gratuits"
+    )
+    
+    #Champs phone_number
+    phone_number = PhoneNumberField(
+        blank=True,
+        null=True,
+        verbose_name="Numéro de téléphone",
+        help_text="Numéro de téléphone pour les notifications SMS"
     )
 
     subscription_status = models.CharField(

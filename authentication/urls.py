@@ -7,6 +7,7 @@ urlpatterns = [
     path('logout/', views.CustomLogoutView.as_view(), name='logout'),
     path('signup/', views.signup_page, name='signup'),
     path('profile/', views.profile_page, name='profile'),
+    path('profile/complete/', views.CompleteProfileView.as_view(), name='complete_profile'),
     path('api/save-location/', views.save_location, name='save_location'),
     path('nearby-stores/', views.nearby_stores, name='nearby_stores'),
     path('change-password/', PasswordChangeView.as_view(

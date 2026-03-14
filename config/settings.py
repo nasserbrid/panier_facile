@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     'contact',  # Messages de contact et avis clients
     'core',  # Application core pour la logique metier
     'django_celery_beat',  # Pour le scheduler Celery Beat
+    'phonenumber_field',  # Pour gérer les numéros de téléphone
 ]
 
 # Django allauth configuration
@@ -125,6 +126,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'authentication.middleware.PhoneNumberMiddleware',  # Middleware de vérification du numéro de téléphone
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',  # Required by django-allauth
