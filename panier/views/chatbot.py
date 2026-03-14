@@ -32,7 +32,13 @@ from ..utils.chunker import split_documents
 from ..utils.embedding import get_embeddings
 from ..utils.vectorstore import build_vectorstore
 from ..utils.rag import create_rag
-from ..agent.runner import run_agent
+
+# Import lazy : langgraph est chargé uniquement à la première requête
+# et non au démarrage du processus (évite les erreurs lors du collectstatic
+# si langgraph a un conflit de dépendances au moment du build Docker)
+def _get_run_agent():
+    from ..agent.runner import run_agent
+    return run_agent
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +169,7 @@ def agent_chat(request):
     try:
         # run_agent injecte request.user dans les outils via closure
         # L'agent peut ainsi créer des objets pour le bon utilisateur
+        run_agent = _get_run_agent()
         answer = run_agent(user=request.user, question=question)
         return JsonResponse({"answer": answer, "question": question})
 
