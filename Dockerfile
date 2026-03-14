@@ -32,8 +32,13 @@ COPY requirements.txt .
 # langgraph est installé séparément pour laisser pip résoudre les conflits
 # avec langchain-core (le requirements.txt peut avoir des versions incompatibles
 # car généré depuis un environnement local cassé)
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
+RUN echo "=== pip version ===" && pip --version && \
+    echo "=== Python version ===" && python --version && \
+    echo "=== Installing dependencies ===" && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -v -r requirements.txt 2>&1 && \
+    echo "=== Installation complete ===" && \
+    pip list && \
     pip cache purge && \
     find /usr/local/lib/python3.12 -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 
